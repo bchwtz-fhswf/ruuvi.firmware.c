@@ -10,6 +10,7 @@
 #include "app_heartbeat.h"
 #include "app_log.h"
 #include "app_sensor.h"
+#include "ruuvi_interface_log.h"
 #include "ruuvi_driver_error.h"
 #include "ruuvi_driver_sensor.h"
 #include "ruuvi_endpoint_5.h"
@@ -23,12 +24,25 @@
 #include "ruuvi_task_gatt.h"
 #include "ruuvi_task_nfc.h"
 
+#include <stdio.h>
+
+
 static ri_timer_id_t heart_timer; //!< Timer for updating data.
 
 #ifndef CEEDLING
 static
 #endif
 uint16_t m_measurement_count; //!< Increment on new samples.
+
+static inline void LOG (const char * const msg)
+{
+    ri_log (RI_LOG_LEVEL_INFO, msg);
+}
+
+static inline void LOGD (const char * const msg)
+{
+    ri_log (RI_LOG_LEVEL_DEBUG, msg);
+}
 
 static rd_status_t encode_to_5 (const rd_sensor_data_t * const data,
                                 ri_comm_message_t * const msg)
@@ -102,6 +116,21 @@ void heartbeat (void * p_event, uint16_t event_size)
     data.data = data_values;
     app_sensor_get (&data);
     encode_to_5 (&data, &msg);
+
+    float accelerationx_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_X_FIELD);
+    float accelerationy_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_Y_FIELD);
+    float accelerationz_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_Z_FIELD);
+
+    char dbgmsg[50];
+    *dbgmsg=0;
+    snprintf(dbgmsg, sizeof(dbgmsg)-1, "Heartbeat: ACC Value X Value %f\r\n", accelerationx_g);
+    LOGD(dbgmsg);
+    *dbgmsg=0;
+    snprintf(dbgmsg, sizeof(dbgmsg)-1, "Heartbeat: ACC Value Y Value %f\r\n", accelerationy_g);
+    LOGD(dbgmsg);
+    *dbgmsg=0;
+    snprintf(dbgmsg, sizeof(dbgmsg)-1, "Heartbeat: ACC Value Z Value %f\r\n", accelerationz_g);
+    LOGD(dbgmsg);
 
     if (RE_5_INVALID_SEQUENCE == ++m_measurement_count)
     {

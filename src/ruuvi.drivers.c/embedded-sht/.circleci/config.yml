@@ -1,0 +1,32 @@
+version: 2
+
+jobs:
+  build:
+
+    docker:
+        - image: gcc:5.5
+
+    steps:
+
+      - checkout
+
+      - run:
+          name: update common repo
+          command: git submodule update --init
+      - run: apt update
+      - run: apt install -y zip
+      - run: make release
+      - run: make
+      - run:
+          name: make driver
+          command: |
+              cd release/sht3x && make && make clean && cd -
+              cd release/shtc1 && make && make clean && cd -
+      - run:
+          name: Move zip files to artifacts directory
+          command: |
+            mkdir -p /releases
+            mv release/*.zip /releases/
+
+      - store_artifacts:
+          path: /releases

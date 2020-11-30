@@ -7,6 +7,7 @@
 #include "ruuvi_interface_yield.h"
 #include "ruuvi_interface_log.h"
 #include "lis2dh12_reg.h"
+#include "../app_accelerometer_logging.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -51,19 +52,19 @@
 #define NM_BIT_DIVEDER (64U) //!< Normal mode uses 10 bits in 16 bit field, leading to 2^6 factor in results.
 #define MOTION_THRESHOLD_MAX (0x7FU) // Highest threshold value allowed.
 
-/** @brief Macro for checking that sensor is in sleep mode before configuration */
-#define VERIFY_SENSOR_SLEEPS() do { \
-          uint8_t MACRO_MODE = 0; \
-          ri_lis2dh12_mode_get(&MACRO_MODE); \
-          if(RD_SENSOR_CFG_SLEEP != MACRO_MODE) { return RD_ERROR_INVALID_STATE; } \
-          } while(0)
-
 /** @brief Representation of 3*2 bytes buffer as 3*int16_t */
 typedef union
 {
     int16_t i16bit[NUM_AXIS]; //!< Integer values
     uint8_t u8bit[2 * NUM_AXIS];  //!< Buffer
 } axis3bit16_t;
+
+/** @brief Macro for checking that sensor is in sleep mode before configuration */
+#define VERIFY_SENSOR_SLEEPS() do { \
+          uint8_t MACRO_MODE = 0; \
+          ri_lis2dh12_mode_get(&MACRO_MODE); \
+          if(RD_SENSOR_CFG_SLEEP != MACRO_MODE) { return RD_ERROR_INVALID_STATE; } \
+          } while(0)
 
 /** @brief Representation of 2 bytes buffer as int16_t */
 typedef union
@@ -79,6 +80,7 @@ typedef union
 static
 #endif
 ri_lis2dh12_dev dev = {0};
+rd_sensor_logging_t lis2dh12_logging;
 
 static const char m_acc_name[] = "LIS2DH12";
 
@@ -948,25 +950,83 @@ static rd_status_t rawToMg (const axis3bit16_t * raw_acceleration,
     return err_code;
 }
 
+/**
+ * @brief Test if FIFO is active
+ *
+ * @return RD_SUCCESS when FIFO is active
+ * @return RD_ERROR_INVALID_STATE when FIFO is not active
+ * @return RD_ERROR_INTERNAL in case of error
+ */
+rd_status_t ri_lis2dh12_fifo_active (void) {
+    int32_t lis_ret_code;
+    uint8_t enable;
+    lis_ret_code = lis2dh12_fifo_get (& (dev.ctx), &enable);
+    if(LIS_SUCCESS == lis_ret_code) {
+        if(enable) {
+            return RD_SUCCESS;
+        } else {
+            return RD_ERROR_INVALID_STATE;
+        }
+    } else {
+        return RD_ERROR_INTERNAL;
+    }
+}
+
+/**
+ * @brief Return raw accelaration data
+ *
+ * @param[out] raw_data, data returned from sensor
+ * @return RD_SUCCESS in case of success
+ * @return RD_ERROR_INTERNAL in case of error
+ */
+rd_status_t ri_lis2dh12_acceleration_raw_get (uint8_t * const raw_data)
+{
+    int32_t lis_ret_code;
+    lis_ret_code = lis2dh12_acceleration_raw_get (& (dev.ctx), raw_data);
+
+    //LOGD("\r\nRAW accelaration data");
+    //ri_log_hex (RI_LOG_LEVEL_DEBUG, raw_data, 6);
+
+    return (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
+}
+
 rd_status_t ri_lis2dh12_data_get (rd_sensor_data_t * const
                                   data)
 {
     if (NULL == data) { return RD_ERROR_NULL; }
 
     rd_status_t err_code = RD_SUCCESS;
+
     int32_t lis_ret_code;
     axis3bit16_t raw_acceleration;
+    float temperature = NAN;
     uint8_t raw_temperature[2];
     memset (raw_acceleration.u8bit, 0x00, 3 * sizeof (int16_t));
-    lis_ret_code = lis2dh12_acceleration_raw_get (& (dev.ctx), raw_acceleration.u8bit);
-    err_code |= (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
-    lis_ret_code = lis2dh12_temperature_raw_get (& (dev.ctx), raw_temperature);
-    err_code |= (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
+
+#ifdef APP_SENSOR_LOGGING
+    rd_status_t fifo_status = ri_lis2dh12_fifo_active ();
+
+    if(fifo_status==RD_SUCCESS) {
+        // read data from logged fifo
+        err_code = app_get_data_from_queue(&lis2dh12_logging, raw_acceleration.u8bit);
+    } else {
+#endif
+        // read data directly from sensor 
+        err_code |= ri_lis2dh12_acceleration_raw_get(raw_acceleration.u8bit);
+
+        // read temperature
+        lis_ret_code = lis2dh12_temperature_raw_get (& (dev.ctx), raw_temperature);
+        err_code |= (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
+
+        err_code |= rawToC (raw_temperature, &temperature);
+
+#ifdef APP_SENSOR_LOGGING
+    }
+#endif
+
     // Compensate data with resolution, scale
     float acceleration[3];
-    float temperature;
     err_code |= rawToMg (&raw_acceleration, acceleration);
-    err_code |= rawToC (raw_temperature, &temperature);
     uint8_t mode;
     err_code |= ri_lis2dh12_mode_get (&mode);
 
@@ -988,12 +1048,15 @@ rd_status_t ri_lis2dh12_data_get (rd_sensor_data_t * const
         acc_fields.datas.acceleration_x_g = 1;
         acc_fields.datas.acceleration_y_g = 1;
         acc_fields.datas.acceleration_z_g = 1;
-        acc_fields.datas.temperature_c = 1;
         //Convert mG to G.
         values[0] = acceleration[0] / 1000.0;
         values[1] = acceleration[1] / 1000.0;
         values[2] = acceleration[2] / 1000.0;
-        values[3] = temperature;
+
+        if(temperature!=NAN) {
+            acc_fields.datas.temperature_c = 1;
+            values[3] = temperature;
+        }
         d_acceleration.valid  = acc_fields;
         d_acceleration.fields = acc_fields;
         rd_sensor_data_populate (data,
@@ -1004,7 +1067,6 @@ rd_status_t ri_lis2dh12_data_get (rd_sensor_data_t * const
     return err_code;
 }
 
-// TODO: State checks
 rd_status_t ri_lis2dh12_fifo_use (const bool enable)
 {
     lis2dh12_fm_t mode;
@@ -1021,14 +1083,17 @@ rd_status_t ri_lis2dh12_fifo_use (const bool enable)
     return err_code;
 }
 
-//TODO * return: RD_INVALID_STATE if FIFO is not in use
 rd_status_t ri_lis2dh12_fifo_read (size_t * num_elements,
                                    rd_sensor_data_t * p_data)
 {
     if (NULL == num_elements || NULL == p_data) { return RD_ERROR_NULL; }
 
     uint8_t elements = 0;
-    rd_status_t err_code = RD_SUCCESS;
+    rd_status_t err_code = ri_lis2dh12_fifo_active();
+    if(err_code!=RD_SUCCESS) {
+        return err_code;
+    }
+
     int32_t lis_ret_code;
     lis_ret_code = lis2dh12_fifo_data_level_get (& (dev.ctx), &elements);
     err_code |= (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
@@ -1053,8 +1118,7 @@ rd_status_t ri_lis2dh12_fifo_read (size_t * num_elements,
 
     for (size_t ii = 0; ii < elements; ii++)
     {
-        lis_ret_code = lis2dh12_acceleration_raw_get (& (dev.ctx), raw_acceleration.u8bit);
-        err_code |= (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
+        err_code |= err_code |= ri_lis2dh12_acceleration_raw_get(raw_acceleration.u8bit);
         // Compensate data with resolution, scale
         err_code |= rawToMg (&raw_acceleration, acceleration);
         rd_sensor_data_t d_acceleration;
@@ -1211,5 +1275,40 @@ rd_status_t ri_lis2dh12_activity_interrupt_use (const bool enable, float * const
 
     return err_code;
 }
+
+#ifdef APP_SENSOR_LOGGING
+rd_status_t ri_lis2dh12_fifo_accelaration_logging (rd_sensor_t * p_sensor, const bool enable) {
+
+    if(p_sensor==NULL) { return RD_ERROR_NULL; }
+
+    rd_status_t err_code = RD_SUCCESS;
+
+    if(enable) {
+        lis2dh12_logging.p_sensor = p_sensor;
+        lis2dh12_logging.fifo_size = RI_LIS2DH12_FIFO_SIZE;
+        lis2dh12_logging.fifo_pin = RB_INT_FIFO_PIN;
+        lis2dh12_logging.logfields.datas.acceleration_x_g = 1;
+        lis2dh12_logging.logfields.datas.acceleration_y_g = 1;
+        lis2dh12_logging.logfields.datas.acceleration_z_g = 1;
+        lis2dh12_logging.raw_get = ri_lis2dh12_acceleration_raw_get;
+        lis2dh12_logging.size_element = 3 * sizeof (int16_t);
+
+        err_code |= app_enable_sensor_logging(&lis2dh12_logging);
+
+        // temperature is not available via FIFO, so do not provide temperature data
+        p_sensor->provides.datas.temperature_c = 0;
+
+    } else {
+
+        err_code |= app_disable_sensor_logging(&lis2dh12_logging);
+
+        // without FIFO, reenable providing temperature data
+        p_sensor->provides.datas.temperature_c = 1;
+
+    }
+    return err_code;
+}
+#endif
+
 /*@}*/
 #endif

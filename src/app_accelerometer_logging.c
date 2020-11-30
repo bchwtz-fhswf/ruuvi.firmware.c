@@ -106,7 +106,7 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
                     LOG("\tACC Z raw: ");
                     ri_log_hex (RI_LOG_LEVEL_DEBUG, sensor->data + sensor->size_element*ii + 4, 2);
                 }
-                */
+*/
             }
 
 
@@ -116,7 +116,7 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
 
     }
 
-    LOGD("\r\nFIFO read\r\n");
+    //LOGD("\r\nFIFO read\r\n");
 
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
@@ -199,14 +199,16 @@ rd_status_t app_get_data_from_queue(rd_sensor_logging_t *sensor, uint8_t *data) 
 
     rd_status_t err_code = RD_SUCCESS;
 
-    // memcpy(dest, src, size)
-    memcpy(data, sensor->data + sensor->element_pos*sensor->size_element, sensor->size_element);
+    if(sensor->element_pos < sensor->num_elements) {
+      // memcpy(dest, src, size)
+      memcpy(data, sensor->data + sensor->element_pos*sensor->size_element, sensor->size_element);
 
-    //LOGD("\r\nQueued RAW accelaration data");
-    //ri_log_hex (RI_LOG_LEVEL_DEBUG, data, 6);
+      //LOGD("\r\nQueued RAW accelaration data");
+      //ri_log_hex (RI_LOG_LEVEL_DEBUG, data, 6);
 
-    // position for next element
-    sensor->element_pos++;
+      // position for next element
+      sensor->element_pos++;
+    }
 
     return err_code;
 }

@@ -391,7 +391,7 @@ static void ble_evt_handler (ble_evt_t const * p_ble_evt, void * p_context)
 
         default:
             // No implementation needed.
-            LOGD ("BLE Unknown event\r\n");
+            //LOGD ("BLE Unknown event\r\n");
             break;
     }
 }

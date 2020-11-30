@@ -227,6 +227,15 @@ rd_status_t app_sensor_handle (const ri_comm_xfer_fp_t ri_reply_fp,
  */
 void app_sensor_vdd_measure_isr (const ri_radio_activity_evt_t evt);
 
+#ifdef APP_SENSOR_LOGGING
+/**
+ * @brief Enable logging of accelaration sensor
+ *
+ * @param[in] enable
+ */
+rd_status_t app_accelaration_logging (const bool enable);
+#endif
+
 #ifdef RUUVI_RUN_TESTS
 void app_sensor_ctx_get (rt_sensor_ctx_t *** m_sensors, size_t * num_sensors);
 #endif

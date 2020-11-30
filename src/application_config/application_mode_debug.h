@@ -3,7 +3,7 @@
 
 #define APP_FW_VARIANT "+debug"
 #define RI_LOG_ENABLED 1
-#define APP_LOG_LEVEL RI_LOG_LEVEL_INFO
+#define APP_LOG_LEVEL RI_LOG_LEVEL_DEBUG
 #define APP_WDT_INTERVAL_MS (10U*60U*1000U)
 /** @brief Communicate sensor data at this interval. 221 matches Apple guideline. */
 #ifndef APP_HEARTBEAT_INTERVAL_MS

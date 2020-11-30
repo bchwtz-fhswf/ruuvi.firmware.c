@@ -166,7 +166,7 @@ rd_status_t app_log_process (const rd_sensor_data_t * const sample)
 {
     rd_status_t err_code = RD_SUCCESS;
     uint64_t next_sample_ms = m_last_sample_ms + (m_log_config.interval_s * 1000U);
-    LOGD ("LOG: Sample received\r\n");
+    //LOGD ("LOG: Sample received\r\n");
 
     // Always store first sample.
     if (0 == m_last_sample_ms)

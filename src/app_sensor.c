@@ -960,6 +960,12 @@ rd_status_t app_sensor_handle (const ri_comm_xfer_fp_t reply_fp,
     return err_code;
 }
 
+#ifdef APP_SENSOR_LOGGING
+rd_status_t app_accelaration_logging (const bool enable) {
+    return ri_lis2dh12_fifo_accelaration_logging(&m_sensors[LIS2DH12_INDEX]->sensor, enable);
+}
+#endif
+
 #ifdef RUUVI_RUN_TESTS
 void app_sensor_ctx_get (rt_sensor_ctx_t *** p_sensors, size_t * num_sensors)
 {

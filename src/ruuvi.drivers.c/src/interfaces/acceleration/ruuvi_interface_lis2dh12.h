@@ -60,6 +60,8 @@
 #define RI_LIS2DH12_DEFAULT_SCALE (2U)
 /** @brief Resolution used on "default" setting. */
 #define RI_LIS2DH12_DEFAULT_RESOLUTION (10U)
+/** @brief Size of FIFO */
+#define RI_LIS2DH12_FIFO_SIZE (32U)
 #define LIS_SUCCESS (0)  //!< No error in LIS driver.
 #define SELF_TEST_DELAY_MS (100U) //!< At least 3 samples at 400 Hz, but recommended value 100
 #define SELF_TEST_SAMPLES_NUM (5) //!< 5 samples
@@ -124,6 +126,17 @@ rd_status_t ri_lis2dh12_fifo_read (size_t * num_elements, rd_sensor_data_t * dat
 **/
 rd_status_t ri_lis2dh12_fifo_interrupt_use (const bool enable);
 
+#ifdef APP_SENSOR_LOGGING
+/**
+ * @brief Enable/Disable logging of accelaration data.
+ *
+ * @param[in] p_sensor pointer to sensor struct
+ * @param[in] enable True to enable interrupt, false to disable interrupt
+ * @return RD_SUCCESS on success, error code from stack otherwise.
+ */
+rd_status_t ri_lis2dh12_fifo_accelaration_logging (rd_sensor_t * p_sensor, const bool enable);
+#endif
+
 /**
  * @brief Enable activity interrupt on LIS2DH12.
  *
@@ -143,6 +156,7 @@ rd_status_t ri_lis2dh12_fifo_interrupt_use (const bool enable);
  */
 rd_status_t ri_lis2dh12_activity_interrupt_use (const bool enable,
         float * limit_g);
+
 
 /** @brief context for LIS2DH12 */
 typedef struct

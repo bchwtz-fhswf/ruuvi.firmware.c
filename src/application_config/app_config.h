@@ -367,5 +367,9 @@
 #   define APP_LOG_LEVEL RI_LOG_LEVEL_NONE
 #endif
 
+#ifndef APP_SENSOR_LOGGING
+#   define APP_SENSOR_LOGGING (1U)
+#endif
+
 /*@}*/
 #endif

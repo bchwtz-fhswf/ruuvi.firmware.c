@@ -117,6 +117,7 @@ void heartbeat (void * p_event, uint16_t event_size)
     app_sensor_get (&data);
     encode_to_5 (&data, &msg);
 
+/* 
     float accelerationx_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_X_FIELD);
     float accelerationy_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_Y_FIELD);
     float accelerationz_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_Z_FIELD);
@@ -129,8 +130,9 @@ void heartbeat (void * p_event, uint16_t event_size)
     snprintf(dbgmsg, sizeof(dbgmsg)-1, "Heartbeat: ACC Value Y Value %f\r\n", accelerationy_g);
     LOGD(dbgmsg);
     *dbgmsg=0;
-    snprintf(dbgmsg, sizeof(dbgmsg)-1, "Heartbeat: ACC Value Z Value %f\r\n", accelerationz_g);
+    snprintf(dbgmsg, sizeof(dbgmsg)-1, "Heartbeat: ACC Value Z Value %f\r\n\r\n", accelerationz_g);
     LOGD(dbgmsg);
+ */
 
     if (RE_5_INVALID_SEQUENCE == ++m_measurement_count)
     {

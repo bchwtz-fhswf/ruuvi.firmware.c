@@ -1441,7 +1441,7 @@
     gcc_optimization_level="Optimize For Size" />
   <configuration
     Name="Debug"
-    c_preprocessor_definitions="DEBUG; DEBUG_NRF; RUUVI_RUN_TESTS"
+    c_preprocessor_definitions="DEBUG; DEBUG_NRF; RUUVI_NOT_RUN_TESTS"
     gcc_optimization_level="None" />
   <configuration
     Name="Common"

@@ -1,0 +1,103 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+*.bin
+*.in
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# Mac OSX files
+.DS_Store
+
+# Build folder
+Output/
+_build/
+
+# SES files
+*.emSession
+*.jlink
+
+# Compiled packages
+*.zip
+
+# Keys
+*.pem
+
+# Backup files
+*.orig
+
+# Code analysis tools
+memory_profile.sh
+piechart.py
+build-wrapper-macosx-x86
+sonar_password.sh
+*.i
+*.log
+
+# Code analysis tool outputs
+.scannerwork/
+OUTFILE
+bw-output/
+infer-out/
+log.txt
+sizes.txt
+issues/
+*.gcov
+*_result.txt
+
+# Ceedling machine generated output
+build
+
+# SDKs
+nRF5_SDK_15.3.0_59ac345
+
+# Doxygen output
+doxygen/
+doxygen.error

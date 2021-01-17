@@ -48,6 +48,32 @@ static rd_sensor_logging_t *find_sensor(ri_gpio_id_t fifo_pin) {
     return NULL;
 }
 
+static rd_status_t pack8(uint16_t sizeData, uint8_t* data, uint8_t* packeddata) {
+  for(int i=0; i<sizeData/2; i++) {
+    packeddata[i] = data[ 1 + i*2 ];
+  }
+}
+
+static rd_status_t pack10(uint16_t sizeData, uint8_t* data, uint8_t* packeddata) {
+  int j = 0;
+  for(int i=0; i<sizeData/4; i++) {
+    packeddata[j++] =     data[ i*4 ] & 0x03 << 6 + data[ 1 + i*4 ] & 0xfc >> 2; 
+    packeddata[j++] = data[ 1 + i*4 ] & 0x03 << 6 + data[ 2 + i*4 ] & 0x03 << 4 + data[ 3 + i*4 ] & 0xf0 >> 4; 
+    packeddata[j++] = data[ 3 + i*4 ] & 0x0f << 4 + data[ 4 + i*4 ] & 0x03 << 2 + data[ 5 + i*4 ] & 0xc0 >> 6;
+    packeddata[j++] = data[ 5 + i*4 ] & 0x3f << 2 + data[ 6 + i*4 ] & 0x03;
+    packeddata[j++] = data[ 7 + i*4 ];
+  }
+}
+
+static rd_status_t pack12(uint16_t sizeData, uint8_t* data, uint8_t* packeddata) {
+  int j = 0;
+  for(int i=0; i<sizeData/2; i++) {
+    packeddata[j++] =     data[ i*4 ] & 0x0f << 4 + data[ 1 + i*4 ] & 0xf0 >> 4; 
+    packeddata[j++] = data[ 1 + i*4 ] & 0x0f << 4 + data[ 2 + i*4 ] & 0x0f; 
+    packeddata[j++] = data[ 3 + i*4 ];
+  }
+}
+
 static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
 
     LOGD("FIFO full handler started\r\n");
@@ -81,6 +107,10 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
         if(sensor->data!=NULL) {
             memset(sensor->data, 0, sensor->num_elements * sensor->size_element);
 
+            // retrieve Resolution from sensor
+            uint8_t resolution;
+            err_code |= sensor->p_sensor->resolution_get(&resolution);
+
             // retrieve Data from sensor
             for( size_t ii=0 ; ii<sensor->num_elements ; ii++) {
                 err_code |= sensor->raw_get(sensor->data + sensor->size_element*ii );
@@ -108,6 +138,27 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
                 }
 */
             }
+
+            // pack the bits
+            uint8_t sizeOfPackedData = (sensor->num_elements * sensor->size_element * resolution)/16; // how many bytes
+            uint8_t* packeddata = malloc(sizeOfPackedData);
+
+            if(packeddata!=NULL) {
+              switch(resolution) {
+                case 8:
+                  err_code |= pack8(sensor->num_elements * sensor->size_element, sensor->data, packeddata);
+                  break;
+                case 10:
+                  err_code |= pack10(sensor->num_elements * sensor->size_element, sensor->data, packeddata);
+                  break;
+                case 12:
+                  err_code |= pack12(sensor->num_elements * sensor->size_element, sensor->data, packeddata);
+                  break;
+              }
+            } else {
+              err_code |= RD_ERROR_NO_MEM;
+            }
+
 
 
         } else {
@@ -212,3 +263,4 @@ rd_status_t app_get_data_from_queue(rd_sensor_logging_t *sensor, uint8_t *data) 
 
     return err_code;
 }
+

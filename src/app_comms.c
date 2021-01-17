@@ -17,6 +17,7 @@
 #include "ruuvi_task_nfc.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 /**
  * @addtogroup app_comms
@@ -33,6 +34,22 @@
  * TODO
  * @endcode
  */
+
+#include "ruuvi_interface_log.h"
+static inline void LOG (const char * const msg)
+{
+    ri_log (RI_LOG_LEVEL_DEBUG, msg);
+}
+
+static inline void LOGD (const char * const msg)
+{
+    ri_log (RI_LOG_LEVEL_DEBUG, msg);
+}
+
+static inline void LOGHEX (const uint8_t * const msg, const size_t len)
+{
+    ri_log_hex (RI_LOG_LEVEL_DEBUG, msg, len);
+}
 
 /** @brief Set to long enough to handle existing queue, then as short as possible. */
 #define BLOCKING_COMM_TIMEOUT_MS (4000U)
@@ -128,6 +145,95 @@ static uint8_t initial_adv_send_count (void)
 
 #if APP_COMMS_BIDIR_ENABLED
 
+// From https://people.cs.umu.se/isak/snippets/crc-16.c
+#define POLY 0x8408
+static uint16_t calculate_crc16(uint8_t *data_p, uint32_t length)
+{
+      uint8_t i;
+      uint16_t data;
+      uint16_t crc = 0xffff;
+
+      if (length == 0) {
+            return (~crc);
+      }
+
+      do
+      {
+        for (i=0, data=(uint8_t)0xff & *data_p++;
+                 i < 8; 
+                 i++, data >>= 1)
+            {
+                  if ((crc & 0x0001) ^ (data & 0x0001))
+                        crc = (crc >> 1) ^ POLY;
+                  else  crc >>= 1;
+            }
+      } while (--length);
+
+      crc = (~crc & 0xffff);
+      crc = (crc << 8) | (crc >> 8 & 0xff);
+
+      return (crc);
+}
+
+static rd_status_t send_test_data(const ri_comm_xfer_fp_t reply_fp) {
+
+    rd_status_t err_code = RD_SUCCESS;
+
+    uint32_t pos = 0;
+    uint32_t sizeTestdata = 4096;
+    uint8_t *testdata = malloc(sizeTestdata);
+
+    for(pos = 0; pos<sizeTestdata; pos++) {
+      testdata[pos] = pos & 0xff;
+    }
+
+    LOGD("Testdaten erzeugt\r\n");
+
+    uint16_t crc = calculate_crc16(testdata, sizeTestdata);
+    LOGD("CRC berechnet\r\n");
+
+    pos = 0;
+
+    ri_comm_message_t msg;
+    msg.data_length = 20;
+    msg.repeat_count = 1;
+
+    while(pos<sizeTestdata && err_code==RD_SUCCESS) {
+        LOGD("sende Block\r\n");
+        if(pos+msg.data_length > sizeTestdata) {
+            msg.data_length = 1 + sizeTestdata - pos;
+        }
+
+        msg.data[0] = 0xfc;
+        memcpy(msg.data+1, testdata+pos, msg.data_length-1);
+        err_code |= app_comms_blocking_send(reply_fp, &msg);
+        pos += msg.data_length-1;
+    }
+
+    if(err_code==RD_SUCCESS) {
+      LOGD("sende Footer\r\n");
+      msg.data[0] = 0xfb; // Header
+      msg.data[1] = 0x01;
+      msg.data[2] = 0x00;
+      msg.data[3] = 0x00; // Config: TODO
+      msg.data[4] = 0x00;
+      msg.data[5] = 0x00;
+      msg.data[6] = 0x00;
+      msg.data[7] = 0x00;
+      msg.data[8] = 0x00;
+      msg.data[9] = 0x00;
+      msg.data[10] = 0x00;
+      msg.data[11] = crc & 0xff00 >> 8; // CRC
+      msg.data[12] = crc & 0xff;
+      msg.data_length = 13;
+      err_code |= app_comms_blocking_send(reply_fp, &msg);
+    }
+
+    free(testdata);
+
+    return err_code;
+}
+
 static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
                           size_t data_len)
 {
@@ -166,6 +272,13 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
             case RE_ENV_PRES:
                 err_code |= app_sensor_handle (reply_fp, raw_message, data_len);
                 break;
+
+            case 0xfa:
+              LOGD("FA empfangen: ");
+              LOGHEX(raw_message, data_len);
+              LOGD("\r\n");
+              err_code |= send_test_data(reply_fp);
+              break;
 
             default:
                 break;

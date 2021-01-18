@@ -15,6 +15,7 @@
 #include "ruuvi_task_communication.h"
 #include "ruuvi_task_gatt.h"
 #include "ruuvi_task_nfc.h"
+#include "crc16.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -145,36 +146,6 @@ static uint8_t initial_adv_send_count (void)
 
 #if APP_COMMS_BIDIR_ENABLED
 
-// From https://people.cs.umu.se/isak/snippets/crc-16.c
-#define POLY 0x8408
-static uint16_t calculate_crc16(uint8_t *data_p, uint32_t length)
-{
-      uint8_t i;
-      uint16_t data;
-      uint16_t crc = 0xffff;
-
-      if (length == 0) {
-            return (~crc);
-      }
-
-      do
-      {
-        for (i=0, data=(uint8_t)0xff & *data_p++;
-                 i < 8; 
-                 i++, data >>= 1)
-            {
-                  if ((crc & 0x0001) ^ (data & 0x0001))
-                        crc = (crc >> 1) ^ POLY;
-                  else  crc >>= 1;
-            }
-      } while (--length);
-
-      crc = (~crc & 0xffff);
-      crc = (crc << 8) | (crc >> 8 & 0xff);
-
-      return (crc);
-}
-
 static rd_status_t send_test_data(const ri_comm_xfer_fp_t reply_fp) {
 
     rd_status_t err_code = RD_SUCCESS;
@@ -189,7 +160,7 @@ static rd_status_t send_test_data(const ri_comm_xfer_fp_t reply_fp) {
 
     LOGD("Testdaten erzeugt\r\n");
 
-    uint16_t crc = calculate_crc16(testdata, sizeTestdata);
+    uint16_t crc = crc16_compute(testdata, sizeTestdata, NULL);
     LOGD("CRC berechnet\r\n");
 
     pos = 0;
@@ -223,7 +194,7 @@ static rd_status_t send_test_data(const ri_comm_xfer_fp_t reply_fp) {
       msg.data[8] = 0x00;
       msg.data[9] = 0x00;
       msg.data[10] = 0x00;
-      msg.data[11] = crc & 0xff00 >> 8; // CRC
+      msg.data[11] = (crc & 0xff00) >> 8; // CRC
       msg.data[12] = crc & 0xff;
       msg.data_length = 13;
       err_code |= app_comms_blocking_send(reply_fp, &msg);

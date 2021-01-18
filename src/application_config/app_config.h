@@ -369,6 +369,7 @@
 
 #ifndef APP_SENSOR_LOGGING
 #   define APP_SENSOR_LOGGING (1U)
+#   define CRC16_ENABLED (1U)
 #endif
 
 /*@}*/

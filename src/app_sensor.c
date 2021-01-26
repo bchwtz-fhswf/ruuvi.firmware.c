@@ -536,6 +536,21 @@ rd_sensor_t * app_sensor_find_provider (const rd_sensor_data_fields_t data)
     return provider;
 }
 
+rt_sensor_ctx_t * app_sensor_find (const char *name)
+{
+    for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
+    {
+        if ( (NULL != m_sensors[ii])
+                && rd_sensor_is_init (& (m_sensors[ii]->sensor))
+                && strcmp(name, m_sensors[ii]->sensor.name)==0)
+        {
+            return m_sensors[ii];
+        }
+    }
+
+    return NULL;
+}
+
 void app_sensor_event_increment (void)
 {
     m_event_counter++;
@@ -959,12 +974,6 @@ rd_status_t app_sensor_handle (const ri_comm_xfer_fp_t reply_fp,
 
     return err_code;
 }
-
-#ifdef APP_SENSOR_LOGGING
-rd_status_t app_accelaration_logging (const bool enable) {
-    return ri_lis2dh12_fifo_accelaration_logging(&m_sensors[LIS2DH12_INDEX]->sensor, enable);
-}
-#endif
 
 #ifdef RUUVI_RUN_TESTS
 void app_sensor_ctx_get (rt_sensor_ctx_t *** p_sensors, size_t * num_sensors)

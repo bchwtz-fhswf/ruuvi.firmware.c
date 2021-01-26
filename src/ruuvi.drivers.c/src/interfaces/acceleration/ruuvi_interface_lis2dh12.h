@@ -95,6 +95,14 @@ rd_status_t ri_lis2dh12_mode_get (uint8_t *);
 /** @brief @ref rd_sensor_data_fp */
 rd_status_t ri_lis2dh12_data_get (rd_sensor_data_t * const data);
 
+/** @brief Representation of 3*2 bytes buffer as 3*int16_t */
+#define NUM_AXIS    (3U) //!< X, Y, Z.
+typedef union
+{
+    int16_t i16bit[NUM_AXIS]; //!< Integer values
+    uint8_t u8bit[2 * NUM_AXIS];  //!< Buffer
+} axis3bit16_t;
+
 /**
 * @brief Enable 32-level FIFO in LIS2DH12
 * If FIFO is enabled, values are stored on LIS2DH12 FIFO and oldest element is returned on data read.
@@ -126,17 +134,6 @@ rd_status_t ri_lis2dh12_fifo_read (size_t * num_elements, rd_sensor_data_t * dat
 **/
 rd_status_t ri_lis2dh12_fifo_interrupt_use (const bool enable);
 
-#ifdef APP_SENSOR_LOGGING
-/**
- * @brief Enable/Disable logging of accelaration data.
- *
- * @param[in] p_sensor pointer to sensor struct
- * @param[in] enable True to enable interrupt, false to disable interrupt
- * @return RD_SUCCESS on success, error code from stack otherwise.
- */
-rd_status_t ri_lis2dh12_fifo_accelaration_logging (rd_sensor_t * p_sensor, const bool enable);
-#endif
-
 /**
  * @brief Enable activity interrupt on LIS2DH12.
  *
@@ -156,6 +153,28 @@ rd_status_t ri_lis2dh12_fifo_accelaration_logging (rd_sensor_t * p_sensor, const
  */
 rd_status_t ri_lis2dh12_activity_interrupt_use (const bool enable,
         float * limit_g);
+
+
+/**
+ * @brief Return raw accelaration data
+ *
+ * @param[out] raw_data, data returned from sensor
+ * @return RD_SUCCESS in case of success
+ * @return RD_ERROR_INTERNAL in case of error
+ */
+rd_status_t ri_lis2dh12_acceleration_raw_get (uint8_t * const raw_data);
+
+
+/**
+* @brief Parse raw data from LIS2DH12 into rd_sensor_data_t
+*
+* @param[in/out] rd_sensor_data_t structure to be filled with parsed data.
+* @param[in] raw_acceleration raw acceleration data.
+* @param[in] raw_temperature raw temperature data. May be NULL.
+* @return RD_SUCCESS on success, error code from stack otherwise.
+**/
+rd_status_t ri_lis2dh12_raw_data_parse (rd_sensor_data_t * const data, 
+            axis3bit16_t *raw_acceleration, uint8_t *raw_temperature);
 
 
 /** @brief context for LIS2DH12 */

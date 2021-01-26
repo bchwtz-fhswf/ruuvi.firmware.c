@@ -45,6 +45,13 @@ rd_status_t ri_rtc_uninit (void);
   **/
 uint64_t ri_rtc_millis (void);
 
+/**
+ * @brief Set system time by external source
+ *
+ * @return RD_ERROR_NOT_INITIALIZED if RTC is not running
+  **/
+rd_status_t ri_set_rtc_millis (uint64_t millis);
+
 /*@}*/
 
 #endif

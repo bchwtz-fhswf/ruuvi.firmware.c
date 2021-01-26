@@ -154,6 +154,18 @@ rd_status_t app_sensor_uninit (void);
  */
 rd_sensor_t * app_sensor_find_provider (const rd_sensor_data_fields_t data);
 
+/**
+ * @brief Find and return a sensor of name.
+ *
+ * Loops through sensors in order of priority
+ *
+ * Works only witjh initialized sensors, will not return a sensor which is supported
+ * in firmawre but not initialized due to self-test error etc.
+ *
+ * @param[in] name of the sensor.
+ * @return Pointer to SENSOR, NULL if suitable sensor is not found.
+ */
+rt_sensor_ctx_t * app_sensor_find (const char *name);
 
 /**
  * @brief Increment event counter of application. Rolls over at 2^32.
@@ -226,15 +238,6 @@ rd_status_t app_sensor_handle (const ri_comm_xfer_fp_t ri_reply_fp,
  * @param[in] evt Type of next radio event, RI_RADIO_BEFORE ot RI_RADIO_AFTER
  */
 void app_sensor_vdd_measure_isr (const ri_radio_activity_evt_t evt);
-
-#ifdef APP_SENSOR_LOGGING
-/**
- * @brief Enable logging of accelaration sensor
- *
- * @param[in] enable
- */
-rd_status_t app_accelaration_logging (const bool enable);
-#endif
 
 #ifdef RUUVI_RUN_TESTS
 void app_sensor_ctx_get (rt_sensor_ctx_t *** m_sensors, size_t * num_sensors);

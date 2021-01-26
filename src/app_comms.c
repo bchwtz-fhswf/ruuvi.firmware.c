@@ -3,7 +3,9 @@
 #include "app_heartbeat.h"
 #include "app_led.h"
 #include "app_sensor.h"
+#include "app_accelerometer_logging.h"
 #include "ruuvi_boards.h"
+#include "ruuvi_driver_sensor.h"
 #include "ruuvi_endpoints.h"
 #include "ruuvi_interface_communication.h"
 #include "ruuvi_interface_communication_radio.h"
@@ -15,6 +17,7 @@
 #include "ruuvi_task_communication.h"
 #include "ruuvi_task_gatt.h"
 #include "ruuvi_task_nfc.h"
+#include "ruuvi_task_sensor.h"
 #include "crc16.h"
 #include <stdio.h>
 #include <string.h>
@@ -185,7 +188,7 @@ static rd_status_t send_test_data(const ri_comm_xfer_fp_t reply_fp) {
       LOGD("sende Footer\r\n");
       msg.data[0] = 0xfb; // Header
       msg.data[1] = 0x01;
-      msg.data[2] = 0x00;
+      msg.data[2] = err_code;
       msg.data[3] = 0x00; // Config: TODO
       msg.data[4] = 0x00;
       msg.data[5] = 0x00;
@@ -201,6 +204,106 @@ static rd_status_t send_test_data(const ri_comm_xfer_fp_t reply_fp) {
     }
 
     free(testdata);
+
+    return err_code;
+}
+
+static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
+                          size_t data_len)
+{
+    // Parse message type
+    uint8_t type = raw_message[2];
+
+    // find LIS2DH12
+    rt_sensor_ctx_t *lis2dh12 = app_sensor_find("LIS2DH12");
+
+    rd_status_t err_code = RD_SUCCESS;
+    ri_comm_message_t msg;
+    msg.data_length = 3;
+    msg.repeat_count = 1;
+    msg.data[0] = 0xfb;
+    msg.data[1] = 0x00;
+
+    if(lis2dh12!=NULL) {
+
+      // Route message to proper handler
+      switch (type)
+      {
+        case 0x01:
+          // start transmitting testdata
+          LOGD("start transmitting testdata\r\n");
+          return send_test_data(reply_fp);
+        case 0x03:
+          // start transmitting last sample
+          LOGD("start transmitting last sample\r\n");
+          return app_acc_logging_send_last_sample(reply_fp);
+        case 0x05:
+          // start transmitting logged data
+          LOGD("start transmitting logged data\r\n");
+          err_code |= RD_ERROR_NOT_IMPLEMENTED;
+          break;
+        case 0x06:
+          // set sensor configuration
+          LOGD("set sensor configuration\r\n");
+          rd_sensor_configuration_t newConfiguration;
+          memcpy(&newConfiguration, raw_message+3, sizeof(rd_sensor_configuration_t));
+          // set new sensor configuration
+          err_code |= rd_sensor_configuration_set(&lis2dh12->sensor, &newConfiguration);
+          // store configuration in flash
+          err_code |= rt_sensor_store(lis2dh12);
+          break;
+        case 0x07:
+          // read sensor configuration
+          LOGD("read sensor configuration\r\n");
+          rd_sensor_configuration_t currentConfiguration;
+          memset(&currentConfiguration, 0, sizeof(rd_sensor_configuration_t));
+          err_code |= rd_sensor_configuration_get(&lis2dh12->sensor, &currentConfiguration);
+          msg.data[1] = 0x07;
+          msg.data_length += sizeof(rd_sensor_configuration_t);
+          memcpy(msg.data+3, &currentConfiguration, sizeof(rd_sensor_configuration_t));
+          break;
+        case 0x08:
+          // set time
+          LOGD("set time\r\n");
+          uint64_t millis;
+          memcpy(&millis, raw_message+3, sizeof(uint64_t));
+          err_code |= ri_set_rtc_millis(millis);
+          break;
+        case 0x09:
+          // read time
+          LOGD("read time\r\n");
+          uint64_t currentTimestamp = rd_sensor_timestamp_get();
+          msg.data[1] = 0x09;
+          msg.data_length += sizeof(uint64_t);
+          memcpy(msg.data+3, &currentTimestamp, sizeof(uint64_t));
+          break;
+        case 0x0a:
+          // enable / disable logging of acceleration data
+          if(raw_message[3]) {
+            LOGD("enable logging\r\n");
+            err_code |= app_enable_sensor_logging();
+          } else {
+            LOGD("disable logging\r\n");
+            err_code |= app_disable_sensor_logging();
+          }
+          err_code |= RD_ERROR_NOT_IMPLEMENTED;
+          break;
+        case 0x0b:
+          // query logging data
+          LOGD("query state of logging data\r\n");
+          err_code |= app_acc_logging_state();
+          break;
+        default:
+          err_code |= RD_ERROR_INVALID_PARAM;
+          break;
+      }
+    } else {
+      LOGD("LIS2DH12 not found\r\n");
+      err_code = RD_ERROR_NOT_FOUND;
+    }
+
+    // send response
+    err_code |= app_comms_blocking_send(reply_fp, &msg);
 
     return err_code;
 }
@@ -245,10 +348,10 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
                 break;
 
             case 0xfa:
-              LOGD("FA empfangen: ");
+              LOGD("FA received: ");
               LOGHEX(raw_message, data_len);
               LOGD("\r\n");
-              err_code |= send_test_data(reply_fp);
+              err_code |= handle_lis2dh12_comms(reply_fp, raw_message, data_len);
               break;
 
             default:

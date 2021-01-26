@@ -141,6 +141,15 @@ uint64_t ri_rtc_millis (void)
     return ( (ms * 1000) / 32768);
 }
 
+rd_status_t ri_set_rtc_millis(uint64_t millis)
+{
+    if (false == m_is_init) { return RD_ERROR_NOT_INITIALIZED; }
+    ticks = (millis * 32768) / 1000;
+    // set RTC to zero
+    nrf_drv_rtc_counter_clear (&rtc);
+    return RD_SUCCESS;
+}
+
 // If HW-RTC is not available, try timer.
 #elif RUUVI_NRF5_SDK15_TIMER_ENABLED
 #include "ruuvi_interface_timer.h"

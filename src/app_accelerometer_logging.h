@@ -8,63 +8,35 @@
 #ifndef APP_ACCELEROMETER_LOGGING_H
 #define APP_ACCELEROMETER_LOGGING_H
 
-#include "ruuvi_driver_error.h"
-#include "ruuvi_task_sensor.h"
-
-typedef rd_status_t (*rd_sensor_read_raw_fp) (uint8_t * const p_data);
-
-/**
- * @brief Interface to sensor with logging to flash.
- */
-typedef struct rd_sensor_logging_t
-{
-    /** @brief sensor */
-    rd_sensor_t * p_sensor;
-    /** @brief next element */
-    void *next;
-    /** @brief FIFO size */
-    size_t fifo_size;
-    /** @brief FIFO full interrupt pin */
-    ri_gpio_id_t fifo_pin;
-    /** @brief fields to log */
-    rd_sensor_data_fields_t logfields;
-    /** @brief function for reading raw data from fifo */
-    rd_sensor_read_raw_fp raw_get;
-    /** @brief memory for storing data from fifo */
-    uint8_t *data;
-    /** @brief size of one element */
-    size_t size_element;
-    /** @brief number of elements with data from fifo */
-    size_t num_elements;
-    /** @brief position of next element to read */
-    size_t element_pos;
-} rd_sensor_logging_t;
-
-
+#include "ruuvi_interface_communication.h"
 
 /**
  * @brief Disable data logging for sensor
  *
- * @param[in] sensor, pointer to logging structure which provides the context
  * @return RD_SUCCESS on success, error code from stack otherwise.
  */
-rd_status_t app_disable_sensor_logging (const rd_sensor_logging_t *sensor);
+rd_status_t app_disable_sensor_logging (void);
 
 /**
  * @brief Disable data logging for sensor
  *
- * @param[in] sensor, pointer to logging structure which provides the context
  * @return RD_SUCCESS on success, error code from stack otherwise.
  */
-rd_status_t app_enable_sensor_logging(rd_sensor_logging_t *sensor);
+rd_status_t app_enable_sensor_logging(void);
 
 /**
- * @brief get logged raw data from FIFO
+ * @brief Send last logged data sample using GATT
  *
- * @param[in] sensor, pointer to logging structure which provides the context
- * @param[out] data, returns raw data from the sensor
  * @return RD_SUCCESS on success, error code from stack otherwise.
  */
-rd_status_t app_get_data_from_queue(rd_sensor_logging_t *sensor, uint8_t *data);
+rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp);
+
+/**
+ * @brief Query state if logging is active
+ *
+ * @return RD_SUCCESS if logging is active
+ * @return RD_ERROR_NOT_INITIALIZED if logging is not active
+ */
+rd_status_t app_acc_logging_state(void);
 
 #endif

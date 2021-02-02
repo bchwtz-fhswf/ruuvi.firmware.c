@@ -13,7 +13,7 @@
 #include "ruuvi_task_flash.h"
 #include "ruuvi_task_flash_ringbuffer.h"
 
-rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t record_id, const uint8_t number_of_pages, const uint16_t page_size, rt_flash_ringbuffer_flashpage_t* flashpage)
+rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t record_id, const uint8_t number_of_pages, const uint16_t page_size)
 {
     rd_status_t err_code = RD_SUCCESS;
     rt_flash_ringbuffer_state_t state;
@@ -34,12 +34,6 @@ rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t r
     if(stat.pages_available < number_of_pages) {
       return RD_ERROR_NO_MEM;
     }
-
-    // Memory allocation for flashpage data collection
-    flashpage->packeddata = malloc(page_size);
-    flashpage->actual_size = 0;
-    flashpage->max_size = page_size;
-    memcpy(flashpage->packeddata, 0, page_size);
 
     // Set state attributes
     state.size = number_of_pages;
@@ -193,10 +187,11 @@ rd_status_t rt_flash_ringbuffer_delete (const uint32_t page_id, const uint32_t r
     // Cancel reservation
     for (uint8_t i = 0; i < state.size; i++)
     {
-      err_code != fds_reserve_cancel(&state.reserved_pages[i]);
+      err_code |= rt_flash_free(state.reserved_pages[i].page, 0x0001);
+      err_code |= fds_reserve_cancel(&state.reserved_pages[i]);
     }
 
-    err_code != rt_flash_free(page_id, record_id);  
+    err_code |= rt_flash_free(page_id, record_id);  
   } else {
      ri_log (RI_LOG_LEVEL_DEBUG, "No ringbuffer to delete\r\n");
      return RD_SUCCESS;

@@ -32,20 +32,18 @@ typedef struct {
 
 
 /*
- *  Creates a new ringbuffer
+ *  Creates a new ringbuffer, reserves the pages in flash and initializes the state
  *
  * @param[in] page_id PageID of the ringbuffer state
  * @param[in] record_id RecordID of the ringbuffer state
- * @param[in] number_of_pages
- * @param[in] page_size
- * @param[in] ringbuffer flashpage
+ * @param[in] number_of_pages Number of pages in the ringbuffer
+ * @param[in] page_size Size of each page in the ringbuffer
  */
 rd_status_t rt_flash_ringbuffer_create (
     const uint32_t page_id,
     const uint32_t record_id,
     const uint8_t number_of_pages,
-    const uint16_t page_size,
-    rt_flash_ringbuffer_flashpage_t* flashpage
+    const uint16_t page_size
 );
 
 /*
@@ -53,9 +51,9 @@ rd_status_t rt_flash_ringbuffer_create (
  *
  * @param[in] page_id PageID of the ringbuffer state
  * @param[in] record_id RecordID of the ringbuffer state
- * @param[in] size of data
- * @param[in] data
- * @param[in, out] flashpage
+ * @param[in] size Size of packeddata
+ * @param[in] packeddata Data to collect for flashpage 
+ * @param[in, out] flashpage Flashpage Struct
  */
 void rt_flash_ringbuffer_collect_flashpage (
     const uint32_t page_id,
@@ -70,7 +68,7 @@ void rt_flash_ringbuffer_collect_flashpage (
  *
  * @param[in] page_id PageID of the ringbuffer state
  * @param[in] record_id RecordID of the ringbuffer state
- * @param[in] size of data
+ * @param[in] size Size of data
  * @param[in] data
  */
 rd_status_t rt_flash_ringbuffer_write (
@@ -85,7 +83,7 @@ rd_status_t rt_flash_ringbuffer_write (
  *
  * @param[in] page_id PageID of the ringbuffer state
  * @param[in] record_id RecordID of the ringbuffer state
- * @param[in] size of data
+ * @param[in] size Size of data
  * @param[in, out] data
  */
 rd_status_t rt_flash_ringbuffer_read (
@@ -96,6 +94,9 @@ rd_status_t rt_flash_ringbuffer_read (
 
 /*
  *  Clears the contents of the ringbuffer
+ *
+ * @param[in] page_id PageID of the ringbuffer state
+ * @param[in] record_id RecordID of the ringbuffer state
  */
 rd_status_t rt_flash_ringbuffer_clear (
     const uint32_t page_id, 
@@ -103,7 +104,10 @@ rd_status_t rt_flash_ringbuffer_clear (
 );
 
 /*
- *  Deletes ringbuffer
+ *  Deletes the entire ring buffer 
+ *
+ * @param[in] page_id PageID of the ringbuffer state
+ * @param[in] record_id RecordID of the ringbuffer state
  */
 rd_status_t rt_flash_ringbuffer_delete (
   const uint32_t page_id, 

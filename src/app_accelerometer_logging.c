@@ -59,7 +59,7 @@ static rd_sensor_data_fp nologging_data_get = NULL;
 
 static void pack8(const uint16_t sizeData, const uint8_t* const data, uint8_t* const packeddata) {
   for(int i=0; i<sizeData/2; i++) {
-    packeddata[i] = data[ i*2 ];
+    packeddata[i] = data[ 1 + i*2 ];
   }
 }
 

@@ -43,7 +43,7 @@ typedef struct logged_data_t
     /** @brief timestamp when the data is logged */
     uint64_t timestamp;
     /** @brief memory for storing data from fifo */
-    uint8_t *data;
+    uint8_t data[RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT];
     /** @brief number of elements with data from fifo */
     size_t num_elements;
     /** @brief position of next element to read */
@@ -53,20 +53,17 @@ typedef struct logged_data_t
 // store logged data
 static logged_data_t logged_data;
 
-// store original sensor structure
+// store original data_get function pointer
 static rd_sensor_data_fp nologging_data_get = NULL;
 
 
-static void pack8(uint16_t sizeData, uint8_t* data, uint8_t* packeddata) {
+static void pack8(const uint16_t sizeData, const uint8_t* const data, uint8_t* const packeddata) {
   for(int i=0; i<sizeData/2; i++) {
-    packeddata[i] = data[ 1 + i*2 ];
+    packeddata[i] = data[ i*2 ];
   }
 }
 
-static void pack10(uint16_t sizeData, uint8_t* data, uint8_t* packeddata) {
-  char dbgmsg[50];
-  uint16_t wert;
-
+static void pack10(const uint16_t sizeData, const uint8_t* const data, uint8_t* const packeddata) {
   int j = 0;
   for(int i=0; i<sizeData/8; i++) {
     packeddata[j++] = (data[ i*8 ] & 0xc0) | ((data[ 1 + i*8 ] & 0xfc) >> 2);
@@ -77,11 +74,11 @@ static void pack10(uint16_t sizeData, uint8_t* data, uint8_t* packeddata) {
   }
 }
 
-static void pack12(uint16_t sizeData, uint8_t* data, uint8_t* packeddata) {
+static void pack12(const uint16_t sizeData, const uint8_t* const data, uint8_t* const packeddata) {
   int j = 0;
   for(int i=0; i<sizeData/4; i++) {
-    packeddata[j++] =     ((data[ i*4 ] & 0x0f) << 4) | ((data[ 1 + i*4 ] & 0xf0) >> 4); 
-    packeddata[j++] = ((data[ 1 + i*4 ] & 0x0f) << 4) | (data[ 2 + i*4 ] & 0x0f); 
+    packeddata[j++] =            (data[ i*4 ] & 0xf0) | ((data[ 1 + i*4 ] & 0xf0) >> 4); 
+    packeddata[j++] = ((data[ 1 + i*4 ] & 0x0f) << 4) | ((data[ 2 + i*4 ] & 0xf0) >> 4); 
     packeddata[j++] = data[ 3 + i*4 ];
   }
 }
@@ -96,86 +93,63 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
     char dbgmsg[50];
     rd_status_t err_code = RD_SUCCESS;
 
-    if(err_code==RD_SUCCESS) {
+    logged_data.num_elements = RI_LIS2DH12_FIFO_SIZE;
+    
+    memset(logged_data.data, 0, logged_data.num_elements * SIZE_ELEMENT);
+    logged_data.element_pos = 0;
 
-        logged_data.num_elements = RI_LIS2DH12_FIFO_SIZE;
-        
-        if(logged_data.data==NULL) {
-            // reserve memory for data
-            logged_data.data = malloc(logged_data.num_elements * SIZE_ELEMENT);
-            if(logged_data.data==NULL) {
-                err_code |= RD_ERROR_NO_MEM;
-            }
-        }
+    // retrieve Resolution from sensor
+    uint8_t resolution;
+    err_code |= ri_lis2dh12_resolution_get(&resolution);
 
-        if(logged_data.data!=NULL) {
-            memset(logged_data.data, 0, logged_data.num_elements * SIZE_ELEMENT);
-            logged_data.element_pos = 0;
+    // retrieve timestamp
+    logged_data.timestamp = rd_sensor_timestamp_get();
 
-            // retrieve Resolution from sensor
-            uint8_t resolution;
-            err_code |= ri_lis2dh12_resolution_get(&resolution);
+    // retrieve Data from sensor
+    for( size_t ii=0 ; ii<logged_data.num_elements && err_code==RD_SUCCESS ; ii++) {
+        err_code |= ri_lis2dh12_acceleration_raw_get(logged_data.data + SIZE_ELEMENT*ii );
 
-            // retrieve timestamp
-            logged_data.timestamp = rd_sensor_timestamp_get();
-
-            // retrieve Data from sensor
-            for( size_t ii=0 ; ii<logged_data.num_elements && err_code==RD_SUCCESS ; ii++) {
-                err_code |= ri_lis2dh12_acceleration_raw_get(logged_data.data + SIZE_ELEMENT*ii );
-
-                //LOGD("\r\nQueuing RAW accelaration data");
-                //ri_log_hex (RI_LOG_LEVEL_DEBUG, logged_data.data + SIZE_ELEMENT*ii, SIZE_ELEMENT);
-                //LOGD("\r\n\r\n");
+        //LOGD("\r\nQueuing RAW accelaration data");
+        //ri_log_hex (RI_LOG_LEVEL_DEBUG, logged_data.data + SIZE_ELEMENT*ii, SIZE_ELEMENT);
+        //LOGD("\r\n\r\n");
 /*
-                *dbgmsg=0;
-                snprintf(dbgmsg, sizeof(dbgmsg)-1, "\r\nValue %d from FIFO: ", ii);
-                LOGD(dbgmsg);
-                ri_log_hex (RI_LOG_LEVEL_DEBUG, logged_data.data, SIZE_ELEMENT * 4);
+        *dbgmsg=0;
+        snprintf(dbgmsg, sizeof(dbgmsg)-1, "\r\nValue %d from FIFO: ", ii);
+        LOGD(dbgmsg);
+        ri_log_hex (RI_LOG_LEVEL_DEBUG, logged_data.data, SIZE_ELEMENT * 4);
 
-                if(err_code==RD_SUCCESS) {
-                    // do logging
-                    *dbgmsg=0;
-                    snprintf(dbgmsg, sizeof(dbgmsg)-1, "\r\nValue %d from FIFO\r\n", ii);
-                    LOGD(dbgmsg);
-                    LOG("ACC X raw: ");
-                    ri_log_hex (RI_LOG_LEVEL_DEBUG, logged_data.data + SIZE_ELEMENT*ii + 0, 2);
-                    LOG("\tACC Y raw: ");
-                    ri_log_hex (RI_LOG_LEVEL_DEBUG, logged_data.data + SIZE_ELEMENT*ii + 2, 2);
-                    LOG("\tACC Z raw: ");
-                    ri_log_hex (RI_LOG_LEVEL_DEBUG, logged_data.data + SIZE_ELEMENT*ii + 4, 2);
-                }
-*/
-            }
-
-            // pack the bits
-            uint8_t sizeOfPackedData = (logged_data.num_elements * SIZE_ELEMENT * resolution)/16; // how many bytes
-            uint8_t* packeddata = malloc(sizeOfPackedData);
-
-            if(packeddata!=NULL) {
-              switch(resolution) {
-                case 8:
-                  pack8(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata);
-                  break;
-                case 10:
-                  pack10(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata);
-                  break;
-                case 12:
-                  pack12(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata);
-                  break;
-                default:
-                  err_code |= RD_ERROR_INTERNAL;
-                  break;
-              }
-            } else {
-              err_code |= RD_ERROR_NO_MEM;
-            }
-
-            free(packeddata);
-
-        } else {
-            err_code |= RD_ERROR_NO_MEM;
+        if(err_code==RD_SUCCESS) {
+            // do logging
+            *dbgmsg=0;
+            snprintf(dbgmsg, sizeof(dbgmsg)-1, "\r\nValue %d from FIFO\r\n", ii);
+            LOGD(dbgmsg);
+            LOG("ACC X raw: ");
+            ri_log_hex (RI_LOG_LEVEL_DEBUG, logged_data.data + SIZE_ELEMENT*ii + 0, 2);
+            LOG("\tACC Y raw: ");
+            ri_log_hex (RI_LOG_LEVEL_DEBUG, logged_data.data + SIZE_ELEMENT*ii + 2, 2);
+            LOG("\tACC Z raw: ");
+            ri_log_hex (RI_LOG_LEVEL_DEBUG, logged_data.data + SIZE_ELEMENT*ii + 4, 2);
         }
+*/
+    }
 
+    // pack the bits
+    uint8_t sizeOfPackedData = (logged_data.num_elements * SIZE_ELEMENT * resolution)/16; // how many bytes
+    uint8_t packeddata[RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT];
+
+    switch(resolution) {
+      case 8:
+        pack8(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata);
+        break;
+      case 10:
+        pack10(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata);
+        break;
+      case 12:
+        pack12(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata);
+        break;
+      default:
+        err_code |= RD_ERROR_INTERNAL;
+        break;
     }
 
     //LOGD("\r\nFIFO read\r\n");
@@ -219,7 +193,7 @@ rd_status_t lis2dh12_logged_data_get (rd_sensor_data_t * const data)
 
 rd_status_t app_disable_sensor_logging(void) {
 
-    // is it already active ?
+    // is it curently active ?
     if(nologging_data_get==NULL) {
         return RD_ERROR_INVALID_STATE;
     }
@@ -240,7 +214,7 @@ rd_status_t app_disable_sensor_logging(void) {
     // disable generating interrupt on sensor
     err_code |= lis2dh12->sensor.fifo_interrupt_enable(false);
 
-    // save nologging sensor in central structure
+    // save nologging data_get function in sensor context
     lis2dh12->sensor.data_get = nologging_data_get;
     nologging_data_get = NULL;
 
@@ -267,7 +241,7 @@ rd_status_t app_enable_sensor_logging(void) {
 
     rd_status_t err_code = RD_SUCCESS;
 
-    // save logging sensor in central structure
+    // save original data_get function
     nologging_data_get = lis2dh12->sensor.data_get;
 
     // enable GPIO interrupt
@@ -282,7 +256,7 @@ rd_status_t app_enable_sensor_logging(void) {
     // enable generating interrupt on sensor
     err_code |= lis2dh12->sensor.fifo_interrupt_enable(true);
 
-    // save new data_get function
+    // store new data_get function in sensor context
     lis2dh12->sensor.data_get = &lis2dh12_logged_data_get;
 
     return err_code;
@@ -309,29 +283,25 @@ rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp) {
     
     // pack the bits
     uint8_t sizeOfPackedData = sizeof(uint64_t) + (logged_data.num_elements * SIZE_ELEMENT * currentConfiguration.resolution)/16; // how many bytes
-    uint8_t* packeddata = malloc(sizeOfPackedData);
+    uint8_t packeddata[sizeof(uint64_t) + (RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT)];
 
-    if(packeddata!=NULL) {
-      // copy timestamp
-      memcpy(packeddata, &logged_data.timestamp, sizeof(uint64_t));
+    // copy timestamp
+    memcpy(packeddata, &logged_data.timestamp, sizeof(uint64_t));
 
-      // copy compacted sensor data
-      switch(currentConfiguration.resolution) {
-        case 8:
-          pack8(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata + sizeof(uint64_t));
-          break;
-        case 10:
-          pack10(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata + sizeof(uint64_t));
-          break;
-        case 12:
-          pack12(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata + sizeof(uint64_t));
-          break;
-        default:
-          err_code |= RD_ERROR_INTERNAL;
-          break;
-      }
-    } else {
-      err_code |= RD_ERROR_NO_MEM;
+    // copy compacted sensor data
+    switch(currentConfiguration.resolution) {
+      case 8:
+        pack8(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata + sizeof(uint64_t));
+        break;
+      case 10:
+        pack10(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata + sizeof(uint64_t));
+        break;
+      case 12:
+        pack12(logged_data.num_elements * SIZE_ELEMENT, logged_data.data, packeddata + sizeof(uint64_t));
+        break;
+      default:
+        err_code |= RD_ERROR_INTERNAL;
+        break;
     }
 
     uint16_t crc = 0xffff;
@@ -377,8 +347,6 @@ rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp) {
     }
 
     err_code |= app_comms_blocking_send(reply_fp, &msg);
-
-    free(packeddata);
 
     return err_code;
 }

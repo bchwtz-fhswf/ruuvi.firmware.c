@@ -120,6 +120,11 @@ rd_status_t rt_flash_ringbuffer_read (const uint32_t page_id, const uint32_t rec
 
   if (RD_SUCCESS == err_code)
   {
+      if(state.start == state.end) {
+        ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer is empty\r\n");
+        return RD_ERROR_DATA_SIZE;
+      }
+
       // Read data              
       err_code |= rt_flash_load (state.reserved_pages[state.start].page, 0x0001, data, size);
       if (err_code != RD_SUCCESS)

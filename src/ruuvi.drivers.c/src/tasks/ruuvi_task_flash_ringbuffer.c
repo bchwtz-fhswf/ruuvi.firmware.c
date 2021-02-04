@@ -64,7 +64,7 @@ void rt_flash_ringbuffer_collect_flashpage (const uint32_t page_id, const uint32
   
   // if flashpage is full, write pagedata in ringbuffer
   if(flashpage->actual_size + size > flashpage->max_size) {
-    rt_flash_ringbuffer_write(page_id, record_id, flashpage->actual_size, flashpage->packeddata);
+    rt_flash_ringbuffer_write(page_id, record_id, flashpage->actual_size, flashpage);
     flashpage->actual_size = 0;
   } 
   // fill packeddata

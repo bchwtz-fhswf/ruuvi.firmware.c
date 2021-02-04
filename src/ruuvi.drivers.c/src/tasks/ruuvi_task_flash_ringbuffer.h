@@ -24,10 +24,10 @@ typedef struct {
 } rt_flash_ringbuffer_state_t;
 
 // Ringbuffer flashpage
-typedef struct {
+typedef struct __attribute__ ((packed, aligned (4))) {
     uint32_t max_size;
     uint32_t actual_size;
-    uint8_t* packeddata;
+    uint8_t packeddata[4073];
 } rt_flash_ringbuffer_flashpage_t;
 
 

@@ -159,8 +159,8 @@ rd_sensor_t * app_sensor_find_provider (const rd_sensor_data_fields_t data);
  *
  * Loops through sensors in order of priority
  *
- * Works only witjh initialized sensors, will not return a sensor which is supported
- * in firmawre but not initialized due to self-test error etc.
+ * Works only with initialized sensors, will not return a sensor which is supported
+ * in firmware but not initialized due to self-test error etc.
  *
  * @param[in] name of the sensor.
  * @return Pointer to SENSOR, NULL if suitable sensor is not found.

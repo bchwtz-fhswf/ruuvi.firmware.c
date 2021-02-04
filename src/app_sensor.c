@@ -538,6 +538,8 @@ rd_sensor_t * app_sensor_find_provider (const rd_sensor_data_fields_t data)
 
 rt_sensor_ctx_t * app_sensor_find (const char *name)
 {
+    if(name==NULL) { return NULL; }
+
     for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
     {
         if ( (NULL != m_sensors[ii])

@@ -246,6 +246,10 @@
 #define APP_FLASH_LOG_CONFIG_RECORD      (0x01U)
 #define APP_FLASH_LOG_DATA_RECORD_PREFIX (0xF0U) //!< Prefix, append with U8 number
 
+// File constant for acceleration logging ringbuffer
+#define APP_FLASH_FILE_ACCELERATION_RINGBUFFER (0xCFU)
+#define APP_FLASH_RECORD_ACCELERATION_RINGBUFFER (0x0001U)
+
 // ** Logging constants ** //
 #ifndef APP_LOG_INTERVAL_S
 #   define APP_LOG_INTERVAL_S (5U * 60U)

@@ -17,6 +17,7 @@
 #include "app_log.h"
 #include "app_power.h"
 #include "app_sensor.h"
+#include "app_accelerometer_logging.h"
 #include "main.h"
 #include "run_integration_tests.h"
 #include "ruuvi_interface_log.h"
@@ -85,6 +86,7 @@ void setup (void)
     err_code |= app_heartbeat_init();
     err_code |= app_heartbeat_start();
     err_code |= app_led_deactivate (RB_LED_STATUS_ERROR);
+    err_code |= app_acc_logging_init();
 
     if (RD_SUCCESS == err_code)
     {

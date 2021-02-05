@@ -305,17 +305,14 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
         case 0x05:
           // start transmitting logged data
           LOGD("start transmitting logged data\r\n");
-          err_code |= RD_ERROR_NOT_IMPLEMENTED;
-          break;
+          return app_acc_logging_send_logged_data(reply_fp);
         case 0x06:
           // set sensor configuration
           LOGD("set sensor configuration\r\n");
           rd_sensor_configuration_t newConfiguration;
           memcpy(&newConfiguration, raw_message+3, sizeof(rd_sensor_configuration_t));
           // set new sensor configuration
-          err_code |= rd_sensor_configuration_set(&lis2dh12->sensor, &newConfiguration);
-          // store configuration in flash
-          err_code |= rt_sensor_store(lis2dh12);
+          err_code |= app_acc_logging_configuration_set(lis2dh12, &newConfiguration);
           break;
         case 0x07:
           // read sensor configuration
@@ -351,7 +348,6 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
             LOGD("disable logging\r\n");
             err_code |= app_disable_sensor_logging();
           }
-          err_code |= RD_ERROR_NOT_IMPLEMENTED;
           break;
         case 0x0b:
           // query logging data
@@ -374,6 +370,7 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
     }
 
     // send response
+    msg.data[2] = err_code;
     err_code |= app_comms_blocking_send(reply_fp, &msg);
 
     return err_code;

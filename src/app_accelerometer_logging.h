@@ -32,11 +32,46 @@ rd_status_t app_enable_sensor_logging(void);
 rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp);
 
 /**
+ * @brief Send logged data from ringbuffer using GATT
+ *
+ * @return RD_SUCCESS on success, error code from stack otherwise.
+ */
+rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp);
+
+/**
  * @brief Query state if logging is active
  *
  * @return RD_SUCCESS if logging is active
  * @return RD_ERROR_NOT_INITIALIZED if logging is not active
  */
 rd_status_t app_acc_logging_state(void);
+
+/**
+ * @brief Handle Configuration Change
+ * Check every configuration parameter if it should be changed 
+ * and if its value is different than actual value. 
+ * If a change is detected it clears the ringbuffer, updates the
+ * configuration and stores the configuration in flash.
+ *
+ * @return Error code from stack
+ */
+rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* sensor, 
+                          rd_sensor_configuration_t* new_config);
+
+/**
+ * @brief Initialize acceleration logging during boot.
+ * When logging was not active before reboot this function 
+ * return RD_SUCCESS without activiting acceleration logging.
+ *
+ * @return Error code from stack
+ */
+rd_status_t app_acc_logging_init(void);
+
+/**
+ * @brief Disable Logging when it is active.
+ *
+ * @return Error code from stack
+ */
+rd_status_t app_acc_logging_uninit(void);
 
 #endif

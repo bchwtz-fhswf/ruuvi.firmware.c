@@ -25,8 +25,8 @@ typedef struct {
 
 // Ringbuffer flashpage
 typedef struct __attribute__ ((packed, aligned (4))) {
-    uint32_t max_size;
-    uint32_t actual_size;
+    uint16_t max_size;
+    uint16_t actual_size;
     uint8_t packeddata[4073];
 } rt_flash_ringbuffer_flashpage_t;
 
@@ -55,7 +55,7 @@ rd_status_t rt_flash_ringbuffer_create (
  * @param[in] packeddata Data to collect for flashpage 
  * @param[in, out] flashpage Flashpage Struct
  */
-void rt_flash_ringbuffer_collect_flashpage (
+rd_status_t rt_flash_ringbuffer_collect_flashpage (
     const uint32_t page_id,
     const uint32_t record_id,
     const uint16_t size,

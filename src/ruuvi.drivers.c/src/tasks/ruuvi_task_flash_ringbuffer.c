@@ -12,6 +12,7 @@
 #include "fds.h"
 #include "ruuvi_task_flash.h"
 #include "ruuvi_task_flash_ringbuffer.h"
+#include "string.h"
 
 rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t record_id, const uint8_t number_of_pages, const uint16_t page_size)
 {
@@ -60,16 +61,20 @@ rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t r
     return err_code;
 }
 
-void rt_flash_ringbuffer_collect_flashpage (const uint32_t page_id, const uint32_t record_id, const uint16_t size, const uint8_t* packeddata, rt_flash_ringbuffer_flashpage_t* flashpage) {
+rd_status_t rt_flash_ringbuffer_collect_flashpage (const uint32_t page_id, const uint32_t record_id, const uint16_t size, const uint8_t* packeddata, rt_flash_ringbuffer_flashpage_t* flashpage) {
   
+  rd_status_t err_code = RD_SUCCESS;
+
   // if flashpage is full, write pagedata in ringbuffer
   if(flashpage->actual_size + size > flashpage->max_size) {
-    rt_flash_ringbuffer_write(page_id, record_id, flashpage->actual_size, flashpage);
+    err_code = rt_flash_ringbuffer_write(page_id, record_id, flashpage->actual_size, flashpage);
     flashpage->actual_size = 0;
   } 
   // fill packeddata
-  memcpy(flashpage->packeddata + (flashpage->max_size - flashpage->actual_size - size), packeddata, size);   
+  memcpy(flashpage->packeddata + flashpage->actual_size, packeddata, size);   
   flashpage->actual_size = flashpage->actual_size + size;
+
+  return err_code;
 }
 
 rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t record_id, const uint16_t size, const void* data) 
@@ -81,7 +86,12 @@ rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t re
   err_code |= rt_flash_load (page_id, record_id, &state, sizeof(state));
   
   if (RD_SUCCESS == err_code)
-  {
+  {    
+      // Wait while flash is busy
+      while (rt_flash_busy())
+      {
+          ri_yield();
+      }
       // Store data
       err_code |= rt_flash_store(state.reserved_pages[state.end].page, 0x0001, data, size);
       if (err_code != RD_SUCCESS) {
@@ -94,6 +104,12 @@ rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t re
         state.end = 0;
       } else {
         state.end = state.end + 1;
+      }
+      
+      // Wait while flash is busy
+      while (rt_flash_busy())
+      {
+          ri_yield();
       }
 
       // Store state on flash
@@ -139,10 +155,17 @@ rd_status_t rt_flash_ringbuffer_read (const uint32_t page_id, const uint32_t rec
       } else {
         state.start = state.start + 1;
       } 
+
+      // Wait while flash is busy
+      while (rt_flash_busy())
+      {
+          ri_yield();
+      }
+
+      // Store state on flash
+      err_code = rt_flash_store (page_id, record_id, &state, sizeof (state));
   }
 
-  // Store state on flash
-  err_code = rt_flash_store (page_id, record_id, &state, sizeof (state));
   // Log result
   if (RD_SUCCESS == err_code) {
     ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer read\r\n");
@@ -165,6 +188,12 @@ rd_status_t rt_flash_ringbuffer_clear (const uint32_t page_id, const uint32_t re
     // Reset end and start
     state.start = 0;
     state.end = 0;
+    
+    // Wait while flash is busy
+    while (rt_flash_busy())
+    {
+        ri_yield();
+    }
     
     // Store state on flash
     err_code = rt_flash_store (page_id, record_id, &state, sizeof (state));  

@@ -95,10 +95,12 @@ rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t re
       // Store data
       err_code |= rt_flash_store(state.reserved_pages[state.end].page, 0x0001, data, size);
       if (err_code != RD_SUCCESS) {
-        ri_log (RI_LOG_LEVEL_ERROR, "Ringbuffer writing error\r\n");
+        char msg[128];
+        sprintf(msg, "Ringbuffer data writing error. PageID: 0x%02X RecordID: 0x0001 \r\n", state.reserved_pages[state.end].page);
+        ri_log (RI_LOG_LEVEL_ERROR, msg);
         return err_code;
       }
-      
+
       // Set end index
       if(state.end >= (state.size -1)) {
         state.end = 0;
@@ -120,7 +122,9 @@ rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t re
   if (RD_SUCCESS == err_code) {
     ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer updated\r\n");
   } else {
-    ri_log (RI_LOG_LEVEL_ERROR, "Ringbuffer writing error\r\n");
+      char msg[128];
+      sprintf(msg, "Ringbuffer state writing error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
+      ri_log (RI_LOG_LEVEL_ERROR, msg);
   }
 
   return err_code;
@@ -145,7 +149,9 @@ rd_status_t rt_flash_ringbuffer_read (const uint32_t page_id, const uint32_t rec
       err_code |= rt_flash_load (state.reserved_pages[state.start].page, 0x0001, data, size);
       if (err_code != RD_SUCCESS)
       {
-         ri_log (RI_LOG_LEVEL_ERROR, "Ringbuffer reading error\r\n");
+         char msg[128];
+         sprintf(msg, "Ringbuffer data reading error. PageID: 0x%02X RecordID: 0x0001 \r\n", state.reserved_pages[state.start].page);
+         ri_log (RI_LOG_LEVEL_ERROR, msg);
          return err_code;		
       }
 
@@ -169,8 +175,10 @@ rd_status_t rt_flash_ringbuffer_read (const uint32_t page_id, const uint32_t rec
   // Log result
   if (RD_SUCCESS == err_code) {
     ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer read\r\n");
-  } else {
-     ri_log (RI_LOG_LEVEL_ERROR, "Ringbuffer reading error\r\n");
+  } else { 
+    char msg[128];
+    sprintf(msg, "Ringbuffer state reading error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
+    ri_log (RI_LOG_LEVEL_ERROR, msg);
   }
 
   return err_code;
@@ -203,7 +211,9 @@ rd_status_t rt_flash_ringbuffer_clear (const uint32_t page_id, const uint32_t re
   if (RD_SUCCESS == err_code) {
     ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer cleared\r\n");
   } else {
-     ri_log (RI_LOG_LEVEL_ERROR, "Ringbuffer clearing error\r\n");
+     char msg[128];
+     sprintf(msg, "Ringbuffer clearing error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
+     ri_log (RI_LOG_LEVEL_ERROR, msg);
   }
 
   return err_code;
@@ -235,7 +245,9 @@ rd_status_t rt_flash_ringbuffer_delete (const uint32_t page_id, const uint32_t r
   if (RD_SUCCESS == err_code) {
      ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer deleted\r\n");
   } else {
-     ri_log (RI_LOG_LEVEL_ERROR, "Ringbuffer deleting error\r\n");
+     char msg[128];
+     sprintf(msg, "Ringbuffer deleting error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
+     ri_log (RI_LOG_LEVEL_ERROR, msg);
   }
 
   return err_code;

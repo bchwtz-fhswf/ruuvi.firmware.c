@@ -149,6 +149,7 @@ static uint8_t initial_adv_send_count (void)
 
 #if APP_COMMS_BIDIR_ENABLED
 
+#if APP_SENSOR_LOGGING
 static rd_status_t send_firmware_version(const ri_comm_xfer_fp_t reply_fp) {
 
     char firmware_string[] = APP_FW_NAME " " APP_FW_VERSION " " APP_FW_VARIANT " " __DATE__ " " __TIME__;
@@ -375,6 +376,7 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
 
     return err_code;
 }
+#endif
 
 static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
                           size_t data_len)
@@ -415,12 +417,14 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
                 err_code |= app_sensor_handle (reply_fp, raw_message, data_len);
                 break;
 
+#if APP_SENSOR_LOGGING
             case 0xfa:
               LOGD("FA received: ");
               LOGHEX(raw_message, data_len);
               LOGD("\r\n");
               err_code |= handle_lis2dh12_comms(reply_fp, raw_message, data_len);
               break;
+#endif
 
             default:
                 break;

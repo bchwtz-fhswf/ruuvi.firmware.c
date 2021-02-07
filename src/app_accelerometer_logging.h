@@ -8,6 +8,10 @@
 #ifndef APP_ACCELEROMETER_LOGGING_H
 #define APP_ACCELEROMETER_LOGGING_H
 
+#include "app_config.h" 
+#if APP_SENSOR_LOGGING
+
+#include "ruuvi_task_sensor.h"
 #include "ruuvi_interface_communication.h"
 
 /**
@@ -73,5 +77,10 @@ rd_status_t app_acc_logging_init(void);
  * @return Error code from stack
  */
 rd_status_t app_acc_logging_uninit(void);
+
+#else
+rd_status_t app_acc_logging_state(void);
+
+#endif
 
 #endif

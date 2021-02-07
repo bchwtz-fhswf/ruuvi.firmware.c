@@ -10,6 +10,7 @@
 #include "app_heartbeat.h"
 #include "app_log.h"
 #include "app_sensor.h"
+#include "app_accelerometer_logging.h"
 #include "ruuvi_interface_log.h"
 #include "ruuvi_driver_error.h"
 #include "ruuvi_driver_sensor.h"
@@ -171,7 +172,12 @@ void heartbeat (void * p_event, uint16_t event_size)
         ri_watchdog_feed();
     }
 
-    err_code = app_log_process (&data);
+    if(app_acc_logging_state()!=RD_SUCCESS) {
+        // Logging of environment data only when logging of 
+        // acceleration data is not active because of fragmentation
+        // of flash memory.
+        err_code = app_log_process (&data);
+    }
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
 

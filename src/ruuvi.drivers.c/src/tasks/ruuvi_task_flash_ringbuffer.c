@@ -12,7 +12,8 @@
 #include "fds.h"
 #include "ruuvi_task_flash.h"
 #include "ruuvi_task_flash_ringbuffer.h"
-#include "string.h"
+#include "ruuvi_interface_yield.h"
+#include <string.h>
 
 rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t record_id, const uint8_t number_of_pages, const uint16_t page_size)
 {
@@ -51,6 +52,12 @@ rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t r
     // Store state on flash
     err_code = rt_flash_store (page_id, record_id, &state, sizeof (state));
 
+    // Wait while flash is busy
+    while (rt_flash_busy())
+    {
+        ri_yield();
+    }
+
     // Log result
     if (RD_SUCCESS == err_code) {
        ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer init\r\n");
@@ -87,17 +94,13 @@ rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t re
   
   if (RD_SUCCESS == err_code)
   {    
-      // Wait while flash is busy
-      while (rt_flash_busy())
-      {
-          ri_yield();
-      }
       // Store data
       err_code |= rt_flash_store(state.reserved_pages[state.end].page, 0x0001, data, size);
       if (err_code != RD_SUCCESS) {
         char msg[128];
         sprintf(msg, "Ringbuffer data writing error. PageID: 0x%02X RecordID: 0x0001 \r\n", state.reserved_pages[state.end].page);
         ri_log (RI_LOG_LEVEL_ERROR, msg);
+        RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
         return err_code;
       }
 
@@ -116,6 +119,12 @@ rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t re
 
       // Store state on flash
       err_code |= rt_flash_store (page_id, record_id, &state, sizeof (state));
+
+      // Wait while flash is busy
+      while (rt_flash_busy())
+      {
+          ri_yield();
+      }
   }
 
   // Log result
@@ -125,6 +134,7 @@ rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t re
       char msg[128];
       sprintf(msg, "Ringbuffer state writing error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
       ri_log (RI_LOG_LEVEL_ERROR, msg);
+      RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
   }
 
   return err_code;
@@ -152,6 +162,7 @@ rd_status_t rt_flash_ringbuffer_read (const uint32_t page_id, const uint32_t rec
          char msg[128];
          sprintf(msg, "Ringbuffer data reading error. PageID: 0x%02X RecordID: 0x0001 \r\n", state.reserved_pages[state.start].page);
          ri_log (RI_LOG_LEVEL_ERROR, msg);
+         RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
          return err_code;		
       }
 
@@ -162,14 +173,15 @@ rd_status_t rt_flash_ringbuffer_read (const uint32_t page_id, const uint32_t rec
         state.start = state.start + 1;
       } 
 
+      // Store state on flash
+      err_code = rt_flash_store (page_id, record_id, &state, sizeof (state));
+
       // Wait while flash is busy
       while (rt_flash_busy())
       {
           ri_yield();
       }
 
-      // Store state on flash
-      err_code = rt_flash_store (page_id, record_id, &state, sizeof (state));
   }
 
   // Log result
@@ -179,6 +191,7 @@ rd_status_t rt_flash_ringbuffer_read (const uint32_t page_id, const uint32_t rec
     char msg[128];
     sprintf(msg, "Ringbuffer state reading error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
     ri_log (RI_LOG_LEVEL_ERROR, msg);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
   }
 
   return err_code;
@@ -197,14 +210,14 @@ rd_status_t rt_flash_ringbuffer_clear (const uint32_t page_id, const uint32_t re
     state.start = 0;
     state.end = 0;
     
+    // Store state on flash
+    err_code = rt_flash_store (page_id, record_id, &state, sizeof (state));  
+
     // Wait while flash is busy
     while (rt_flash_busy())
     {
         ri_yield();
     }
-    
-    // Store state on flash
-    err_code = rt_flash_store (page_id, record_id, &state, sizeof (state));  
   }
 
   // Log result
@@ -214,6 +227,7 @@ rd_status_t rt_flash_ringbuffer_clear (const uint32_t page_id, const uint32_t re
      char msg[128];
      sprintf(msg, "Ringbuffer clearing error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
      ri_log (RI_LOG_LEVEL_ERROR, msg);
+     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
   }
 
   return err_code;
@@ -231,8 +245,18 @@ rd_status_t rt_flash_ringbuffer_delete (const uint32_t page_id, const uint32_t r
     // Cancel reservation
     for (uint8_t i = 0; i < state.size; i++)
     {
-      err_code |= rt_flash_free(state.reserved_pages[i].page, 0x0001);
-      err_code |= fds_reserve_cancel(&state.reserved_pages[i]);
+      rd_status_t del_err_code = rt_flash_free(state.reserved_pages[i].page, 0x0001);
+      if(del_err_code==RD_ERROR_NOT_FOUND)  {
+        ret_code_t cancel_code = fds_reserve_cancel(&state.reserved_pages[i]);
+        if(cancel_code!=FDS_SUCCESS) {
+          err_code |= RD_ERROR_INTERNAL; // fds_to_ruuvi_error(cancel_code);
+          char msg[128];
+          sprintf(msg, "Reservation canceling error. PageID: 0x%02X\r\n", state.reserved_pages[i].page);
+          ri_log (RI_LOG_LEVEL_ERROR, msg);
+        }
+      } else {
+        err_code |= del_err_code & ~RD_ERROR_NOT_FOUND;
+      }
     }
 
     err_code |= rt_flash_free(page_id, record_id);  

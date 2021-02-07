@@ -4,10 +4,12 @@
  * @date 2020-11-06
  * @copyright Ruuvi Innovations Ltd, License BSD-3-Clause.
  */
- 
+
+#include "app_accelerometer_logging.h"
+#if APP_SENSOR_LOGGING
+
 #include "ruuvi_boards.h"
 #include "ruuvi_driver_error.h"
-#include "ruuvi_task_sensor.h"
 #include "ruuvi_interface_log.h"
 #include "ruuvi_interface_gpio.h"
 #include "ruuvi_interface_lis2dh12.h"
@@ -18,7 +20,7 @@
 #include "ruuvi_task_flash_ringbuffer.h"
 #include "app_sensor.h"
 #include "app_comms.h"
-#include "app_accelerometer_logging.h"
+#include "app_scheduler.h"
 #include "crc16.h"
 
 #include <stdlib.h>
@@ -402,7 +404,7 @@ rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp) {
         LOGD("send data from ringbuffer\r\n");
 
         // send data
-        err_code |= send_data_block(reply_fp, flashpage.actual_size, flashpage.packeddata + (flashpage.max_size - flashpage.actual_size), &crc);
+        err_code |= send_data_block(reply_fp, flashpage.actual_size, flashpage.packeddata, &crc);
 
         // read next page from ringbuffer
         ringbuffer_status = rt_flash_ringbuffer_read(APP_FLASH_FILE_ACCELERATION_RINGBUFFER,  
@@ -420,7 +422,7 @@ rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp) {
       logged_data.flashpage.actual_size = 0;
 
       // send data
-      err_code |= send_data_block(reply_fp, flashpage.actual_size, flashpage.packeddata + (flashpage.max_size - flashpage.actual_size), &crc);
+      err_code |= send_data_block(reply_fp, flashpage.actual_size, flashpage.packeddata, &crc);
     }
 
     LOGD("send footer\r\n");
@@ -532,3 +534,7 @@ rd_status_t app_acc_logging_uninit(void) {
   // ignore error in case logging is not active
   return ~RD_ERROR_INVALID_STATE & app_disable_sensor_logging();
 }
+
+#else
+rd_status_t app_acc_logging_state(void) { return RD_ERROR_NOT_ENABLED; }
+#endif

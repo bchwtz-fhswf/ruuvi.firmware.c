@@ -86,7 +86,10 @@ void setup (void)
     err_code |= app_heartbeat_init();
     err_code |= app_heartbeat_start();
     err_code |= app_led_deactivate (RB_LED_STATUS_ERROR);
+
+#if APP_SENSOR_LOGGING
     err_code |= app_acc_logging_init();
+#endif
 
     if (RD_SUCCESS == err_code)
     {

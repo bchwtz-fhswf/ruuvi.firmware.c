@@ -9,29 +9,49 @@
 #if RT_FLASH_ENABLED
 #include "ruuvi_driver_error.h"
 #include "ruuvi_driver_sensor.h"
-#include "fds.h"
 #include "ruuvi_task_flash.h"
 #include "ruuvi_task_flash_ringbuffer.h"
 #include "ruuvi_interface_yield.h"
 #include <string.h>
+
+#if RI_LOG_ENABLED
+#include <stdio.h>
+static inline void LOG (const char * const msg)
+{
+    ri_log (RI_LOG_LEVEL_ERROR, msg);
+}
+
+static inline void LOGD (const char * const msg)
+{
+    ri_log (RI_LOG_LEVEL_DEBUG, msg);
+}
+#else
+#define LOG(...) 
+#define LOGD(...)
+#define snprintf(...)
+#endif
 
 rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t record_id, const uint8_t number_of_pages, const uint16_t page_size)
 {
     rd_status_t err_code = RD_SUCCESS;
     rt_flash_ringbuffer_state_t state;
     fds_stat_t stat;
-    fds_reserve_token_t tok[number_of_pages];
 
     // Try to load ringbuffer state
     err_code |= rt_flash_load (page_id, record_id, &state, sizeof (state));
     
     // Returns RD_ERROR_INVALID_STATE when the buffer already exists.
     if (RD_SUCCESS == err_code) {
-      ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer has already been initialized\r\n");
+      LOGD("Ringbuffer has already been initialized\r\n");
       return RD_ERROR_INVALID_STATE;
     }
+
+    err_code = RD_SUCCESS;
     
     // Returns RD_ERROR_NO_MEM when there is not enough space in flash.
+    // pages_available is equal to FDS_VIRTUAL_PAGES, see nrf5_sdk15_config.h,
+    // which is equal to RI_FLASH_PAGES + 1, see ruuvi_interface_flash.h,
+    // which is equal to APP_FLASH_PAGES, see app_config.h
     fds_stat(&stat); 	
     if(stat.pages_available < number_of_pages) {
       return RD_ERROR_NO_MEM;
@@ -39,18 +59,16 @@ rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t r
 
     // Set state attributes
     state.size = number_of_pages;
-    state.reserved_pages[number_of_pages];
     state.start = 0;
     state.end = 0;
     // Reserve Flash Storage
     for (uint8_t i = 0; i < number_of_pages; i++)
     {
-      fds_reserve(&tok[i], page_size/4); // length of the record data in 4-byte words
-      state.reserved_pages[i] = tok[i];
+      err_code |= rt_flash_reserve(&state.reserved_pages[i], page_size);
     }
   
     // Store state on flash
-    err_code = rt_flash_store (page_id, record_id, &state, sizeof (state));
+    err_code |= rt_flash_store (page_id, record_id, &state, sizeof (state));
 
     // Wait while flash is busy
     while (rt_flash_busy())
@@ -60,9 +78,9 @@ rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t r
 
     // Log result
     if (RD_SUCCESS == err_code) {
-       ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer init\r\n");
+       LOGD("Ringbuffer init\r\n");
     } else {
-       ri_log (RI_LOG_LEVEL_ERROR, "Ringbuffer initialization error\r\n");
+       LOG("Ringbuffer initialization error\r\n");
     }
 
     return err_code;
@@ -95,12 +113,16 @@ rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t re
   if (RD_SUCCESS == err_code)
   {    
       // Store data
-      err_code |= rt_flash_store(state.reserved_pages[state.end].page, 0x0001, data, size);
+      if(state.reserved_pages[state.end].length_words==0) {
+        err_code |= rt_flash_store(state.reserved_pages[state.end].page, 0x0001, data, size);
+      } else {
+        err_code |= rt_flash_write_reserved(&state.reserved_pages[state.end], 0x0001, size, data);
+        state.reserved_pages[state.end].length_words = 0;
+      }
       if (err_code != RD_SUCCESS) {
         char msg[128];
-        sprintf(msg, "Ringbuffer data writing error. PageID: 0x%02X RecordID: 0x0001 \r\n", state.reserved_pages[state.end].page);
-        ri_log (RI_LOG_LEVEL_ERROR, msg);
-        RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
+        snprintf(msg, 128, "Ringbuffer data writing error. PageID: 0x%02X RecordID: 0x0001 \r\n", state.reserved_pages[state.end].page);
+        LOG(msg);
         return err_code;
       }
 
@@ -109,6 +131,15 @@ rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t re
         state.end = 0;
       } else {
         state.end = state.end + 1;
+      }
+
+      // Set start index
+      if(state.end == state.start) {
+        if(state.start >= (state.size -1)) {
+          state.start = 0;
+        } else {
+          state.start = state.end + 1;
+        }
       }
       
       // Wait while flash is busy
@@ -129,12 +160,11 @@ rd_status_t rt_flash_ringbuffer_write (const uint32_t page_id, const uint32_t re
 
   // Log result
   if (RD_SUCCESS == err_code) {
-    ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer updated\r\n");
+      LOGD("Ringbuffer updated\r\n");
   } else {
       char msg[128];
-      sprintf(msg, "Ringbuffer state writing error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
-      ri_log (RI_LOG_LEVEL_ERROR, msg);
-      RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
+      snprintf(msg, 128, "Ringbuffer state writing error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
+      LOG(msg);
   }
 
   return err_code;
@@ -151,7 +181,7 @@ rd_status_t rt_flash_ringbuffer_read (const uint32_t page_id, const uint32_t rec
   if (RD_SUCCESS == err_code)
   {
       if(state.start == state.end) {
-        ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer is empty\r\n");
+        LOGD("Ringbuffer is empty\r\n");
         return RD_ERROR_DATA_SIZE;
       }
 
@@ -160,9 +190,8 @@ rd_status_t rt_flash_ringbuffer_read (const uint32_t page_id, const uint32_t rec
       if (err_code != RD_SUCCESS)
       {
          char msg[128];
-         sprintf(msg, "Ringbuffer data reading error. PageID: 0x%02X RecordID: 0x0001 \r\n", state.reserved_pages[state.start].page);
-         ri_log (RI_LOG_LEVEL_ERROR, msg);
-         RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
+         snprintf(msg, 128, "Ringbuffer data reading error. PageID: 0x%02X RecordID: 0x0001 \r\n", state.reserved_pages[state.start].page);
+         LOG(msg);
          return err_code;		
       }
 
@@ -186,12 +215,11 @@ rd_status_t rt_flash_ringbuffer_read (const uint32_t page_id, const uint32_t rec
 
   // Log result
   if (RD_SUCCESS == err_code) {
-    ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer read\r\n");
+    LOGD("Ringbuffer read\r\n");
   } else { 
     char msg[128];
-    sprintf(msg, "Ringbuffer state reading error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
-    ri_log (RI_LOG_LEVEL_ERROR, msg);
-    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
+    snprintf(msg, 128, "Ringbuffer state reading error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
+    LOG(msg);
   }
 
   return err_code;
@@ -222,12 +250,11 @@ rd_status_t rt_flash_ringbuffer_clear (const uint32_t page_id, const uint32_t re
 
   // Log result
   if (RD_SUCCESS == err_code) {
-    ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer cleared\r\n");
+     LOGD("Ringbuffer cleared\r\n");
   } else {
      char msg[128];
-     sprintf(msg, "Ringbuffer clearing error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
-     ri_log (RI_LOG_LEVEL_ERROR, msg);
-     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
+     snprintf(msg, 128, "Ringbuffer clearing error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
+     LOG(msg);
   }
 
   return err_code;
@@ -245,35 +272,69 @@ rd_status_t rt_flash_ringbuffer_delete (const uint32_t page_id, const uint32_t r
     // Cancel reservation
     for (uint8_t i = 0; i < state.size; i++)
     {
-      rd_status_t del_err_code = rt_flash_free(state.reserved_pages[i].page, 0x0001);
-      if(del_err_code==RD_ERROR_NOT_FOUND)  {
-        ret_code_t cancel_code = fds_reserve_cancel(&state.reserved_pages[i]);
-        if(cancel_code!=FDS_SUCCESS) {
-          err_code |= RD_ERROR_INTERNAL; // fds_to_ruuvi_error(cancel_code);
-          char msg[128];
-          sprintf(msg, "Reservation canceling error. PageID: 0x%02X\r\n", state.reserved_pages[i].page);
-          ri_log (RI_LOG_LEVEL_ERROR, msg);
-        }
+      if(state.reserved_pages[i].length_words==0) {
+        err_code |= rt_flash_free(state.reserved_pages[i].page, 0x0001);
       } else {
-        err_code |= del_err_code & ~RD_ERROR_NOT_FOUND;
+        err_code |= rt_flash_reserve_cancel(&state.reserved_pages[i]);
       }
     }
 
     err_code |= rt_flash_free(page_id, record_id);  
   } else {
-     ri_log (RI_LOG_LEVEL_DEBUG, "No ringbuffer to delete\r\n");
+     LOGD("No ringbuffer to delete\r\n");
      return RD_SUCCESS;
   }
 
   // Log result
   if (RD_SUCCESS == err_code) {
-     ri_log (RI_LOG_LEVEL_DEBUG, "Ringbuffer deleted\r\n");
+     LOGD("Ringbuffer deleted\r\n");
   } else {
      char msg[128];
-     sprintf(msg, "Ringbuffer deleting error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
-     ri_log (RI_LOG_LEVEL_ERROR, msg);
+     snprintf(msg, 128, "Ringbuffer deleting error. PageID: 0x%02X RecordID: 0x%02X \r\n", page_id, record_id);
+     LOG(msg);
   }
 
   return err_code;
+}
+
+rd_status_t rt_flash_ringbuffer_statistic (const uint32_t page_id, 
+          const uint32_t record_id, uint8_t* const statistik) {
+
+  rd_status_t err_code = RD_SUCCESS;
+  rt_flash_ringbuffer_state_t state;
+  int pos = 0;
+
+  // Load State
+  err_code |= rt_flash_load (page_id, record_id, &state, sizeof(state));
+
+  if(err_code & RD_ERROR_NOT_FOUND) {
+    statistik[pos++] = 0xff;
+    statistik[pos++] = 0xff;
+  } else {
+    statistik[pos++] = state.start;
+    statistik[pos++] = state.end;
+  }
+
+  // gather flash statistics
+  fds_stat_t stat;
+  fds_stat(&stat);
+
+  memcpy(statistik+pos, &stat.pages_available, 2);
+  pos+=2;
+  memcpy(statistik+pos, &stat.valid_records, 2);
+  pos+=2;
+  memcpy(statistik+pos, &stat.dirty_records, 2);
+  pos+=2;
+  memcpy(statistik+pos, &stat.words_reserved, 2);
+  pos+=2;
+  memcpy(statistik+pos, &stat.words_used, 2);
+  pos+=2;
+  memcpy(statistik+pos, &stat.largest_contig, 2);
+  pos+=2;
+  memcpy(statistik+pos, &stat.freeable_words, 2);
+  pos+=2;
+  
+  // ignore NOT_FOUND
+  return err_code & ~RD_ERROR_NOT_FOUND;
 }
 #endif

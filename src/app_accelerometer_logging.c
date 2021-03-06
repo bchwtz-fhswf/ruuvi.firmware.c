@@ -20,15 +20,15 @@
 #include "ruuvi_task_flash_ringbuffer.h"
 #include "app_sensor.h"
 #include "app_comms.h"
-#include "app_scheduler.h"
 #include "crc16.h"
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
 #define SIZE_ELEMENT (3 * sizeof(int16_t))
 
+#if RI_LOG_ENABLED
+#include <stdio.h>
 static inline void LOG (const char * const msg)
 {
     ri_log (RI_LOG_LEVEL_INFO, msg);
@@ -38,6 +38,11 @@ static inline void LOGD (const char * const msg)
 {
     ri_log (RI_LOG_LEVEL_DEBUG, msg);
 }
+#else
+#define LOG(...) 
+#define LOGD(...)
+#define snprintf(...)
+#endif
 
 /**
  * @brief Structure for storing data from FIFO
@@ -52,6 +57,8 @@ typedef struct logged_data_t
     size_t num_elements;
     /** @brief position of next element to read */
     size_t element_pos;
+    /** @brief save last status */
+    rd_status_t last_status;
     /** @brief flashpage for collecting data */
     rt_flash_ringbuffer_flashpage_t flashpage;
 } logged_data_t;
@@ -139,10 +146,12 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
     }
 
     // Collect Data in Flash page
-    rt_flash_ringbuffer_collect_flashpage (APP_FLASH_FILE_ACCELERATION_RINGBUFFER,  APP_FLASH_RECORD_ACCELERATION_RINGBUFFER,
+    err_code |= rt_flash_ringbuffer_collect_flashpage (APP_FLASH_FILE_ACCELERATION_RINGBUFFER,  APP_FLASH_RECORD_ACCELERATION_RINGBUFFER,
         sizeOfPackedData, packeddata, &logged_data.flashpage);
 
     LOGD("\r\nFIFO read\r\n");
+
+    logged_data.last_status = err_code;
 
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
@@ -245,22 +254,24 @@ rd_status_t app_enable_sensor_logging(void) {
           APP_FLASH_RECORD_ACCELERATION_RINGBUFFER,
           RT_FLASH_RINGBUFFER_MAXSIZE, 4073);
 
-    logged_data.flashpage.max_size = 4073;
+    if(err_code==RD_SUCCESS) {
+      logged_data.flashpage.max_size = 4073;
 
-    // enable GPIO interrupt
-    err_code |= ri_gpio_interrupt_enable (lis2dh12->fifo_pin,
-                                     RI_GPIO_SLOPE_LOTOHI, 
-                                     RI_GPIO_MODE_INPUT_PULLUP,
-                                     &on_fifo_full);
+      // enable GPIO interrupt
+      err_code |= ri_gpio_interrupt_enable (lis2dh12->fifo_pin,
+                                       RI_GPIO_SLOPE_LOTOHI, 
+                                       RI_GPIO_MODE_INPUT_PULLUP,
+                                       &on_fifo_full);
 
-    // enable fifo on sensor
-    err_code |= lis2dh12->sensor.fifo_enable(true);
+      // enable fifo on sensor
+      err_code |= lis2dh12->sensor.fifo_enable(true);
 
-    // enable generating interrupt on sensor
-    err_code |= lis2dh12->sensor.fifo_interrupt_enable(true);
+      // enable generating interrupt on sensor
+      err_code |= lis2dh12->sensor.fifo_interrupt_enable(true);
 
-    // store new data_get function in sensor context
-    lis2dh12->sensor.data_get = &lis2dh12_logged_data_get;
+      // store new data_get function in sensor context
+      lis2dh12->sensor.data_get = &lis2dh12_logged_data_get;
+    }
 
     if(err_code==RD_SUCCESS) {
       LOGD("Successfully initialized FIFO logging\r\n");
@@ -506,6 +517,8 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* sensor,
         err_code = rt_flash_ringbuffer_clear(APP_FLASH_FILE_ACCELERATION_RINGBUFFER,  APP_FLASH_RECORD_ACCELERATION_RINGBUFFER);
     }
 
+    logged_data.last_status = err_code;
+
     return err_code;
 }
 
@@ -533,6 +546,18 @@ rd_status_t app_acc_logging_uninit(void) {
   // disable logging
   // ignore error in case logging is not active
   return ~RD_ERROR_INVALID_STATE & app_disable_sensor_logging();
+}
+
+rd_status_t app_acc_logging_statistic (uint8_t* const statistik) {
+
+    rd_status_t err_code = RD_SUCCESS;
+
+    statistik[0] = logged_data.last_status;
+
+    err_code |= rt_flash_ringbuffer_statistic(APP_FLASH_FILE_ACCELERATION_RINGBUFFER,  
+                APP_FLASH_RECORD_ACCELERATION_RINGBUFFER, statistik+1);
+
+    return err_code;
 }
 
 #else

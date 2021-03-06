@@ -55,6 +55,9 @@ static inline void LOGHEX (const uint8_t * const msg, const size_t len)
     ri_log_hex (RI_LOG_LEVEL_DEBUG, msg, len);
 }
 
+/** @brief In an interactive session do not send environmental data via UART */ 
+bool interactive_session;
+
 /** @brief Set to long enough to handle existing queue, then as short as possible. */
 #define BLOCKING_COMM_TIMEOUT_MS (4000U)
 
@@ -150,64 +153,6 @@ static uint8_t initial_adv_send_count (void)
 #if APP_COMMS_BIDIR_ENABLED
 
 #if APP_SENSOR_LOGGING
-static rd_status_t send_firmware_version(const ri_comm_xfer_fp_t reply_fp) {
-
-    char firmware_string[] = APP_FW_NAME " " APP_FW_VERSION " " APP_FW_VARIANT " " __DATE__ " " __TIME__;
-    uint32_t sizeTestdata = strlen(firmware_string);
-    uint32_t pos = 0;
-    rd_status_t err_code = RD_SUCCESS;
-    LOGD("Firmware: ");
-    LOGD(firmware_string);
-    LOGD("\r\n");
-
-    uint16_t crc = crc16_compute(firmware_string, sizeTestdata, NULL);
-    LOGD("CRC berechnet\r\n");
-
-    ri_comm_message_t msg;
-    msg.data_length = 20;
-    msg.repeat_count = 1;
-
-    while(pos<sizeTestdata && err_code==RD_SUCCESS) {
-        LOGD("sende Block\r\n");
-        if(pos+msg.data_length > sizeTestdata) {
-            msg.data_length = 1 + sizeTestdata - pos;
-        }
-
-        msg.data[0] = 0xfc;
-        memcpy(msg.data+1, firmware_string+pos, msg.data_length-1);
-        err_code |= app_comms_blocking_send(reply_fp, &msg);
-        pos += msg.data_length-1;
-    }
-
-    if(err_code==RD_SUCCESS) {
-      LOGD("sende Footer\r\n");
-      msg.data[0] = 0xfb; // Header
-      msg.data[1] = 0x01;
-      msg.data[2] = err_code;
-      msg.data[3] = 0x00; // Config: not relevant in this case
-      msg.data[4] = 0x00;
-      msg.data[5] = 0x00;
-      msg.data[6] = 0x00;
-      msg.data[7] = 0x00;
-      msg.data[8] = 0x00;
-      msg.data[9] = 0x00;
-      msg.data[10] = 0x00;
-      msg.data[11] = (crc & 0xff00) >> 8; // CRC
-      msg.data[12] = crc & 0xff;
-      msg.data_length = 13;
-      err_code |= app_comms_blocking_send(reply_fp, &msg);
-    } else {
-      LOGD("sende Footer\r\n");
-      msg.data[0] = 0xfb; // Header
-      msg.data[1] = 0x01;
-      msg.data[2] = err_code;
-      msg.data_length = 3;
-      err_code |= app_comms_blocking_send(reply_fp, &msg);
-    }
-
-    return err_code;
-}
-
 static rd_status_t send_test_data(const ri_comm_xfer_fp_t reply_fp) {
 
     rd_status_t err_code = RD_SUCCESS;
@@ -295,6 +240,11 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
       // Route message to proper handler
       switch (type)
       {
+        case 0x00:
+          // start interactive session
+          LOGD("start interactive session");
+          interactive_session = true;
+          break;
         case 0x01:
           // start transmitting testdata
           LOGD("start transmitting testdata\r\n");
@@ -355,11 +305,14 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
           LOGD("query state of logging data\r\n");
           err_code |= app_acc_logging_state();
           break;
-        case 0x0c:
-          // return Firmware Version
-          LOGD("return Firmware version\r\n");
-          return send_firmware_version(reply_fp);
+        case 0x0d:
+          // return flash statistic
+          LOGD("return flash and ringbuffer statistic\r\n");
+          msg.data[1] = 0x0d;
+          msg.data_length = 17 + 3;
+          err_code |=app_acc_logging_statistic(msg.data+3);
           break;
+
         default:
           LOGD("unknown message type\r\n");
           err_code |= RD_ERROR_INVALID_PARAM;
@@ -419,9 +372,6 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
 
 #if APP_SENSOR_LOGGING
             case 0xfa:
-              LOGD("FA received: ");
-              LOGHEX(raw_message, data_len);
-              LOGD("\r\n");
               err_code |= handle_lis2dh12_comms(reply_fp, raw_message, data_len);
               break;
 #endif
@@ -808,6 +758,7 @@ rd_status_t app_comms_ble_init (const bool secure)
     err_code |= adv_init();
     err_code |= gatt_init (&dis, secure);
     ri_radio_activity_callback_set (&app_sensor_vdd_measure_isr);
+    interactive_session = false;
     return err_code;
 }
 
@@ -848,5 +799,10 @@ rd_status_t app_comms_blocking_send (const ri_comm_xfer_fp_t reply_fp,
     } while ( (RD_SUCCESS != err_code) && ! (RD_ERROR_TIMEOUT & err_code));
 
     return err_code;
+}
+
+/** @brief In an interactive session do not send environmental data via UART */ 
+bool app_comms_interactive_session(void) {
+  return interactive_session;
 }
 /** @} */

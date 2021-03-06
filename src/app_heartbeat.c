@@ -149,11 +149,13 @@ void heartbeat (void * p_event, uint16_t event_size)
         heartbeat_ok = true;
     }
 
-    // Cut endpoint 5 data to fit into GATT msg.
-    msg.data_length = 18;
-    // Gatt Link layer takes care of delivery.
-    msg.repeat_count = 1;
-    err_code = rt_gatt_send_asynchronous (&msg);
+    if(!app_comms_interactive_session()) {
+      // Cut endpoint 5 data to fit into GATT msg.
+      msg.data_length = 18;
+      // Gatt Link layer takes care of delivery.
+      msg.repeat_count = 1;
+      err_code = rt_gatt_send_asynchronous (&msg);
+    }
 
     if (RD_SUCCESS == err_code)
     {

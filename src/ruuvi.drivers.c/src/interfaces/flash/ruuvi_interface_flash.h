@@ -24,6 +24,7 @@
 
 #include "ruuvi_driver_enabled_modules.h"
 #include "ruuvi_driver_error.h"
+#include "fds.h"
 #include <stddef.h>
 
 /** @brief Enable implementation selected by application */
@@ -170,5 +171,28 @@ void ri_flash_purge (void);
  * @return False if flash is idle.
  */
 bool ri_flash_is_busy();
+
+/**
+ * @brief Set data to record in reserved page
+ * Returns after data is successfully written or error has occured.
+ *
+ * @param[in] reserve_token Toekn prviously reserved by ri_flash_reserve.
+ * @param[in] record_id ID of a record. Can be a random number.
+ * @param[in] data_size size data to store
+ * @param[in] data pointer to data to store.
+ * @return RD_SUCCESS on success
+ * @return RD_ERROR_NULL if data is null
+ * @return RD_ERROR_INVALID_STATE if flash storage is not initialized
+ * @return RD_ERROR_DATA_SIZE if record is too large to fit on page
+ * @return RD_ERROR_NO_MEM if this record cannot fit on page.
+ * @return error code from stack on other error
+ */
+rd_status_t ri_flash_write_reserved (const fds_reserve_token_t* const reserve_token, 
+    const uint32_t record_id, const size_t data_size, const void * const data);
+
+rd_status_t ri_flash_reserve (fds_reserve_token_t* const reserve_token, const uint16_t size);
+
+rd_status_t ri_flash_reserve_cancel (fds_reserve_token_t* const reserve_token);
+
 /*@}*/
 #endif

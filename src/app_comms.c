@@ -21,7 +21,6 @@
 #include "crc16.h"
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 
 /**
  * @addtogroup app_comms
@@ -54,9 +53,6 @@ static inline void LOGHEX (const uint8_t * const msg, const size_t len)
 {
     ri_log_hex (RI_LOG_LEVEL_DEBUG, msg, len);
 }
-
-/** @brief In an interactive session do not send environmental data via UART */ 
-bool interactive_session;
 
 /** @brief Set to long enough to handle existing queue, then as short as possible. */
 #define BLOCKING_COMM_TIMEOUT_MS (4000U)
@@ -153,72 +149,6 @@ static uint8_t initial_adv_send_count (void)
 #if APP_COMMS_BIDIR_ENABLED
 
 #if APP_SENSOR_LOGGING
-static rd_status_t send_test_data(const ri_comm_xfer_fp_t reply_fp) {
-
-    rd_status_t err_code = RD_SUCCESS;
-
-    uint32_t pos = 0;
-    uint32_t sizeTestdata = 4096;
-    uint8_t *testdata = malloc(sizeTestdata);
-
-    for(pos = 0; pos<sizeTestdata; pos++) {
-      testdata[pos] = pos & 0xff;
-    }
-
-    LOGD("Testdaten erzeugt\r\n");
-
-    uint16_t crc = crc16_compute(testdata, sizeTestdata, NULL);
-    LOGD("CRC berechnet\r\n");
-
-    pos = 0;
-
-    ri_comm_message_t msg;
-    msg.data_length = 20;
-    msg.repeat_count = 1;
-
-    while(pos<sizeTestdata && err_code==RD_SUCCESS) {
-        LOGD("sende Block\r\n");
-        if(pos+msg.data_length > sizeTestdata) {
-            msg.data_length = 1 + sizeTestdata - pos;
-        }
-
-        msg.data[0] = 0xfc;
-        memcpy(msg.data+1, testdata+pos, msg.data_length-1);
-        err_code |= app_comms_blocking_send(reply_fp, &msg);
-        pos += msg.data_length-1;
-    }
-
-    if(err_code==RD_SUCCESS) {
-      LOGD("sende Footer\r\n");
-      msg.data[0] = 0xfb; // Header
-      msg.data[1] = 0x01;
-      msg.data[2] = err_code;
-      msg.data[3] = 0x00; // Config: not relevant in this case
-      msg.data[4] = 0x00;
-      msg.data[5] = 0x00;
-      msg.data[6] = 0x00;
-      msg.data[7] = 0x00;
-      msg.data[8] = 0x00;
-      msg.data[9] = 0x00;
-      msg.data[10] = 0x00;
-      msg.data[11] = (crc & 0xff00) >> 8; // CRC
-      msg.data[12] = crc & 0xff;
-      msg.data_length = 13;
-      err_code |= app_comms_blocking_send(reply_fp, &msg);
-    } else {
-      LOGD("sende Footer\r\n");
-      msg.data[0] = 0xfb; // Header
-      msg.data[1] = 0x01;
-      msg.data[2] = err_code;
-      msg.data_length = 3;
-      err_code |= app_comms_blocking_send(reply_fp, &msg);
-    }
-
-    free(testdata);
-
-    return err_code;
-}
-
 static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
                           size_t data_len)
 {
@@ -243,12 +173,12 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
         case 0x00:
           // start interactive session
           LOGD("start interactive session");
-          interactive_session = true;
+          rt_gatt_nus_start_interactive();
           break;
-        case 0x01:
-          // start transmitting testdata
-          LOGD("start transmitting testdata\r\n");
-          return send_test_data(reply_fp);
+        //case 0x01:
+        //  // start transmitting testdata
+        //  LOGD("start transmitting testdata\r\n");
+        //  return send_test_data(reply_fp);
         case 0x03:
           // start transmitting last sample
           LOGD("start transmitting last sample\r\n");
@@ -758,7 +688,6 @@ rd_status_t app_comms_ble_init (const bool secure)
     err_code |= adv_init();
     err_code |= gatt_init (&dis, secure);
     ri_radio_activity_callback_set (&app_sensor_vdd_measure_isr);
-    interactive_session = false;
     return err_code;
 }
 
@@ -801,8 +730,4 @@ rd_status_t app_comms_blocking_send (const ri_comm_xfer_fp_t reply_fp,
     return err_code;
 }
 
-/** @brief In an interactive session do not send environmental data via UART */ 
-bool app_comms_interactive_session(void) {
-  return interactive_session;
-}
 /** @} */

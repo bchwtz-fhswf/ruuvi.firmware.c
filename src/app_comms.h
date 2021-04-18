@@ -138,9 +138,6 @@ rd_status_t app_comms_ble_uninit (void);
 rd_status_t app_comms_blocking_send (const ri_comm_xfer_fp_t reply_fp,
                                      ri_comm_message_t * const msg);
 
-/** @brief In an interactive session do not send environmental data via UART */ 
-bool app_comms_interactive_session(void);
-
 #ifdef CEEDLING
 /** Handles for unit test framework */
 typedef struct

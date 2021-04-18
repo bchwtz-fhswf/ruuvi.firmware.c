@@ -217,5 +217,11 @@ void rt_gatt_set_on_received_isr (const ri_comm_cb_t cb);
  */
 void rt_gatt_set_on_sent_isr (const ri_comm_cb_t cb);
 
+/** @brief During an interactive session do not send environmental data via UART */ 
+bool rt_gatt_is_nus_interactive_session(void);
+
+/** @brief Start an interactive NUS session. During this do not send environmental data via UART */ 
+void rt_gatt_nus_start_interactive(void);
+
 #endif
 /*@}*/

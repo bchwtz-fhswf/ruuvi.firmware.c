@@ -230,6 +230,13 @@ rd_status_t rt_flash_ringbuffer_clear (const uint32_t page_id, const uint32_t re
   rd_status_t err_code = RD_SUCCESS;
   rt_flash_ringbuffer_state_t state;
 
+  // Flash is always BUSY in this moment because sensor config was just written before
+  // Wait while flash is busy
+  while (rt_flash_busy())
+  {
+      ri_yield();
+  }
+
   // Load State
   err_code |= rt_flash_load (page_id, record_id, &state, sizeof(state));
   if (RD_SUCCESS == err_code)
@@ -239,7 +246,7 @@ rd_status_t rt_flash_ringbuffer_clear (const uint32_t page_id, const uint32_t re
     state.end = 0;
     
     // Store state on flash
-    err_code = rt_flash_store (page_id, record_id, &state, sizeof (state));  
+    err_code |= rt_flash_store (page_id, record_id, &state, sizeof (state));  
 
     // Wait while flash is busy
     while (rt_flash_busy())

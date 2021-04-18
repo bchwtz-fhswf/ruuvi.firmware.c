@@ -43,14 +43,6 @@ rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp);
 rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp);
 
 /**
- * @brief Query state if logging is active
- *
- * @return RD_SUCCESS if logging is active
- * @return RD_ERROR_NOT_INITIALIZED if logging is not active
- */
-rd_status_t app_acc_logging_state(void);
-
-/**
  * @brief Handle Configuration Change
  * Check every configuration parameter if it should be changed 
  * and if its value is different than actual value. 
@@ -78,9 +70,24 @@ rd_status_t app_acc_logging_init(void);
  */
 rd_status_t app_acc_logging_uninit(void);
 
-#else
+#endif
+
+/**
+ * @brief Query state if logging is active
+ *
+ * @return RD_SUCCESS if logging is active
+ * @return RD_ERROR_NOT_INITIALIZED if logging is not active
+ */
 rd_status_t app_acc_logging_state(void);
 
-#endif
+/*
+ *  Return Accelerometer logging and flash statistic
+ *  Ignores error if acceleration logging is not active.
+ *
+ * @param[in/out] statistik Memory for storing statistic about flash usage and ringbuffer usage.
+ */
+rd_status_t app_acc_logging_statistic (
+  uint8_t* const statistik
+);
 
 #endif

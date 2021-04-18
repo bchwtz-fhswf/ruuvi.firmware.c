@@ -46,7 +46,6 @@
 #include "ruuvi_interface_log.h"
 #include "ruuvi_interface_yield.h"
 
-#include "fds.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
 #include "sdk_config.h"
@@ -598,5 +597,108 @@ bool ri_flash_is_busy()
     return m_fds_processing;
 }
 
+
+/**
+ * Set data to record in page. Writes a new record if given record ID does not exist in page.
+ * Updates record if it already exists.
+ * Automatically runs garbage collection if record cannot fit on page.
+ *
+ * @param[in] page_id ID of a page. Can be random number.
+ * @param[in] record_id ID of a record. Can be a random number.
+ * @param[in] data_size size data to store
+ * @param[in] data pointer to data to store.
+ * @retval RD_SUCCESS on success
+ * @retval RD_ERROR_NULL if data is null
+ * @retval RD_ERROR_INVALID_STATE if flash storage is not initialized
+ * @retval RD_ERROR_DATA_SIZE if record is too large to fit on page
+ * @retval RD_ERROR_NO_MEM if this record cannot fit on page.
+ * @retval error code from stack on other error
+ */
+rd_status_t ri_flash_write_reserved (const fds_reserve_token_t* const reserve_token, 
+    const uint32_t record_id, const size_t data_size, const void * const data)
+{
+    if (NULL == data) { return RD_ERROR_NULL; }
+
+    if (false == m_fds_initialized) { return RD_ERROR_INVALID_STATE; }
+
+    /* Wait for process to complete */
+    if (m_fds_processing) { return RD_ERROR_BUSY; }
+
+    rd_status_t err_code = RD_SUCCESS;
+    ret_code_t rc = NRF_SUCCESS;
+    fds_record_desc_t desc = {0};
+
+    /* A record structure. */
+    fds_record_t const record =
+    {
+        .file_id           = reserve_token->page,
+        .key               = record_id,
+        .data.p_data       = data,
+        /* The length of a record is always expressed in 4-byte units (words). */
+        .data.length_words = (data_size + 3) / sizeof (uint32_t),
+    };
+
+    /* Start write */
+    m_fds_processing = true;
+    desc.record_id = record_id;
+    rc = fds_record_write_reserved (&desc, &record, reserve_token);
+    err_code |= fds_to_ruuvi_error (rc);
+
+    if (RD_SUCCESS != err_code)
+    {
+        m_fds_processing = false;
+        return err_code;
+    }
+
+    return err_code;
+}
+
+
+rd_status_t ri_flash_reserve (fds_reserve_token_t* const reserve_token, const uint16_t size) {
+
+    if (false == m_fds_initialized) { return RD_ERROR_INVALID_STATE; }
+
+    /* Wait for process to complete */
+    if (m_fds_processing) { return RD_ERROR_BUSY; }
+
+    rd_status_t err_code = RD_SUCCESS;
+    ret_code_t rc = NRF_SUCCESS;
+
+    rc = fds_reserve(reserve_token, size/4);
+
+    err_code |= fds_to_ruuvi_error (rc);
+
+    if (RD_SUCCESS != err_code)
+    {
+        m_fds_processing = false;
+        return err_code;
+    }
+
+    return err_code;
+}
+
+
+rd_status_t ri_flash_reserve_cancel (fds_reserve_token_t* const reserve_token) {
+
+    if (false == m_fds_initialized) { return RD_ERROR_INVALID_STATE; }
+
+    /* Wait for process to complete */
+    if (m_fds_processing) { return RD_ERROR_BUSY; }
+
+    rd_status_t err_code = RD_SUCCESS;
+    ret_code_t rc = NRF_SUCCESS;
+
+    rc = fds_reserve_cancel(reserve_token);
+
+    err_code |= fds_to_ruuvi_error (rc);
+
+    if (RD_SUCCESS != err_code)
+    {
+        m_fds_processing = false;
+        return err_code;
+    }
+
+    return err_code;
+}
 
 #endif

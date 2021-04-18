@@ -11,10 +11,6 @@
 #include "ruuvi_driver_sensor.h"
 #include "fds.h"
 
-#ifndef RT_FLASH_RINGBUFFER_MAXSIZE
-#   define RT_FLASH_RINGBUFFER_MAXSIZE (8U)
-#endif
-
 // Ringbuffer state
 typedef struct {
     uint8_t size;     // number of pages
@@ -112,6 +108,20 @@ rd_status_t rt_flash_ringbuffer_clear (
 rd_status_t rt_flash_ringbuffer_delete (
   const uint32_t page_id, 
   const uint32_t record_id
+);
+
+/*
+ *  Return Ringbuffer and flash statistic
+ *  Ignores error if Ringbuffer does not exist.
+ *
+ * @param[in] page_id PageID of the ringbuffer state
+ * @param[in] record_id RecordID of the ringbuffer state
+ * @param[in/out] statistik Memory for storing statistik about flash usage and ringbuffer usage.
+ */
+rd_status_t rt_flash_ringbuffer_statistic (
+  const uint32_t page_id, 
+  const uint32_t record_id,
+  uint8_t* const statistik
 );
 #endif // RUUVI_TASK_FLASH_RINGBUFFER_H
 

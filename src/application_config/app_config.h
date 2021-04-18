@@ -229,9 +229,6 @@
 
 // ***** Flash storage constants *****/
 
-#define APP_FLASH_PAGES (16U) //!< 64 kB flash storage if page size is 4 kB.
-#define APP_FLASH_LOG_DATA_RECORDS_NUM   (APP_FLASH_PAGES - 2U) //!< swap page + settings.
-
 // File constants can be any non-zero uint8.
 // Record constants can be any non-zero uint16
 // Two files and two records in same file can't have same ID.
@@ -374,6 +371,21 @@
 #ifndef APP_SENSOR_LOGGING
 #   define APP_SENSOR_LOGGING (1U)
 #   define CRC16_ENABLED (1U)
+#if DEBUG
+// Flash usage in Debug configuration
+#   define APP_FLASH_PAGES (16U) //!< 64 kB flash storage if page size is 4 kB.
+#   define APP_FLASH_LOG_DATA_RECORDS_NUM   (2U) //!< swap page + settings.
+#   define RT_FLASH_RINGBUFFER_MAXSIZE (12U)
+#else
+// Flash usage in Release configuration
+#   define APP_FLASH_PAGES (32U) //!< 128 kB flash storage if page size is 4 kB.
+#   define APP_FLASH_LOG_DATA_RECORDS_NUM   (4U) //!< swap page + settings.
+#   define RT_FLASH_RINGBUFFER_MAXSIZE (26U)
+#endif
+#else
+// Flash usage without acceleration logging
+#define APP_FLASH_PAGES (16U) //!< 64 kB flash storage if page size is 4 kB.
+#define APP_FLASH_LOG_DATA_RECORDS_NUM   (APP_FLASH_PAGES - 2U) //!< swap page + settings.
 #endif
 
 /*@}*/

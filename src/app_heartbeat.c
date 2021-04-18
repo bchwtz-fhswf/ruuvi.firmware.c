@@ -26,6 +26,7 @@
 #include "ruuvi_task_nfc.h"
 
 #include <stdio.h>
+#include <stdarg.h>
 
 
 static ri_timer_id_t heart_timer; //!< Timer for updating data.
@@ -43,6 +44,17 @@ static inline void LOG (const char * const msg)
 static inline void LOGD (const char * const msg)
 {
     ri_log (RI_LOG_LEVEL_DEBUG, msg);
+}
+
+static inline void LOGDf (const char * const msg, ...)
+{
+    char fmsg[RD_LOG_BUFFER_SIZE];
+    va_list args;
+    *fmsg = 0;
+    va_start(args, msg);
+    vsnprintf(fmsg, RD_LOG_BUFFER_SIZE, msg, args);
+    va_end(args);
+    ri_log (RI_LOG_LEVEL_DEBUG, fmsg);
 }
 
 static rd_status_t encode_to_5 (const rd_sensor_data_t * const data,
@@ -122,17 +134,10 @@ void heartbeat (void * p_event, uint16_t event_size)
     float accelerationx_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_X_FIELD);
     float accelerationy_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_Y_FIELD);
     float accelerationz_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_Z_FIELD);
-
-    char dbgmsg[50];
-    *dbgmsg=0;
-    snprintf(dbgmsg, sizeof(dbgmsg)-1, "Heartbeat: ACC Value X Value %f\r\n", accelerationx_g);
-    LOGD(dbgmsg);
-    *dbgmsg=0;
-    snprintf(dbgmsg, sizeof(dbgmsg)-1, "Heartbeat: ACC Value Y Value %f\r\n", accelerationy_g);
-    LOGD(dbgmsg);
-    *dbgmsg=0;
-    snprintf(dbgmsg, sizeof(dbgmsg)-1, "Heartbeat: ACC Value Z Value %f\r\n\r\n", accelerationz_g);
-    LOGD(dbgmsg);
+        
+    LOGDf("Heartbeat: ACC Value X Value %f\r\n", accelerationx_g);
+    LOGDf("Heartbeat: ACC Value Y Value %f\r\n", accelerationy_g);
+    LOGDf("Heartbeat: ACC Value Z Value %f\r\n\r\n", accelerationz_g);
 */
 
     if (RE_5_INVALID_SEQUENCE == ++m_measurement_count)
@@ -149,11 +154,13 @@ void heartbeat (void * p_event, uint16_t event_size)
         heartbeat_ok = true;
     }
 
-    // Cut endpoint 5 data to fit into GATT msg.
-    msg.data_length = 18;
-    // Gatt Link layer takes care of delivery.
-    msg.repeat_count = 1;
-    err_code = rt_gatt_send_asynchronous (&msg);
+    if(!rt_gatt_is_nus_interactive_session()) {
+      // Cut endpoint 5 data to fit into GATT msg.
+      msg.data_length = 18;
+      // Gatt Link layer takes care of delivery.
+      msg.repeat_count = 1;
+      err_code = rt_gatt_send_asynchronous (&msg);
+    }
 
     if (RD_SUCCESS == err_code)
     {

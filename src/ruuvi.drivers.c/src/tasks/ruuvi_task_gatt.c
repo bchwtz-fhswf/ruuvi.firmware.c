@@ -45,6 +45,9 @@ static bool m_dfu_is_init;
 static bool m_nus_is_connected;
 static char m_name[SCAN_RSP_NAME_MAX_LEN + 1] = { 0 };
 
+/** @brief In an interactive session do not send environmental data via UART */ 
+bool interactive_session;
+
 static ri_comm_cb_t m_on_connected;    //!< Callback for connection established
 static ri_comm_cb_t m_on_disconnected; //!< Callback for connection lost
 static ri_comm_cb_t m_on_received;     //!< Callback for data received
@@ -107,6 +110,7 @@ rd_status_t rt_gatt_on_nus_isr (ri_comm_evt_t evt,
         // Note: This gets called only after the NUS notifications have been registered.
         case RI_COMM_CONNECTED:
             m_nus_is_connected = true;
+            interactive_session = false;
             (NULL != m_on_connected) ? m_on_connected (p_data, data_len) : false;
             break;
 
@@ -371,6 +375,15 @@ bool rt_gatt_is_nus_enabled (void)
     return m_nus_is_init;
 }
 
+/** @brief In an interactive session do not send environmental data via UART */ 
+bool rt_gatt_is_nus_interactive_session(void) {
+  return interactive_session;
+}
+
+void rt_gatt_nus_start_interactive(void) {
+  interactive_session = true;
+}
+
 #else
 rd_status_t rt_gatt_send_asynchronous (ri_comm_message_t
                                        * const p_msg)
@@ -437,6 +450,14 @@ void rt_gatt_set_on_sent_isr (const ri_comm_cb_t cb)
 bool rt_gatt_is_nus_enabled (void)
 {
     return false;
+}
+
+bool rt_gatt_is_nus_interactive_session(void) {
+    return false;
+}
+
+void rt_gatt_nus_start_interactive(void) {
+    // No implementation needed
 }
 
 #endif

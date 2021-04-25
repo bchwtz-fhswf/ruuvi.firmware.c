@@ -130,15 +130,19 @@ void heartbeat (void * p_event, uint16_t event_size)
     app_sensor_get (&data);
     encode_to_5 (&data, &msg);
 
-/*
+    float humidity_rh = rd_sensor_data_parse (&data, RD_SENSOR_HUMI_FIELD);
+    float pressure_pa = rd_sensor_data_parse (&data, RD_SENSOR_PRES_FIELD);
+    float temperature_c = rd_sensor_data_parse (&data, RD_SENSOR_TEMP_FIELD);
     float accelerationx_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_X_FIELD);
     float accelerationy_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_Y_FIELD);
     float accelerationz_g   = rd_sensor_data_parse (&data, RD_SENSOR_ACC_Z_FIELD);
         
+    LOGDf("Heartbeat: Humidity Value %f\r\n", humidity_rh);
+    LOGDf("Heartbeat: Pressure Value %f\r\n", pressure_pa);
+    LOGDf("Heartbeat: Temperature Value %f\r\n", temperature_c);
     LOGDf("Heartbeat: ACC Value X Value %f\r\n", accelerationx_g);
     LOGDf("Heartbeat: ACC Value Y Value %f\r\n", accelerationy_g);
     LOGDf("Heartbeat: ACC Value Z Value %f\r\n\r\n", accelerationz_g);
-*/
 
     if (RE_5_INVALID_SEQUENCE == ++m_measurement_count)
     {

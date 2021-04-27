@@ -13,7 +13,7 @@
  * @defgroup app_config Application configuration
  * @brief Configure application enabled modules and parameters.
  */
-/** @ }*/
+/** @}*/
 /**
  * @addtogroup SDK15
  */
@@ -29,9 +29,13 @@
 /** @brief enable nRF15 SDK implementation of drivers */
 #define RUUVI_NRF5_SDK15_ENABLED (1U)
 
+#ifndef APP_HEARTBEAT_OVERDUE_INTERVAL_MS
+#   define APP_HEARTBEAT_OVERDUE_INTERVAL_MS (5U * 60U * 1000U)
+#endif
+
 /** @brief If watchdog is not fed at this interval or faster, reboot */
 #ifndef APP_WDT_INTERVAL_MS
-#   define APP_WDT_INTERVAL_MS (2U*60U*1000U)
+#   define APP_WDT_INTERVAL_MS (APP_HEARTBEAT_OVERDUE_INTERVAL_MS + (1U*60U*1000U))
 #endif
 
 /** @brief Enable sensor tasks */
@@ -57,11 +61,6 @@
 /** @brief Enable NTC driver */
 #ifndef RI_ADC_NTC_ENABLED
 #   define RI_ADC_NTC_ENABLED APP_SENSOR_NTC_ENABLED
-#endif
-
-#define APP_SENSOR_TMP117_ENABLED 0
-#ifndef APP_SENSOR_TMP117_ENABLED
-#   define APP_SENSOR_TMP117_ENABLED RB_ENVIRONMENTAL_TMP117_PRESENT
 #endif
 
 /** @brief Enable BME280 temperature, humidity, pressure sensor */
@@ -99,7 +98,6 @@
 #ifndef APP_SENSOR_LIS2DH12_ENABLED
 #   define APP_SENSOR_LIS2DH12_ENABLED RB_ACCELEROMETER_LIS2DH12_PRESENT
 #endif
-
 #ifndef APP_SENSOR_LIS2DH12_DSP_FUNC
 #   define APP_SENSOR_LIS2DH12_DSP_FUNC RD_SENSOR_DSP_LAST
 #endif
@@ -151,6 +149,75 @@
 /** @brief Enable SHTCX driver */
 #ifndef RI_SHTCX_ENABLED
 #   define RI_SHTCX_ENABLED APP_SENSOR_SHTCX_ENABLED
+#endif
+
+/** @brief Enable TMP117 temperature sensor */
+#ifndef APP_SENSOR_TMP117_ENABLED
+#   define APP_SENSOR_TMP117_ENABLED RB_ENVIRONMENTAL_TMP117_PRESENT
+#endif
+
+#ifndef APP_SENSOR_TMP117_DSP_FUNC
+#   define APP_SENSOR_TMP117_DSP_FUNC RD_SENSOR_DSP_LAST //!< DSP function to use, only LAST is supported.
+#endif
+#ifndef APP_SENSOR_TMP117_DSP_PARAM
+#   define APP_SENSOR_TMP117_DSP_PARAM 1 //!< Only 1 is valid with LAST
+#endif
+#ifndef APP_SENSOR_TMP117_MODE
+#   define APP_SENSOR_TMP117_MODE RD_SENSOR_CFG_CONTINUOUS //!< SHTC runs in single-shot mode internally, update data automatically on fetch.
+#endif
+#ifndef APP_SENSOR_TMP117_RESOLUTION
+#   define APP_SENSOR_TMP117_RESOLUTION RD_SENSOR_CFG_DEFAULT //!< Only default resolution supported.
+#endif
+#ifndef APP_SENSOR_TMP117_SAMPLERATE
+#   define APP_SENSOR_TMP117_SAMPLERATE RD_SENSOR_CFG_DEFAULT //!< SHTC sample rate is defined by reads.
+#endif
+#ifndef APP_SENSOR_TMP117_SCALE
+#   define APP_SENSOR_TMP117_SCALE RD_SENSOR_CFG_DEFAULT //!< Only default is valid.
+#endif
+
+/** @brief Enable SHTCX driver */
+#ifndef RI_TMP117_ENABLED
+#   define RI_TMP117_ENABLED APP_SENSOR_SHTCX_ENABLED
+#endif
+
+/** @brief Enable DPS310 sensor */
+#ifndef APP_SENSOR_DPS310_ENABLED
+#   define APP_SENSOR_DPS310_ENABLED RB_ENVIRONMENTAL_DPS310_PRESENT
+#   ifndef RI_DPS310_SPI_ENABLED
+#       define RI_DPS310_SPI_ENABLED (1U)
+#   endif
+#endif
+
+#ifndef APP_SENSOR_DPS310_DSP_FUNC
+#   define APP_SENSOR_DPS310_DSP_FUNC RD_SENSOR_DSP_LAST //!< DSP function to use, LAST and OVERSAMPLING supported.
+#endif
+#ifndef APP_SENSOR_DPS310_DSP_PARAM
+#   define APP_SENSOR_DPS310_DSP_PARAM 1 //!< Only 1 is valid with LAST
+#endif
+#ifndef APP_SENSOR_DPS310_MODE
+#   define APP_SENSOR_DPS310_MODE RD_SENSOR_CFG_CONTINUOUS //!< Run in background
+#endif
+#ifndef APP_SENSOR_DPS310_RESOLUTION
+#   define APP_SENSOR_DPS310_RESOLUTION RD_SENSOR_CFG_DEFAULT //!< Only default resolution supported.
+#endif
+#ifndef APP_SENSOR_DPS310_SAMPLERATE
+#   define APP_SENSOR_DPS310_SAMPLERATE RD_SENSOR_CFG_DEFAULT //!< 1 Hz by default
+#endif
+#ifndef APP_SENSOR_DPS310_SCALE
+#   define APP_SENSOR_DPS310_SCALE RD_SENSOR_CFG_DEFAULT //!< Only default is valid.
+#endif
+
+#ifndef APP_SENSOR_ENVIRONMENTAL_MCU_ENABLED
+#   define APP_SENSOR_ENVIRONMENTAL_MCU_ENABLED RB_ENVIRONMENTAL_MCU_PRESENT
+#endif
+
+#ifndef RUUVI_NRF5_SDK15_NRF52832_ENVIRONMENTAL_ENABLED
+#   define RUUVI_NRF5_SDK15_NRF52832_ENVIRONMENTAL_ENABLED APP_SENSOR_ENVIRONMENTAL_MCU_ENABLED
+#endif
+
+/** @brief Enable DPSX driver */
+#ifndef RI_DPS310_ENABLED
+#   define RI_DPS310_ENABLED APP_SENSOR_DPS310_ENABLED
 #endif
 
 /** @brief Enable atomic operations */
@@ -233,14 +300,20 @@
 // Record constants can be any non-zero uint16
 // Two files and two records in same file can't have same ID.
 #define APP_FLASH_SENSOR_FILE (0xCEU)
+#define APP_FLASH_SENSOR_BME280_RECORD   (0x28U)
+#define APP_FLASH_SENSOR_DPS310_RECORD   (0x31U)
+#define APP_FLASH_SENSOR_ENVI_RECORD     (0x52U)
+#define APP_FLASH_SENSOR_LIS2DH12_RECORD (0x2DU)
 #define APP_FLASH_SENSOR_NTC_RECORD      (0xC1U)
 #define APP_FLASH_SENSOR_PHOTO_RECORD    (0xC2U)
 #define APP_FLASH_SENSOR_SHTCX_RECORD    (0xC3U)
-#define APP_FLASH_SENSOR_LIS2DH12_RECORD (0x2DU)
-#define APP_FLASH_SENSOR_BME280_RECORD   (0x28U)
+#define APP_FLASH_SENSOR_TMP117_RECORD   (0x17U)
+
+
 
 #define APP_FLASH_LOG_FILE (0xF0U)
 #define APP_FLASH_LOG_CONFIG_RECORD      (0x01U)
+#define APP_FLASH_LOG_BOOT_COUNTER_RECORD (0xEFU)
 #define APP_FLASH_LOG_DATA_RECORD_PREFIX (0xF0U) //!< Prefix, append with U8 number
 
 // File constant for acceleration logging ringbuffer
@@ -373,14 +446,14 @@
 #   define CRC16_ENABLED (1U)
 #if DEBUG
 // Flash usage in Debug configuration
-#   define APP_FLASH_PAGES (16U) //!< 64 kB flash storage if page size is 4 kB.
 #   define APP_FLASH_LOG_DATA_RECORDS_NUM   (2U) //!< swap page + settings.
 #   define RT_FLASH_RINGBUFFER_MAXSIZE (12U)
+#   define APP_FLASH_PAGES (APP_FLASH_LOG_DATA_RECORDS_NUM + RT_FLASH_RINGBUFFER_MAXSIZE) //!< 64 kB flash storage if page size is 4 kB.
 #else
 // Flash usage in Release configuration
-#   define APP_FLASH_PAGES (32U) //!< 128 kB flash storage if page size is 4 kB.
 #   define APP_FLASH_LOG_DATA_RECORDS_NUM   (4U) //!< swap page + settings.
 #   define RT_FLASH_RINGBUFFER_MAXSIZE (26U)
+#   define APP_FLASH_PAGES (APP_FLASH_LOG_DATA_RECORDS_NUM + RT_FLASH_RINGBUFFER_MAXSIZE) //!< 64 kB flash storage if page size is 4 kB.
 #endif
 #else
 // Flash usage without acceleration logging

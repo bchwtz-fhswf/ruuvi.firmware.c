@@ -10,7 +10,7 @@
 #ifndef RUUVI_BOARDS_H
 #define RUUVI_BOARDS_H
 
-#define RUUVI_BOARDS_SEMVER "3.4.0"
+#define RUUVI_BOARDS_SEMVER "3.7.0"
 /** @brief Port+pin definition for GPIO pin. */
 #define RB_PORT_PIN_MAP(PORT, PIN) (((PORT) << 8U) + (PIN))
 /** @brief Pin not in use on this board. */
@@ -32,6 +32,8 @@
 #   include "ruuvi_board_pca10040.h"
 #elif defined BOARD_PCA10056E
 #   include "ruuvi_board_pca10056e.h"
+#elif defined BOARD_PCA10059
+#   include "ruuvi_board_pca10059.h"
 #elif defined BOARD_RUUVIGW_NRF
 #   include "ruuvi_board_gwnrf.h"
 #elif defined BOARD_RUUVIGW_ESP

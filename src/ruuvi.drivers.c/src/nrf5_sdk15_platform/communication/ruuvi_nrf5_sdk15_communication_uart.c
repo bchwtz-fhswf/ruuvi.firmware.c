@@ -58,15 +58,15 @@ static void uart_handler (struct nrf_serial_s const * p_serial, nrf_serial_event
                 break;
 
             case NRF_SERIAL_EVENT_DRV_ERR:   ///< Error reported by UART peripheral.
-                LOG ("UART Error\r\n");
+                LOGD ("UART Error\r\n");
                 break;
 
             case NRF_SERIAL_EVENT_FIFO_ERR:
-                LOG ("FIFO Error\r\n");
+                LOGD ("FIFO Error\r\n");
                 break;
 
             default:
-                LOG ("UART unknown event\r\n");
+                LOGD ("UART unknown event\r\n");
                 break;
         }
     }
@@ -122,7 +122,15 @@ static rd_status_t ri_uart_send_async (ri_comm_message_t * const msg)
     }
     else if (0 != m_txcnt)
     {
-        err_code |= RD_ERROR_BUSY;
+        if (NRF_MTX_LOCKED == serial_uart.p_ctx->write_lock)
+        {
+            err_code |= RD_ERROR_BUSY;
+        }
+        else
+        {
+            m_txcnt = 0;
+            m_channel->on_evt (RI_COMM_SENT, NULL, 0);
+        }
     }
     else
     {

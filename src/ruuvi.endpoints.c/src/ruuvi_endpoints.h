@@ -58,6 +58,8 @@ typedef float    re_float;    //!< Ruuvi endpoint float type
 #define RE_STANDARD_LOG_VALUE_WRITE            (0x10U)
 #define RE_STANDARD_LOG_VALUE_READ             (RE_STANDARD_LOG_VALUE_WRITE | \
                                                     RE_STANDARD_OP_READ_BIT)
+
+#define RE_STANDARD_OP_TIMEOUT                 (0xF0)  //!< Internal timeout, aborting operation.
 #define RE_STANDARD_OP_ERROR                   (0xFFU) //!< internal error has occured
 
 #define RE_LOG_READ_CURRENT_MSB_IDX            (3U)  //!< MSB of current time.

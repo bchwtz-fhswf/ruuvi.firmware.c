@@ -70,7 +70,7 @@
  * @warning Behaviour is undefined if led list and state list are o different size
  *          than num_leds.
  **/
-rd_status_t rt_led_init (const uint16_t * const leds,
+rd_status_t rt_led_init (const ri_gpio_id_t * const leds,
                          const ri_gpio_state_t * const active_states,
                          const size_t num_leds);
 
@@ -95,7 +95,7 @@ rd_status_t rt_led_uninit (void);
  * @retval RD_ERROR_INVALID_PARAM  if GPIO pin is not led.
  * @retval RD_ERROR_INVALID_STATE if GPIO task is not initialized.
  **/
-rd_status_t rt_led_write (const uint16_t led, const bool state);
+rd_status_t rt_led_write (const ri_gpio_id_t led, const bool state);
 
 /**
  * @brief Function to indicate activity in program.
@@ -119,7 +119,7 @@ void rt_led_activity_indicate (const bool state);
  * @retval RD_SUCCESS if valid led was set.
  * @retval RD_ERROR_INVALID_PARAM if there is no pin in LED.
  */
-rd_status_t rt_led_activity_led_set (const uint16_t led);
+rd_status_t rt_led_activity_led_set (const ri_gpio_id_t led);
 
 /**
  * @brief Get LED which is used to indicate activity.
@@ -144,7 +144,28 @@ uint16_t rt_led_activity_led_get (void);
  * @retval RD_ERROR_RESOURCES If timer cannot be allocated.
  * @retval RD_ERROR_INVALID_PARAM If there is no pin in LED.
  */
-rd_status_t rt_led_blink_start (const uint16_t led, const uint16_t interval_ms);
+rd_status_t rt_led_blink_start (const ri_gpio_id_t led, const uint16_t interval_ms);
+
+/**
+ * @brief Function to blink led once.
+ *
+ * The function call is ignored if previous timer is already running.
+ *
+ * This function requires ri_timer to be initialized.
+ * Only one led can blink at once. The function turns the led on in the beginning.
+ * The interrupt calls @ref rt_led_blink_stop to turn the led off after set time interval.
+ *
+ * @param[in] led LED to blink.
+ * @param[in] interval_ms Interval of blinking in milliseconds, min and max values come
+ *                        from timer interface.
+ *
+ * @retval RD_SUCCESS Blinking was started.
+ * @retval RD_ERROR_INVALID_STATE If led is already blinking.
+ * @retval RD_ERROR_RESOURCES If timer cannot be allocated.
+ * @retval RD_ERROR_INVALID_PARAM If there is no pin in LED.
+ */
+
+rd_status_t rt_led_blink_once (const ri_gpio_id_t led, const uint16_t interval_ms);
 
 /**
  * @brief Stop blinking led and leave the pin as high-drive output in inactive state.
@@ -155,7 +176,7 @@ rd_status_t rt_led_blink_start (const uint16_t led, const uint16_t interval_ms);
  * @retval RD_SUCCESS Blinking was stopped.
  * @retval RD_ERROR_INVALID_STATE If given LED is not blinking.
  */
-rd_status_t rt_led_blink_stop (const uint16_t led);
+rd_status_t rt_led_blink_stop (const ri_gpio_id_t led);
 
 /**
  * @brief Check if LED task has been initialized.
@@ -168,6 +189,7 @@ bool rt_led_is_init (void);
 #ifdef CEEDLING
 int8_t is_led (const ri_gpio_id_t led);
 void rt_led_blink_isr (void * const p_context);
+void rt_led_blink_once_isr (void * const p_context);
 #endif
 
 /*@}*/

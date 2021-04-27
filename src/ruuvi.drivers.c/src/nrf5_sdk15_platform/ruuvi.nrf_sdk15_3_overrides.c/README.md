@@ -5,6 +5,9 @@ Override specific files in nRF5 SDK15.3
 MIT, check LICENSE
 
 # Changes
+## FDS
+ - Expose boundary setting to application.
+
 ## nrf_bootloader_wdt.c
  - Cap WDT feed timer into 2^20 timer ticks. 
  - Feed WDT after timer has been started.

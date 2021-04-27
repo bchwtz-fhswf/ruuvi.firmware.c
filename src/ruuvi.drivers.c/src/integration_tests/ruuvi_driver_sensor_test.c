@@ -17,7 +17,11 @@
 
 #if RUUVI_RUN_TESTS
 
-#define RETURN_ON_ERROR(status) if(status) {return status;}
+#define RETURN_ON_ERROR(status) if(status)          \
+{                                                   \
+RD_ERROR_CHECK(RD_ERROR_SELFTEST, ~RD_ERROR_FATAL); \
+return status;                                      \
+}
 #define BITFIELD_MASK       (1U)
 #define MAX_LOG_BUFFER_SIZE (128U)
 #define MAX_SENSOR_NAME_LEN (20U)
@@ -26,6 +30,16 @@
 #define MAX_RETRIES    (50U) //!< Number of times to run test on statistics-dependent tests, such as sampling noise.
 #define MAX_FIFO_DEPTH (32U) //!< How many samples to fetch from FIFO at max
 #define MAX_SENSOR_PROVIDED_FIELDS (4U) //!< Largest number of different fields tested sensor can have.
+
+#define LOG_PRINT_DELAY_MS (10U)
+
+
+static inline void LOG (const char * const msg)
+{
+    ri_log (RI_LOG_LEVEL_INFO, msg);
+    ri_delay_ms (LOG_PRINT_DELAY_MS); // Avoid overflowing log buffer.
+}
+
 static volatile bool fifo_int  = false;
 static volatile bool level_int = false;
 
@@ -194,7 +208,7 @@ static bool test_sensor_init_on_null (rd_sensor_t * DUT,
 static bool test_sensor_init (const rd_sensor_init_fp init,
                               const rd_bus_t bus, const uint8_t handle)
 {
-    rd_sensor_t DUT;
+    rd_sensor_t DUT = {0};
     bool failed = false;
     // - Sensor must return RD_SUCCESS on first init.
     failed |= initialize_sensor_once (&DUT, init, bus, handle);
@@ -297,7 +311,7 @@ static bool test_sensor_setup_set_get (const rd_sensor_t * DUT,
         // Return error on any other error code
         if (RD_SUCCESS != err_code)
         {
-            return failed;
+            return true;
         }
     }
 
@@ -391,8 +405,7 @@ static bool sensor_sleeps_after_init (const rd_sensor_t * const DUT)
     return false;
 }
 
-static bool sensor_returns_invalid_before_sampling (const rd_sensor_t * const
-        DUT)
+static bool sensor_returns_invalid_before_sampling (const rd_sensor_t * const DUT)
 {
     rd_status_t err_code = RD_SUCCESS;
     float values_new[MAX_SENSOR_PROVIDED_FIELDS];
@@ -660,7 +673,7 @@ static void on_level (const ri_gpio_evt_t evt)
  *  @param[in]  init function to initialize sensor.
  *  @param[out] interrupt_table Table of function pointers to configure with interrupts.
  *  @param[in]  fifo_pin Pin to register FIFO interrupts.
- *  @param[in]  levelo_pin Pin to register level interrupts.
+ *  @param[in]  level_pin Pin to register level interrupts.
  *  @return RD_SUCCESS on successful initialization.
  *  @return RD_ERROR_SELFTEST if initialization fails.
  */
@@ -672,6 +685,12 @@ static bool test_sensor_interrupts_setup (rd_sensor_t * DUT,
         const ri_gpio_id_t level_pin)
 {
     rd_status_t err_code = RD_SUCCESS;
+
+    if (ri_gpio_interrupt_is_init())
+    {
+        err_code |= ri_gpio_interrupt_uninit();
+    }
+
     err_code |= ri_gpio_interrupt_init (interrupt_table,
                                         RI_GPIO_INTERRUPT_TEST_TABLE_SIZE);
     err_code |= ri_gpio_interrupt_enable (fifo_pin, RI_GPIO_SLOPE_LOTOHI,
@@ -701,12 +720,40 @@ static void test_sensor_interrupts_teardown (rd_sensor_t * const DUT,
     ri_gpio_interrupt_uninit();
 }
 
+/** @brief  - LEVEL return status of interrupt occurance */
+static rd_status_t test_sensor_level_enable (const rd_sensor_t * DUT)
+{
+    float threshold_g = APP_MOTION_THRESHOLD;
+    DUT->level_interrupt_set (true, &threshold_g);
+    rd_sensor_configuration_t config = {0};
+    config.samplerate = 10;
+    config.mode = RD_SENSOR_CFG_CONTINUOUS;
+    DUT->configuration_set (DUT, &config);
+    level_int = false;
+    // Wait for LEVEL interrupt
+    uint32_t timeout = 0;
+    uint32_t max_time = 5U * 1000U * 1000U;
+
+    while ( (!level_int) && (timeout < max_time))
+    {
+        timeout += 10;
+        ri_delay_us (10);
+    }
+
+    if (timeout >= max_time)
+    {
+        return RD_ERROR_TIMEOUT;
+    }
+
+    return (level_int) ? false : true;
+}
+
 /** @brief  - FIFO read must return samples with different values (noise) */
 static rd_status_t test_sensor_fifo_enable (const rd_sensor_t * DUT)
 {
     DUT->fifo_enable (true);
     rd_sensor_configuration_t config = {0};
-    config.samplerate = RD_SENSOR_CFG_MAX;
+    config.samplerate = 10;
     config.mode = RD_SENSOR_CFG_CONTINUOUS;
     DUT->configuration_set (DUT, &config);
     fifo_int = false;
@@ -718,6 +765,7 @@ static rd_status_t test_sensor_fifo_enable (const rd_sensor_t * DUT)
     size_t num_samples = MAX_FIFO_DEPTH;
     rd_sensor_data_t data[MAX_FIFO_DEPTH] = { 0 };
     float values[num_samples][MAX_SENSOR_PROVIDED_FIELDS];
+    uint32_t max_time = 4U * 1000U * 1000U;
 
     for (size_t ii = 0; ii < num_samples; ii++)
     {
@@ -729,13 +777,13 @@ static rd_status_t test_sensor_fifo_enable (const rd_sensor_t * DUT)
     // Wait for FIFO interrupt
     uint32_t timeout = 0;
 
-    while ( (!fifo_int) && (timeout < 1000000U))
+    while ( (!fifo_int) && (timeout < max_time))
     {
         timeout += 10;
         ri_delay_us (10);
     }
 
-    if (timeout >= 1000000U)
+    if (timeout >= max_time)
     {
         return RD_ERROR_TIMEOUT;
     }
@@ -787,7 +835,8 @@ static bool test_sensor_interrupts (const rd_sensor_init_fp init,
                                     const rd_bus_t bus, const uint8_t handle,
                                     const bool interactive,
                                     const ri_gpio_id_t fifo_pin,
-                                    const ri_gpio_id_t level_pin)
+                                    const ri_gpio_id_t level_pin,
+                                    const rd_test_print_fp printfp)
 {
     ri_gpio_interrupt_fp_t
     interrupt_table[RI_GPIO_INTERRUPT_TEST_TABLE_SIZE];
@@ -798,7 +847,35 @@ static bool test_sensor_interrupts (const rd_sensor_init_fp init,
 
     if (RD_SUCCESS == status)
     {
+        printfp ("{\r\n\"level\":");
+        status |= test_sensor_level_enable (&DUT);
+
+        if (status)
+        {
+            printfp ("\"fail\",\r\n");
+        }
+        else
+        {
+            printfp ("\"pass\",\r\n");
+        }
+
+        test_sensor_interrupts_teardown (&DUT, init, bus, handle, fifo_pin,
+                                         level_pin);
+        status = test_sensor_interrupts_setup (&DUT, init, bus, handle, interrupt_table, fifo_pin,
+                                               level_pin);
+        printfp ("\"fifo\":");
         status |= test_sensor_fifo_enable (&DUT);
+
+        if (status)
+        {
+            printfp ("\"fail\"\r\n");
+        }
+        else
+        {
+            printfp ("\"pass\"\r\n");
+        }
+
+        printfp ("},");
     }
 
     test_sensor_interrupts_teardown (&DUT, init, bus, handle, fifo_pin,
@@ -842,7 +919,7 @@ static bool test_sensor_data_print (const rd_sensor_init_fp init,
     if (failed)
     {
         // Return to avoid calling NULL function pointers
-        printfp ("\"data\":\"fail\"\r\n");
+        printfp ("\"data\":\"fail\",\r\n");
         return failed;
     }
 
@@ -860,12 +937,21 @@ bool rd_sensor_run_integration_test (const rd_test_print_fp printfp,
     printfp (p_sensor_ctx->sensor.name);
     printfp ("\": {\r\n");
     printfp ("\"init\":");
-    err_code = p_sensor_ctx->init (&p_sensor_ctx->sensor, p_sensor_ctx->bus,
-                                   p_sensor_ctx->handle);
+
+    if (RD_HANDLE_UNUSED == p_sensor_ctx->handle)
+    {
+        err_code |= RD_ERROR_NOT_FOUND;
+    }
+    else
+    {
+        err_code |= p_sensor_ctx->init (&p_sensor_ctx->sensor,
+                                        p_sensor_ctx->bus,
+                                        p_sensor_ctx->handle);
+    }
 
     if (RD_ERROR_NOT_FOUND == err_code)
     {
-        printfp ("\"skip\",\r\n");
+        printfp ("\"skip\"\r\n");
         p_sensor_ctx->sensor.uninit (&p_sensor_ctx->sensor, p_sensor_ctx->bus,
                                      p_sensor_ctx->handle);
     }
@@ -924,20 +1010,13 @@ bool rd_sensor_run_integration_test (const rd_test_print_fp printfp,
         {
             status = test_sensor_interrupts (p_sensor_ctx->init, p_sensor_ctx->bus,
                                              p_sensor_ctx->handle, false,
-                                             p_sensor_ctx->fifo_pin, p_sensor_ctx->level_pin);
-
-            if (status)
-            {
-                printfp ("\"fail\"\r\n");
-            }
-            else
-            {
-                printfp ("\"pass\"\r\n");
-            }
+                                             p_sensor_ctx->fifo_pin,
+                                             p_sensor_ctx->level_pin,
+                                             printfp);
         }
         else
         {
-            printfp ("\"skipped\"\r\n");
+            printfp ("\"skipped\",\r\n");
         }
 
         status = test_sensor_data_print (p_sensor_ctx->init, p_sensor_ctx->bus,
@@ -952,6 +1031,8 @@ void rd_sensor_data_print (const rd_sensor_data_t * const p_data,
                            const rd_test_print_fp printfp)
 {
     uint8_t data_counter = 0;
+    uint8_t data_available = 0;
+    uint32_t data_check = p_data->fields.bitfield;
     char sensors_name[MAX_SENSORS][MAX_SENSOR_NAME_LEN] =
     {
         "acceleration_x_g",
@@ -977,6 +1058,15 @@ void rd_sensor_data_print (const rd_sensor_data_t * const p_data,
         "voltage_v",
         "voltage_ratio",
     };
+
+    /* Count enabled sensors */
+    for (int i = 0; i < MAX_SENSORS; i++)
+    {
+        if (data_check & BITFIELD_MASK)
+        { data_available++; }
+
+        data_check = data_check >> 1;
+    }
 
     if (NULL != p_data)
     {
@@ -1007,14 +1097,14 @@ void rd_sensor_data_print (const rd_sensor_data_t * const p_data,
                     if (0 == isnan (* ( (float *) (&p_data->data[data_counter]))))
                     {
                         snprintf (msg, sizeof (msg),
-                                  "\"%s\": \"%.2f\",\r\n",
+                                  "\"%s\": \"%.2f\"",
                                   (char *) &sensors_name[i][0],
                                   * ( (float *) (&p_data->data[data_counter])));
                     }
                     else
                     {
                         snprintf (msg, sizeof (msg),
-                                  "\"%s\": \"NAN\",\r\n",
+                                  "\"%s\": \"NAN\"",
                                   (char *) &sensors_name[i][0]);
                     }
 
@@ -1023,8 +1113,19 @@ void rd_sensor_data_print (const rd_sensor_data_t * const p_data,
                 else
                 {
                     snprintf (msg, sizeof (msg),
-                              "\"%s\": \"NAN\",\r\n",
+                              "\"%s\": \"NAN\"",
                               (char *) &sensors_name[i][0]);
+                }
+
+                if (data_counter == data_available)
+                {
+                    char * str = "\r\n";
+                    strncat (msg, str, sizeof (str));
+                }
+                else
+                {
+                    char * str = ",\r\n";
+                    strncat (msg, str, sizeof (str));
                 }
 
                 printfp (msg);
@@ -1041,6 +1142,7 @@ rd_status_t test_sensor_status (size_t * total, size_t * passed)
 {
     return RD_SUCCESS;
 }
+
 void test_sensor_run (void)
 {}
 #endif

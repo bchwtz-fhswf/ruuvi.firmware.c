@@ -31,8 +31,11 @@
 #include "ruuvi_interface_communication.h"
 #include "ruuvi_interface_communication_radio.h"
 #include "ruuvi_task_sensor.h"
+#include "ruuvi_interface_environmental_mcu.h"
+#include "ruuvi_interface_tmp117.h"
 
 #define APP_SENSOR_SELFTEST_RETRIES (5U) //!< Number of times to retry init on self-test fail.
+#define APP_SENSOR_HANDLE_UNUSED    RD_HANDLE_UNUSED
 
 enum
 {
@@ -41,6 +44,9 @@ enum
 #endif
 #if APP_SENSOR_SHTCX_ENABLED
     SHTCX_INDEX,
+#endif
+#if APP_SENSOR_DPS310_ENABLED
+    DPS310_INDEX,
 #endif
 #if APP_SENSOR_BME280_ENABLED
     BME280_INDEX,
@@ -51,7 +57,7 @@ enum
 #if APP_SENSOR_PHOTO_ENABLED
     PHOTO_INDEX,
 #endif
-#if APP_SENSOR_MCU_ENABLED
+#if APP_SENSOR_ENVIRONMENTAL_MCU_ENABLED
     ENV_MCU_INDEX,
 #endif
 #if APP_SENSOR_LIS2DH12_ENABLED
@@ -67,6 +73,204 @@ enum
 void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
 #endif
 
+#if APP_SENSOR_BME280_ENABLED
+#if RB_ENVIRONMENTAL_BME280_SPI_USE
+#define BME_BUS RD_BUS_SPI
+#define BME_HANDLE RB_SPI_SS_ENVIRONMENTAL_PIN
+#elif RB_ENVIRONMENTAL_BME280_I2C_USE
+#define BME_BUS RD_BUS_I2C
+#define BME_HANDLE RB_BME280_I2C_ADDRESS
+#else
+#error "No bus defined for BME280"
+#endif
+
+#define APP_SENSOR_BME280_DEFAULT_CFG                     \
+  {                                                       \
+    .sensor = {0},                                        \
+    .init = &ri_bme280_init,                              \
+    .configuration =                                      \
+        {                                                 \
+            .dsp_function = APP_SENSOR_BME280_DSP_FUNC,   \
+            .dsp_parameter = APP_SENSOR_BME280_DSP_PARAM, \
+            .mode = APP_SENSOR_BME280_MODE,               \
+            .resolution = APP_SENSOR_BME280_RESOLUTION,   \
+            .samplerate = APP_SENSOR_BME280_SAMPLERATE,   \
+            .scale = APP_SENSOR_BME280_SCALE},            \
+    .nvm_file = APP_FLASH_SENSOR_FILE,                    \
+    .nvm_record = APP_FLASH_SENSOR_BME280_RECORD,         \
+    .bus = BME_BUS,                                       \
+    .handle = BME_HANDLE,                                 \
+    .pwr_pin = RB_BME280_SENSOR_POWER_PIN,                \
+    .pwr_on = RI_GPIO_HIGH,                               \
+    .fifo_pin = RI_GPIO_ID_UNUSED,                        \
+    .level_pin = RI_GPIO_ID_UNUSED                        \
+  }
+#endif
+
+#if APP_SENSOR_DPS310_ENABLED
+#define APP_SENSOR_DPS310_DEFAULT_CFG                     \
+  {                                                       \
+    .sensor = {0},                                        \
+    .init = &ri_dps310_init,                              \
+    .configuration =                                      \
+        {                                                 \
+            .dsp_function = APP_SENSOR_DPS310_DSP_FUNC,   \
+            .dsp_parameter = APP_SENSOR_DPS310_DSP_PARAM, \
+            .mode = APP_SENSOR_DPS310_MODE,               \
+            .resolution = APP_SENSOR_DPS310_RESOLUTION,   \
+            .samplerate = APP_SENSOR_DPS310_SAMPLERATE,   \
+            .scale = APP_SENSOR_DPS310_SCALE},            \
+    .nvm_file = APP_FLASH_SENSOR_FILE,                    \
+    .nvm_record = APP_FLASH_SENSOR_DPS310_RECORD,         \
+    .bus = RD_BUS_SPI,                                    \
+    .handle = RB_SPI_SS_ENVIRONMENTAL_PIN,                \
+    .pwr_pin = RB_DPS310_SENSOR_POWER_PIN,                \
+    .pwr_on = RI_GPIO_HIGH,                               \
+    .fifo_pin = RI_GPIO_ID_UNUSED,                        \
+    .level_pin = RI_GPIO_ID_UNUSED                        \
+  }
+#endif
+
+#if APP_SENSOR_LIS2DH12_ENABLED
+#define APP_SENSOR_LIS2DH12_DEFAULT_CFG                     \
+  {                                                         \
+    .sensor = {0},                                          \
+    .init = &ri_lis2dh12_init,                              \
+    .configuration =                                        \
+        {                                                   \
+            .dsp_function = APP_SENSOR_LIS2DH12_DSP_FUNC,   \
+            .dsp_parameter = APP_SENSOR_LIS2DH12_DSP_PARAM, \
+            .mode = APP_SENSOR_LIS2DH12_MODE,               \
+            .resolution = APP_SENSOR_LIS2DH12_RESOLUTION,   \
+            .samplerate = APP_SENSOR_LIS2DH12_SAMPLERATE,   \
+            .scale = APP_SENSOR_LIS2DH12_SCALE},            \
+    .nvm_file = APP_FLASH_SENSOR_FILE,                      \
+    .nvm_record = APP_FLASH_SENSOR_LIS2DH12_RECORD,         \
+    .bus = RD_BUS_SPI,                                      \
+    .handle = RB_SPI_SS_ACCELEROMETER_PIN,                  \
+    .pwr_pin = RB_LIS2DH12_SENSOR_POWER_PIN,                \
+    .pwr_on = RI_GPIO_HIGH,                                 \
+    .fifo_pin = RB_INT_FIFO_PIN,                            \
+    .level_pin = RB_INT_LEVEL_PIN                           \
+  }
+#endif
+
+#if APP_SENSOR_LIS2DW12_ENABLED
+#define APP_SENSOR_LIS2DW2_DEFAULT_CFG                      \
+  {                                                         \
+    .sensor = {0},                                          \
+    .init = ri_lis2dw12_init,                               \
+    .configuration = {0},                                   \
+    .nvm_file = APPLICATION_FLASH_SENSOR_FILE,              \
+    .nvm_record = APPLICATION_FLASH_SENSOR_LIS2DW12_RECORD, \
+    .bus = RD_BUS_SPI,                                      \
+    .handle = RB_SPI_SS_ACCELEROMETER_PIN,                  \
+    .pwr_pin = RI_GPIO_ID_UNUSED,                           \
+    .pwr_on = RI_GPIO_HIGH,                                 \
+    .fifo_pin = RB_INT_ACC1_PIN,                            \
+    .level_pin = RB_INT_ACC2_PIN                            \
+  }
+#endif
+
+#if APP_SENSOR_SHTCX_ENABLED
+#define APP_SENSOR_SHTCX_DEFAULT_CFG                     \
+  {                                                      \
+    .sensor = {0},                                       \
+    .init = &ri_shtcx_init,                              \
+    .configuration =                                     \
+        {                                                \
+            .dsp_function = APP_SENSOR_SHTCX_DSP_FUNC,   \
+            .dsp_parameter = APP_SENSOR_SHTCX_DSP_PARAM, \
+            .mode = APP_SENSOR_SHTCX_MODE,               \
+            .resolution = APP_SENSOR_SHTCX_RESOLUTION,   \
+            .samplerate = APP_SENSOR_SHTCX_SAMPLERATE,   \
+            .scale = APP_SENSOR_SHTCX_SCALE},            \
+    .nvm_file = APP_FLASH_SENSOR_FILE,                   \
+    .nvm_record = APP_FLASH_SENSOR_SHTCX_RECORD,         \
+    .bus = RD_BUS_I2C,                                   \
+    .handle = RB_SHTCX_I2C_ADDRESS,                      \
+    .pwr_pin = RB_SHTCX_SENSOR_POWER_PIN,                \
+    .pwr_on = RI_GPIO_HIGH,                              \
+    .fifo_pin = RI_GPIO_ID_UNUSED,                       \
+    .level_pin = RI_GPIO_ID_UNUSED                       \
+  }
+#endif
+
+#if APP_SENSOR_TMP117_ENABLED
+#define APP_SENSOR_TMP117_DEFAULT_CFG                     \
+  {                                                      \
+    .sensor = {0},                                       \
+    .init = &ri_tmp117_init,                              \
+    .configuration =                                     \
+        {                                                \
+            .dsp_function = APP_SENSOR_TMP117_DSP_FUNC,   \
+            .dsp_parameter = APP_SENSOR_TMP117_DSP_PARAM, \
+            .mode = APP_SENSOR_TMP117_MODE,               \
+            .resolution = APP_SENSOR_TMP117_RESOLUTION,   \
+            .samplerate = APP_SENSOR_TMP117_SAMPLERATE,   \
+            .scale = APP_SENSOR_TMP117_SCALE},            \
+    .nvm_file = APP_FLASH_SENSOR_FILE,                   \
+    .nvm_record = APP_FLASH_SENSOR_TMP117_RECORD,         \
+    .bus = RD_BUS_I2C,                                   \
+    .handle = RB_TMP117_I2C_ADDRESS,                      \
+    .pwr_pin = RB_TMP117_SENSOR_POWER_PIN,                \
+    .pwr_on = RI_GPIO_HIGH,                              \
+    .fifo_pin = RI_GPIO_ID_UNUSED,                       \
+    .level_pin = RI_GPIO_ID_UNUSED                       \
+  }
+#endif
+
+#if APP_SENSOR_PHOTO_ENABLED
+#define APP_SENSOR_PHOTO_DEFAULT_CFG             \
+  {                                              \
+    .sensor = {0},                               \
+    .init = &ri_adc_photo_init,                  \
+    .configuration = {0},                        \
+    .nvm_file = APP_FLASH_SENSOR_FILE,           \
+    .nvm_record = APP_FLASH_SENSOR_PHOTO_RECORD, \
+    .bus = RD_BUS_NONE,                          \
+    .handle = RB_PHOTO_ADC,                      \
+    .pwr_pin = RB_PHOTO_PWR_PIN,                 \
+    .pwr_on = RB_PHOTO_ACTIVE,                   \
+    .fifo_pin = RI_GPIO_ID_UNUSED,               \
+    .level_pin = RI_GPIO_ID_UNUSED               \
+  }
+#endif
+
+#if APP_SENSOR_NTC_ENABLED
+#define APP_SENSOR_NTC_DEFAULT_CFG             \
+  {                                            \
+    .sensor = {0},                             \
+    .init = &ri_adc_ntc_init,                  \
+    .configuration = {0},                      \
+    .nvm_file = APP_FLASH_SENSOR_FILE,         \
+    .nvm_record = APP_FLASH_SENSOR_NTC_RECORD, \
+    .bus = RD_BUS_NONE,                        \
+    .handle = RB_NTC_ADC,                      \
+    .pwr_pin = RB_NTC_PWR_PIN,                 \
+    .pwr_on = RB_NTC_ACTIVE,                   \
+    .fifo_pin = RI_GPIO_ID_UNUSED,             \
+    .level_pin = RI_GPIO_ID_UNUSED             \
+  }
+#endif
+
+#if APP_SENSOR_ENVIRONMENTAL_MCU_ENABLED
+#define APP_SENSOR_ENVIRONMENTAL_MCU_DEFAULT_CFG  \
+  {                                               \
+    .sensor = {0},                                \
+    .init = &ri_environmental_mcu_init,           \
+    .configuration = {0},                         \
+    .nvm_file = APP_FLASH_SENSOR_FILE,            \
+    .nvm_record = APP_FLASH_SENSOR_ENVI_RECORD,   \
+    .bus = RD_BUS_NONE,                           \
+    .handle = RD_BUS_NONE,                        \
+    .pwr_pin = RI_GPIO_ID_UNUSED,                 \
+    .pwr_on = RI_GPIO_LOW,                        \
+    .fifo_pin = RI_GPIO_ID_UNUSED,                \
+    .level_pin = RI_GPIO_ID_UNUSED                \
+  }
+#endif
+
 /**
  * @brief Initialize sensors into default mode or to a mode stored to flash.
  *
@@ -76,7 +280,7 @@ void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
  * reading rate of sensors, reading rate must be configured separately.
  *
  * @retval RD_SUCCESS on success, NOT_FOUND sensors are allowed.
- * @retavl RD_ERROR_INVALID_STATE if GPIO or GPIO interrupts are not enabled.
+ * @retval RD_ERROR_INVALID_STATE if GPIO or GPIO interrupts are not enabled.
  * @retval RD_ERROR_SELFTEST if sensor is found on the bus and fails selftest.
  */
 rd_status_t app_sensor_init (void);
@@ -227,7 +431,6 @@ rd_status_t app_sensor_handle (const ri_comm_xfer_fp_t ri_reply_fp,
                                const uint8_t * const raw_message,
                                const uint16_t data_len);
 
-
 /**
  * @brief Synchronize VDD measurement to radio activity.
  *
@@ -238,6 +441,17 @@ rd_status_t app_sensor_handle (const ri_comm_xfer_fp_t ri_reply_fp,
  * @param[in] evt Type of next radio event, RI_RADIO_BEFORE ot RI_RADIO_AFTER
  */
 void app_sensor_vdd_measure_isr (const ri_radio_activity_evt_t evt);
+
+/**
+ * @brief Prepare VDD and take a sample
+ *
+ * Call this function during initialization process to take a VDD sample
+ * for the first heartbeat message.
+ *
+ * @retval RD_SUCCESS on success
+ * @retval RD_ERROR_INVALID_STATE if ADC is not prepared
+ */
+rd_status_t app_sensor_vdd_sample (void);
 
 #ifdef RUUVI_RUN_TESTS
 void app_sensor_ctx_get (rt_sensor_ctx_t *** m_sensors, size_t * num_sensors);
@@ -250,4 +464,5 @@ void on_radio_isr (const ri_radio_activity_evt_t evt);
 void on_accelerometer_isr (const ri_gpio_evt_t event);
 #endif
 
-#endif // APP_SENSOR_H
+#endif
+/** @}*/

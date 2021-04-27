@@ -8,15 +8,15 @@
 #include "app_config.h"
 #include "app_comms.h"
 #include "app_heartbeat.h"
+#include "app_led.h"
 #include "app_log.h"
 #include "app_sensor.h"
-#include "app_accelerometer_logging.h"
-#include "ruuvi_interface_log.h"
 #include "ruuvi_driver_error.h"
 #include "ruuvi_driver_sensor.h"
 #include "ruuvi_endpoint_5.h"
 #include "ruuvi_interface_communication.h"
 #include "ruuvi_interface_communication_radio.h"
+#include "ruuvi_interface_rtc.h"
 #include "ruuvi_interface_scheduler.h"
 #include "ruuvi_interface_timer.h"
 #include "ruuvi_interface_watchdog.h"
@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#define U8_MASK (0xFFU)
 
 static ri_timer_id_t heart_timer; //!< Timer for updating data.
 
@@ -35,6 +36,8 @@ static ri_timer_id_t heart_timer; //!< Timer for updating data.
 static
 #endif
 uint16_t m_measurement_count; //!< Increment on new samples.
+
+static uint64_t last_heartbeat_timestamp_ms;
 
 static inline void LOG (const char * const msg)
 {
@@ -61,21 +64,15 @@ static rd_status_t encode_to_5 (const rd_sensor_data_t * const data,
                                 ri_comm_message_t * const msg)
 {
     rd_status_t err_code = RD_SUCCESS;
-    uint8_t movement_count = (uint8_t) (app_sensor_event_count_get() & 0xFEU);
-    re_5_data_t ep_data =
-    {
-        .accelerationx_g   = rd_sensor_data_parse (data, RD_SENSOR_ACC_X_FIELD),
-        .accelerationy_g   = rd_sensor_data_parse (data, RD_SENSOR_ACC_Y_FIELD),
-        .accelerationz_g   = rd_sensor_data_parse (data, RD_SENSOR_ACC_Z_FIELD),
-        .humidity_rh       = rd_sensor_data_parse (data, RD_SENSOR_HUMI_FIELD),
-        .pressure_pa       = rd_sensor_data_parse (data, RD_SENSOR_PRES_FIELD),
-        .temperature_c     = rd_sensor_data_parse (data, RD_SENSOR_TEMP_FIELD),
-        .address           = RE_5_INVALID_MAC,
-        .tx_power          = RE_5_INVALID_POWER,
-        .battery_v         = RE_5_INVALID_VOLTAGE,
-        .measurement_count = m_measurement_count,
-        .movement_count    = movement_count
-    };
+    re_5_data_t ep_data = {0};
+    ep_data.accelerationx_g   = rd_sensor_data_parse (data, RD_SENSOR_ACC_X_FIELD);
+    ep_data.accelerationy_g   = rd_sensor_data_parse (data, RD_SENSOR_ACC_Y_FIELD);
+    ep_data.accelerationz_g   = rd_sensor_data_parse (data, RD_SENSOR_ACC_Z_FIELD);
+    ep_data.humidity_rh       = rd_sensor_data_parse (data, RD_SENSOR_HUMI_FIELD);
+    ep_data.pressure_pa       = rd_sensor_data_parse (data, RD_SENSOR_PRES_FIELD);
+    ep_data.temperature_c     = rd_sensor_data_parse (data, RD_SENSOR_TEMP_FIELD);
+    ep_data.measurement_count = m_measurement_count;
+    ep_data.movement_count    = (uint8_t) (app_sensor_event_count_get() & U8_MASK);
     err_code |= ri_radio_address_get (&ep_data.address);
     err_code |= ri_adv_tx_power_get (&ep_data.tx_power);
     err_code |= rt_adc_vdd_get (&ep_data.battery_v);
@@ -128,6 +125,8 @@ void heartbeat (void * p_event, uint16_t event_size)
     float data_values[rd_sensor_data_fieldcount (&data)];
     data.data = data_values;
     app_sensor_get (&data);
+    // Sensor read takes a long while, indicate activity once data is read.
+    app_led_activity_indicate (true);
     encode_to_5 (&data, &msg);
 
     float humidity_rh = rd_sensor_data_parse (&data, RD_SENSOR_HUMI_FIELD);
@@ -158,13 +157,11 @@ void heartbeat (void * p_event, uint16_t event_size)
         heartbeat_ok = true;
     }
 
-    if(!rt_gatt_is_nus_interactive_session()) {
-      // Cut endpoint 5 data to fit into GATT msg.
-      msg.data_length = 18;
-      // Gatt Link layer takes care of delivery.
-      msg.repeat_count = 1;
-      err_code = rt_gatt_send_asynchronous (&msg);
-    }
+    // Cut endpoint 5 data to fit into GATT msg.
+    msg.data_length = 18;
+    // Gatt Link layer takes care of delivery.
+    msg.repeat_count = 1;
+    err_code = rt_gatt_send_asynchronous (&msg);
 
     if (RD_SUCCESS == err_code)
     {
@@ -181,14 +178,11 @@ void heartbeat (void * p_event, uint16_t event_size)
     if (heartbeat_ok)
     {
         ri_watchdog_feed();
+        last_heartbeat_timestamp_ms = ri_rtc_millis();
     }
 
-    if(app_acc_logging_state()!=RD_SUCCESS) {
-        // Logging of environment data only when logging of 
-        // acceleration data is not active because of fragmentation
-        // of flash memory.
-        err_code = app_log_process (&data);
-    }
+    err_code = app_log_process (&data);
+    app_led_activity_indicate (false);
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
 
@@ -258,6 +252,12 @@ rd_status_t app_heartbeat_stop (void)
     }
 
     return err_code;
+}
+
+bool app_heartbeat_overdue (void)
+{
+    return ri_rtc_millis() > (last_heartbeat_timestamp_ms +
+                              APP_HEARTBEAT_OVERDUE_INTERVAL_MS);
 }
 
 #ifdef CEEDLING

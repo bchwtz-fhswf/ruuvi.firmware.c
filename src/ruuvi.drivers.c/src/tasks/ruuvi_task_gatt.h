@@ -138,7 +138,7 @@ rd_status_t rt_gatt_uninit (void);
  * @retval RD_SUCCESS on success
  * @retval RD_ERROR_INVALID_STATE if GATT is not initialized.
  */
-rd_status_t rt_gatt_enable();
+rd_status_t rt_gatt_adv_enable();
 
 /**
  * @brief Stop advertising GATT connection to devices.
@@ -150,7 +150,7 @@ rd_status_t rt_gatt_enable();
  * @retval RD_SUCCESS on success
  * @retval RD_ERROR_INVALID_STATE if GATT is not initialized.
  */
-rd_status_t rt_gatt_disable();
+rd_status_t rt_gatt_adv_disable();
 
 /**
  * @brief check if GATT task is initialized
@@ -216,12 +216,6 @@ void rt_gatt_set_on_received_isr (const ri_comm_cb_t cb);
  * @param[in] cb Callback which gets called on data sent in interrupt context.
  */
 void rt_gatt_set_on_sent_isr (const ri_comm_cb_t cb);
-
-/** @brief During an interactive session do not send environmental data via UART */ 
-bool rt_gatt_is_nus_interactive_session(void);
-
-/** @brief Start an interactive NUS session. During this do not send environmental data via UART */ 
-void rt_gatt_nus_start_interactive(void);
 
 #endif
 /*@}*/

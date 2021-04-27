@@ -3,6 +3,7 @@
 #include "app_config.h"
 #include "app_heartbeat.h"
 #include "mock_app_comms.h"
+#include "mock_app_led.h"
 #include "mock_app_log.h"
 #include "mock_app_sensor.h"
 #include "mock_ruuvi_driver_error.h"
@@ -11,6 +12,7 @@
 #include "mock_ruuvi_interface_communication_ble_advertising.h"
 #include "mock_ruuvi_interface_communication_radio.h"
 #include "mock_ruuvi_interface_log.h"
+#include "mock_ruuvi_interface_rtc.h"
 #include "mock_ruuvi_interface_scheduler.h"
 #include "mock_ruuvi_interface_timer.h"
 #include "mock_ruuvi_interface_watchdog.h"
@@ -24,6 +26,7 @@
 static unsigned int mock_tid = 0xAA; //!< Mock timer ID to be returned, size system int.
 static void * p_mock_tid = &mock_tid; //!< Pointer to mock ID.
 extern uint16_t m_measurement_count;
+static uint64_t next_rtc_sim = 1;
 
 void setUp (void)
 {
@@ -40,17 +43,39 @@ void resetTest (void); //!< Clears test memory.
 
 static void re_5_encode_expect (void)
 {
+    static uint64_t address = 0x0000AABBCCDDEEFF;
+    static int8_t power = 4;
+    static float voltage = 2.5F;
+    static re_5_data_t data =
+    {
+        .accelerationx_g   = 0.0F,
+        .accelerationy_g   = 0.0F,
+        .accelerationz_g   = 0.0F,
+        .humidity_rh       = 0.0F,
+        .pressure_pa       = 0.0F,
+        .temperature_c     = 0.0F,
+        .address           = 0x0000AABBCCDDEEFF,
+        .tx_power          = 4,
+        .battery_v         = 2.5F,
+        .measurement_count = 0,
+        .movement_count    = 1
+    };
+    data.measurement_count = m_measurement_count;
+    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
+    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
+    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
+    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
+    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
+    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
     app_sensor_event_count_get_ExpectAndReturn (1);
-    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
-    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
-    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
-    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
-    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
-    rd_sensor_data_parse_ExpectAnyArgsAndReturn (0);
     ri_radio_address_get_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    ri_radio_address_get_ReturnThruPtr_address (&address);
     ri_adv_tx_power_get_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    ri_adv_tx_power_get_ReturnThruPtr_dbm (&power);
     rt_adc_vdd_get_ExpectAnyArgsAndReturn (RD_SUCCESS);
-    re_5_encode_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    rt_adc_vdd_get_ReturnThruPtr_vdd (&voltage);
+    re_5_encode_ExpectWithArrayAndReturn (NULL, 0, &data, 1, RD_SUCCESS);
+    re_5_encode_IgnoreArg_buffer();
 }
 
 static void heartbeat_df5_all_ok_Expect (void)
@@ -59,13 +84,16 @@ static void heartbeat_df5_all_ok_Expect (void)
     app_sensor_available_data_ExpectAndReturn (fields);
     rd_sensor_data_fieldcount_ExpectAnyArgsAndReturn (7);
     app_sensor_get_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    app_led_activity_indicate_ExpectAndReturn (true, RD_SUCCESS);
     re_5_encode_expect ();
     app_comms_bleadv_send_count_get_ExpectAndReturn (1);
     rt_adv_send_data_ExpectAnyArgsAndReturn (RD_SUCCESS);
     rt_gatt_send_asynchronous_ExpectAnyArgsAndReturn (RD_SUCCESS);
     rt_nfc_send_ExpectAnyArgsAndReturn (RD_SUCCESS);
     ri_watchdog_feed_ExpectAndReturn (RD_SUCCESS);
+    ri_rtc_millis_ExpectAndReturn (next_rtc_sim);
     app_log_process_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    app_led_activity_indicate_ExpectAndReturn (false, RD_SUCCESS);
 }
 
 /**
@@ -178,13 +206,16 @@ void test_heartbeat_df5_adv_ok (void)
     app_sensor_available_data_ExpectAndReturn (fields);
     rd_sensor_data_fieldcount_ExpectAnyArgsAndReturn (7);
     app_sensor_get_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    app_led_activity_indicate_ExpectAndReturn (true, RD_SUCCESS);
     re_5_encode_expect ();
     app_comms_bleadv_send_count_get_ExpectAndReturn (1);
     rt_adv_send_data_ExpectAnyArgsAndReturn (RD_SUCCESS);
     rt_gatt_send_asynchronous_ExpectAnyArgsAndReturn (RD_ERROR_INVALID_STATE);
     rt_nfc_send_ExpectAnyArgsAndReturn (RD_ERROR_NOT_ENABLED);
     ri_watchdog_feed_ExpectAndReturn (RD_SUCCESS);
+    ri_rtc_millis_ExpectAndReturn (1);
     app_log_process_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    app_led_activity_indicate_ExpectAndReturn (false, RD_SUCCESS);
     heartbeat (NULL, 0);
 }
 
@@ -194,13 +225,16 @@ void test_heartbeat_df5_adv_disabled (void)
     app_sensor_available_data_ExpectAndReturn (fields);
     rd_sensor_data_fieldcount_ExpectAnyArgsAndReturn (7);
     app_sensor_get_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    app_led_activity_indicate_ExpectAndReturn (true, RD_SUCCESS);
     re_5_encode_expect ();
     app_comms_bleadv_send_count_get_ExpectAndReturn (0);
     rt_adv_stop_ExpectAndReturn (RD_SUCCESS);
     rt_gatt_send_asynchronous_ExpectAnyArgsAndReturn (RD_SUCCESS);
     rt_nfc_send_ExpectAnyArgsAndReturn (RD_SUCCESS);
     ri_watchdog_feed_ExpectAndReturn (RD_SUCCESS);
+    ri_rtc_millis_ExpectAndReturn (1);
     app_log_process_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    app_led_activity_indicate_ExpectAndReturn (false, RD_SUCCESS);
     heartbeat (NULL, 0);
 }
 
@@ -210,12 +244,14 @@ void test_heartbeat_df5_none_ok (void)
     app_sensor_available_data_ExpectAndReturn (fields);
     rd_sensor_data_fieldcount_ExpectAnyArgsAndReturn (7);
     app_sensor_get_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    app_led_activity_indicate_ExpectAndReturn (true, RD_SUCCESS);
     re_5_encode_expect ();
     app_comms_bleadv_send_count_get_ExpectAndReturn (1);
     rt_adv_send_data_ExpectAnyArgsAndReturn (RD_ERROR_INVALID_STATE);
     rt_gatt_send_asynchronous_ExpectAnyArgsAndReturn (RD_ERROR_NOT_ENABLED);
     rt_nfc_send_ExpectAnyArgsAndReturn (RD_ERROR_NOT_ENABLED);
     app_log_process_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    app_led_activity_indicate_ExpectAndReturn (false, RD_SUCCESS);
     heartbeat (NULL, 0);
 }
 
@@ -231,16 +267,35 @@ void test_heartbeat_df5_measurement_cnt_rollover (void)
         app_sensor_available_data_ExpectAndReturn (fields);
         rd_sensor_data_fieldcount_ExpectAnyArgsAndReturn (7);
         app_sensor_get_ExpectAnyArgsAndReturn (RD_SUCCESS);
+        app_led_activity_indicate_ExpectAndReturn (true, RD_SUCCESS);
         re_5_encode_expect ();
         app_comms_bleadv_send_count_get_ExpectAndReturn (1);
         rt_adv_send_data_ExpectAnyArgsAndReturn (RD_SUCCESS);
         rt_gatt_send_asynchronous_ExpectAnyArgsAndReturn (RD_SUCCESS);
         rt_nfc_send_ExpectAnyArgsAndReturn (RD_SUCCESS);
         ri_watchdog_feed_ExpectAndReturn (RD_SUCCESS);
+        ri_rtc_millis_ExpectAndReturn (1);
         app_log_process_ExpectAnyArgsAndReturn (RD_SUCCESS);
+        app_led_activity_indicate_ExpectAndReturn (false, RD_SUCCESS);
         heartbeat (NULL, 0);
         resetTest(); // Avoid running out of memory.
     }
 
     TEST_ASSERT (0 == m_measurement_count);
+}
+
+void test_app_heartbeat_overdue_no (void)
+{
+    next_rtc_sim = 1;
+    test_heartbeat_df5_all_ok();
+    ri_rtc_millis_ExpectAndReturn (APP_HEARTBEAT_OVERDUE_INTERVAL_MS - 1);
+    TEST_ASSERT (!app_heartbeat_overdue());
+}
+
+void test_app_heartbeat_overdue_yes (void)
+{
+    next_rtc_sim = 1;
+    test_heartbeat_df5_all_ok();
+    ri_rtc_millis_ExpectAndReturn (APP_HEARTBEAT_OVERDUE_INTERVAL_MS);
+    TEST_ASSERT (!app_heartbeat_overdue());
 }

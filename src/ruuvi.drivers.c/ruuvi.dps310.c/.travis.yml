@@ -1,0 +1,34 @@
+language: c
+
+os: linux
+dist: bionic
+# Use full depth for SonarCLoud
+git:
+  depth: false 
+
+before_install:
+  - wget -q -O - https://files.viva64.com/etc/pubkey.txt | sudo apt-key add -
+  - sudo wget https://files.viva64.com/etc/viva64.list -O /etc/apt/sources.list.d/viva64.list
+
+install:
+  - sudo pip install gcovr
+  - sudo apt-get update -qq && sudo apt-get install --assume-yes --quiet gcc-multilib && sudo apt-get install -qq
+  - sudo apt-get install -qq pvs-studio 
+  - sudo apt-get install -qq doxygen 
+  - gem install ceedling
+  - pvs-studio-analyzer credentials $PVS_USERNAME $PVS_KEY
+
+script:
+  - build-wrapper-linux-x86-64 --out-dir bw-output make all
+  - ceedling test:all
+  - ceedling gcov:all utils:gcov
+  - gcov build/gcov/out/*.gcno
+  - sonar-scanner -Dsonar.projectVersion=$TRAVIS_TAG
+
+addons:
+  sonarcloud:
+    organization: "ruuvi"
+    projectKey: "ruuvi.dps310.c"
+
+before_deploy:
+  - sed -i '/doxygen/d' .gitignore

@@ -4,7 +4,7 @@
 /**
  * @file app_heartbeat.h
  * @author Otso Jousimaa <otso@ojousima.net>
- * @data 2020-06-12
+ * @date 2020-06-12
  * @copyright Ruuvi Innovations Ltd, License BSD-3-Clause.
  *
  * Read and transmit latest sensor data via any means possible,
@@ -33,6 +33,10 @@ rd_status_t app_heartbeat_init (void);
 /**
  * @brief (Re)starts app heartbeats.
  *
+ * The hearbeat must be call to begin "Feed" the Watchdog. The "Fed" interval is
+ * defined by APP_WDT_INTERVAL_MS in main. The board will reset if not fed with
+ * predefined time interval.
+ *
  * Calling this while heartbeats are ongoing has no effect.
  *
  * @retval RD_SUCCESS on success
@@ -53,6 +57,14 @@ rd_status_t app_heartbeat_start (void);
  * @retval RD_ERROR_INVALID_STATE if heartbeat is not initialized.
  */
 rd_status_t app_heartbeat_stop (void);
+
+/**
+ * @brief Check if hearbeats have been paused for too long.
+ *
+ * @return True if current time is more than APP_HEARTBEAT_OVERDUE_INTERVAL_MS since last heartbeat.
+ */
+bool app_heartbeat_overdue (void);
+
 
 #ifdef CEEDLING
 #include "ruuvi_interface_timer.h"

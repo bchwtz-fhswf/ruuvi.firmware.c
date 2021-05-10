@@ -1,6 +1,8 @@
 #ifndef  RUUVI_TASK_FLASH_RINGBUFFER_H
 #define  RUUVI_TASK_FLASH_RINGBUFFER_H
 
+#if APP_SENSOR_LOGGING
+
 /*
  * @file ruuvi_task_flash_ringbuffer.h
  * @author Vanessa Blasko
@@ -125,5 +127,5 @@ rd_status_t rt_flash_ringbuffer_statistic (
 );
 #endif // RUUVI_TASK_FLASH_RINGBUFFER_H
 
-
+#endif
 

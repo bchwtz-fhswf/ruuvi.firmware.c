@@ -13,6 +13,15 @@ Open an issue or pull request at GitHub.
 BSD-3
 
 # Changelog
+## 3.7.0 
+ - Add Power pins to RuuviTag and Kalervo
+
+## 3.6.0 
+ - Add TMP117 to RuuviTag
+
+## 3.5.0 
+ - Add DPS310 to RuuviTag
+
 ## 3.4.0 
  - Support Gateway A2
 

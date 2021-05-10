@@ -122,13 +122,13 @@ static ble_gap_phys_t m_phys =
 };
 
 // Values selected for optimizing throughput/energy.
-#define MIN_CONN_INTERVAL MSEC_TO_UNITS(485, UNIT_1_25_MS)
+#define MIN_CONN_INTERVAL MSEC_TO_UNITS(485U, UNIT_1_25_MS)
 // Apple guideline: max interval >= min interval + 15 ms
-#define MAX_CONN_INTERVAL MSEC_TO_UNITS(500, UNIT_1_25_MS)
+#define MAX_CONN_INTERVAL MSEC_TO_UNITS(500U, UNIT_1_25_MS)
 // Apple guideline: MAX_CONN_INTERVAL * SLAVE_LATENCY <= 2 s.
-#define SLAVE_LATENCY     3
+#define SLAVE_LATENCY     (0U)
 // Apple guideline: MAX_CONN_INTERVAL * (SLAVE_LATENCY + 1) * 3 < CONN_SUP_TIMEOUT
-#define CONN_SUP_TIMEOUT  MSEC_TO_UNITS(8000, UNIT_10_MS)
+#define CONN_SUP_TIMEOUT  MSEC_TO_UNITS(8000U, UNIT_10_MS)
 
 /** @brief print PHY enum as string */
 static char const * phy_str (ble_gap_phys_t phys)
@@ -229,7 +229,6 @@ static ret_code_t conn_params_init (void)
     cp_init.disconnect_on_fail             = false;
     cp_init.evt_handler                    = on_conn_params_evt;
     cp_init.error_handler                  = conn_params_error_handler;
-    ble_conn_params_stop();
     err_code = ble_conn_params_init (&cp_init);
     return err_code;
 }
@@ -274,7 +273,6 @@ static void nus_data_handler (ble_nus_evt_t * p_evt)
             break;
 
         default:
-            LOG("Unknown NUS event\r\n");
             break;
     }
 }
@@ -760,15 +758,11 @@ static rd_status_t ri_gatt_nus_send (ri_comm_message_t * const message)
         nrf_code |= ble_nus_data_send (&m_nus, message->data, &data_len, m_conn_handle);
     }
 
-    err_code |= ruuvi_nrf5_sdk15_to_ruuvi_error (nrf_code);
-
-    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
-    return err_code;
+    return err_code | ruuvi_nrf5_sdk15_to_ruuvi_error (nrf_code);
 }
 
 static rd_status_t ri_gatt_nus_read (ri_comm_message_t * const message)
 {
-    LOG("ri_gatt_nus_read NOT supported\r\n");
     return RD_ERROR_NOT_SUPPORTED;
 }
 
@@ -788,9 +782,7 @@ rd_status_t ri_gatt_nus_init (ri_comm_channel_t * const _channel)
     channel->send   = ri_gatt_nus_send;
     channel->read   = ri_gatt_nus_read;
     m_gatt_is_init = true;
-    err_code |= ruuvi_nrf5_sdk15_to_ruuvi_error (err_code);
-    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
-    return err_code;
+    return ruuvi_nrf5_sdk15_to_ruuvi_error (err_code);
 }
 
 bool ble_nus_is_connected (void)

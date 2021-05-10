@@ -47,8 +47,10 @@
  *
  */
 
-#define NM_BIT_DIVEDER (64U) //!< Normal mode uses 10 bits in 16 bit field, leading to 2^6 factor in results.
-#define MOTION_THRESHOLD_MAX (0x7FU) // Highest threshold value allowed.
+#define NUM_AXIS             (3U)    //!< X, Y, Z.
+#define NM_BIT_DIVEDER       (64U)   //!< Normal mode uses 10 bits in 16 bit field, leading to 2^6 factor in results.
+#define MOTION_THRESHOLD_MAX (0x7FU) //!< Highest threshold value allowed.
+#define PWRON_DELAY_MS       (10U)   //!< Milliseconds from poweron to sensor rdy. 5ms typ.
 
 /** @brief Macro for checking that sensor is in sleep mode before configuration */
 #define VERIFY_SENSOR_SLEEPS() do { \
@@ -260,7 +262,7 @@ rd_status_t ri_lis2dh12_init (rd_sensor_t * p_sensor, rd_bus_t bus, uint8_t hand
         err_code |= RD_ERROR_NULL;
         LOGD ("p_sensor. Error = %08x\r\n", err_code);
     }
-    else if (NULL != dev.ctx.write_reg)
+    else if (rd_sensor_is_init (p_sensor))
     {
         err_code |= RD_ERROR_INVALID_STATE;
         LOGD ("write_reg. Error = %08x\r\n", err_code);
@@ -271,6 +273,11 @@ rd_status_t ri_lis2dh12_init (rd_sensor_t * p_sensor, rd_bus_t bus, uint8_t hand
         LOGD ("dev_ctx_init. Error = %08x\r\n", err_code);
         rd_sensor_initialize (p_sensor);
         p_sensor->name = m_acc_name;
+
+        if (RD_SUCCESS == err_code)
+        {
+            err_code |= ri_delay_ms (PWRON_DELAY_MS);
+        }
 
         if (RD_SUCCESS == err_code)
         {
@@ -1049,6 +1056,7 @@ rd_status_t ri_lis2dh12_raw_data_parse (rd_sensor_data_t * const data,
     return err_code;
 }
 
+// TODO: State checks
 rd_status_t ri_lis2dh12_fifo_use (const bool enable)
 {
     lis2dh12_fm_t mode;
@@ -1065,6 +1073,7 @@ rd_status_t ri_lis2dh12_fifo_use (const bool enable)
     return err_code;
 }
 
+//TODO * return: RD_INVALID_STATE if FIFO is not in use
 rd_status_t ri_lis2dh12_fifo_read (size_t * num_elements,
                                    rd_sensor_data_t * p_data)
 {
@@ -1257,6 +1266,5 @@ rd_status_t ri_lis2dh12_activity_interrupt_use (const bool enable, float * const
 
     return err_code;
 }
-
 /*@}*/
 #endif

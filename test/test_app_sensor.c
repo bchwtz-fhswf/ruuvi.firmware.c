@@ -4,6 +4,7 @@
 #include "app_sensor.h"
 
 #include "mock_app_comms.h"
+#include "mock_app_heartbeat.h"
 #include "mock_app_log.h"
 #include "mock_ruuvi_driver_error.h"
 #include "mock_ruuvi_driver_sensor.h"
@@ -17,6 +18,8 @@
 #include "mock_ruuvi_interface_adc_ntc.h"
 #include "mock_ruuvi_interface_adc_photo.h"
 #include "mock_ruuvi_interface_bme280.h"
+#include "mock_ruuvi_interface_dps310.h"
+#include "mock_ruuvi_interface_environmental_mcu.h"
 #include "mock_ruuvi_interface_lis2dh12.h"
 #include "mock_ruuvi_interface_shtcx.h"
 #include "mock_ruuvi_interface_tmp117.h"
@@ -54,16 +57,19 @@ void test_app_sensor_init_ok (void)
     ri_i2c_init_ExpectAnyArgsAndReturn (RD_SUCCESS);
     ri_rtc_init_ExpectAndReturn (RD_SUCCESS);
     rd_sensor_timestamp_function_set_ExpectAnyArgsAndReturn (RD_SUCCESS);
-    // Emulate power pin for one sensor
-    ri_gpio_id_t    pwr_0 = m_sensors[0]->pwr_pin;
-    ri_gpio_state_t act_0 = m_sensors[0]->pwr_on;
-    m_sensors[0]->pwr_pin = 1;
-    m_sensors[0]->pwr_on = 1;
-    ri_gpio_configure_ExpectAndReturn (1, RI_GPIO_MODE_OUTPUT_HIGHDRIVE, RD_SUCCESS);
-    ri_gpio_write_ExpectAndReturn (1, 1, RD_SUCCESS);
 
     for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
     {
+        if (m_sensors[ii]->pwr_pin != RI_GPIO_ID_UNUSED)
+        {
+            ri_gpio_configure_ExpectAndReturn (m_sensors[ii]->pwr_pin,
+                                               RI_GPIO_MODE_OUTPUT_HIGHDRIVE,
+                                               RD_SUCCESS);
+            ri_gpio_write_ExpectAndReturn (m_sensors[ii]->pwr_pin,
+                                           m_sensors[ii]->pwr_on,
+                                           RD_SUCCESS);
+        }
+
         rt_sensor_initialize_ExpectWithArrayAndReturn (m_sensors[ii], 1, RD_SUCCESS);
         rt_sensor_load_ExpectWithArrayAndReturn (m_sensors[ii], 1, RD_SUCCESS);
         rt_sensor_configure_ExpectWithArrayAndReturn (m_sensors[ii], 1, RD_SUCCESS);
@@ -71,10 +77,13 @@ void test_app_sensor_init_ok (void)
 
     err_code = app_sensor_init();
     TEST_ASSERT (RD_SUCCESS == err_code);
-    m_sensors[0]->pwr_pin = pwr_0;
-    m_sensors[0]->pwr_on = act_0;
 }
 
+static const rd_sensor_data_fields_t fields_dps =
+{
+    .datas.temperature_c = 1,
+    .datas.pressure_pa = 1
+};
 static const rd_sensor_data_fields_t fields_bme =
 {
     .datas.temperature_c = 1,
@@ -88,9 +97,18 @@ static const rd_sensor_data_fields_t fields_lis =
     .datas.acceleration_y_g = 1,
     .datas.acceleration_z_g = 1
 };
-static const rd_sensor_data_fields_t fields_photo =
+static const rd_sensor_data_fields_t fields_shtcx =
 {
-    .datas.luminosity = 1
+    .datas.temperature_c = 1,
+    .datas.humidity_rh = 1
+};
+static const rd_sensor_data_fields_t fields_envi_mcu =
+{
+    .datas.temperature_c = 1
+};
+static const rd_sensor_data_fields_t fields_tmp117 =
+{
+    .datas.temperature_c = 1
 };
 static const rd_sensor_data_fields_t fields_expected =
 {
@@ -114,6 +132,16 @@ void test_app_sensor_init_first_time (void)
 
     for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
     {
+        if (m_sensors[ii]->pwr_pin != RI_GPIO_ID_UNUSED)
+        {
+            ri_gpio_configure_ExpectAndReturn (m_sensors[ii]->pwr_pin,
+                                               RI_GPIO_MODE_OUTPUT_HIGHDRIVE,
+                                               RD_SUCCESS);
+            ri_gpio_write_ExpectAndReturn (m_sensors[ii]->pwr_pin,
+                                           m_sensors[ii]->pwr_on,
+                                           RD_SUCCESS);
+        }
+
         rt_sensor_initialize_ExpectWithArrayAndReturn (m_sensors[ii], 1, RD_SUCCESS);
         rt_sensor_load_ExpectWithArrayAndReturn (m_sensors[ii], 1, RD_ERROR_NOT_FOUND);
         rt_sensor_configure_ExpectWithArrayAndReturn (m_sensors[ii], 1, RD_SUCCESS);
@@ -136,6 +164,16 @@ void test_app_sensor_init_not_found (void)
 
     for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
     {
+        if (m_sensors[ii]->pwr_pin != RI_GPIO_ID_UNUSED)
+        {
+            ri_gpio_configure_ExpectAndReturn (m_sensors[ii]->pwr_pin,
+                                               RI_GPIO_MODE_OUTPUT_HIGHDRIVE,
+                                               RD_SUCCESS);
+            ri_gpio_write_ExpectAndReturn (m_sensors[ii]->pwr_pin,
+                                           m_sensors[ii]->pwr_on,
+                                           RD_SUCCESS);
+        }
+
         rt_sensor_initialize_ExpectWithArrayAndReturn (m_sensors[ii], 1, RD_ERROR_NOT_FOUND);
     }
 
@@ -156,6 +194,16 @@ void test_app_sensor_init_selftest_fail (void)
     for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
     {
         size_t retries = 0;
+
+        if (m_sensors[ii]->pwr_pin != RI_GPIO_ID_UNUSED)
+        {
+            ri_gpio_configure_ExpectAndReturn (m_sensors[ii]->pwr_pin,
+                                               RI_GPIO_MODE_OUTPUT_HIGHDRIVE,
+                                               RD_SUCCESS);
+            ri_gpio_write_ExpectAndReturn (m_sensors[ii]->pwr_pin,
+                                           m_sensors[ii]->pwr_on,
+                                           RD_SUCCESS);
+        }
 
         do
         {
@@ -192,11 +240,6 @@ static rd_status_t mock_uninit (rd_sensor_t * sensor, rd_bus_t bus, uint8_t hand
 void test_app_sensor_uninit_ok (void)
 {
     rd_status_t err_code;
-    // Emulate power pin for one sensor
-    ri_gpio_id_t    pwr_1 = m_sensors[1]->pwr_pin;
-    ri_gpio_state_t act_1 = m_sensors[1]->pwr_on;
-    m_sensors[1]->pwr_pin = 1;
-    m_sensors[1]->pwr_on = 1;
     rd_sensor_is_init_ExpectAnyArgsAndReturn (false);
 
     for (size_t ii = 1; ii < SENSOR_COUNT; ii++)
@@ -209,7 +252,9 @@ void test_app_sensor_uninit_ok (void)
             ri_gpio_write_ExpectAndReturn (m_sensors[ii]->pwr_pin,
                                            !m_sensors[ii]->pwr_on,
                                            RD_SUCCESS);
-            ri_gpio_configure_ExpectAndReturn (1, RI_GPIO_MODE_HIGH_Z, RD_SUCCESS);
+            ri_gpio_configure_ExpectAndReturn (m_sensors[ii]->pwr_pin,
+                                               RI_GPIO_MODE_HIGH_Z,
+                                               RD_SUCCESS);
         }
     }
 
@@ -220,8 +265,6 @@ void test_app_sensor_uninit_ok (void)
     ri_radio_activity_callback_set_Expect (NULL);
     err_code = app_sensor_uninit();
     TEST_ASSERT (RD_SUCCESS == err_code);
-    m_sensors[1]->pwr_pin = pwr_1;
-    m_sensors[1]->pwr_on = act_1;
 }
 
 void test_app_sensor_on_radio_before_ok (void)
@@ -266,14 +309,17 @@ void test_app_sensor_available_data (void)
     {
         for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
         {
-            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), (ii < 2));
+            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), (ii < SENSOR_COUNT));
         }
 
         rd_sensor_data_fields_t fields_found = {0};
         // Mock provided data
-        m_sensors[0]->sensor.provides = fields_bme;
-        m_sensors[1]->sensor.provides = fields_lis;
-        m_sensors[2]->sensor.provides = fields_photo;
+        m_sensors[BME280_INDEX]->sensor.provides = fields_bme;
+        m_sensors[LIS2DH12_INDEX]->sensor.provides = fields_lis;
+        m_sensors[SHTCX_INDEX]->sensor.provides = fields_shtcx;
+        m_sensors[DPS310_INDEX]->sensor.provides = fields_dps;
+        m_sensors[ENV_MCU_INDEX]->sensor.provides = fields_envi_mcu;
+        m_sensors[TMP117_INDEX]->sensor.provides = fields_tmp117;
         fields_found = app_sensor_available_data();
         TEST_ASSERT (!memcmp (&fields_found.bitfield, &fields_expected.bitfield,
                               sizeof (fields_expected.bitfield)));
@@ -294,17 +340,27 @@ static rd_status_t mock_data_get (rd_sensor_data_t * const data)
 {
     switch (data_get_calls++)
     {
-        case 0:
+        case BME280_INDEX:
             data->valid.bitfield |= (data->fields.bitfield & fields_bme.bitfield);
             break;
 
-        case 1:
+        case LIS2DH12_INDEX:
             data->valid.bitfield |= (data->fields.bitfield & fields_lis.bitfield);
             break;
 
-        case 2:
-            data->valid.bitfield |= (data->fields.bitfield & fields_photo.bitfield);
+        case SHTCX_INDEX:
+            data->valid.bitfield |= (data->fields.bitfield & fields_shtcx.bitfield);
             break;
+
+        case DPS310_INDEX:
+            data->valid.bitfield |= (data->fields.bitfield & fields_dps.bitfield);
+            break;
+
+        case ENV_MCU_INDEX:
+            data->valid.bitfield |= (data->fields.bitfield & fields_envi_mcu.bitfield);
+
+        case TMP117_INDEX:
+            data->valid.bitfield |= (data->fields.bitfield & fields_tmp117.bitfield);
 
         default:
             break;
@@ -317,10 +373,12 @@ void test_app_sensor_get (void)
 {
     rd_sensor_data_t data = {0};
     data.fields.bitfield |= fields_expected.bitfield;
-    rd_sensor_data_fp dg_0 = m_sensors[0]->sensor.data_get;
-    m_sensors[0]->sensor.data_get = &mock_data_get;
-    m_sensors[1]->sensor.data_get = &mock_data_get;
-    m_sensors[2]->sensor.data_get = &mock_data_get;
+    m_sensors[BME280_INDEX]->sensor.data_get = &mock_data_get;
+    m_sensors[LIS2DH12_INDEX]->sensor.data_get = &mock_data_get;
+    m_sensors[SHTCX_INDEX]->sensor.data_get = &mock_data_get;
+    m_sensors[DPS310_INDEX]->sensor.data_get = &mock_data_get;
+    m_sensors[ENV_MCU_INDEX]->sensor.data_get = &mock_data_get;
+    m_sensors[TMP117_INDEX]->sensor.data_get = &mock_data_get;
 
     for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
     {
@@ -331,7 +389,6 @@ void test_app_sensor_get (void)
     app_sensor_get (&data);
     TEST_ASSERT (!memcmp (&data.valid.bitfield, &fields_expected.bitfield,
                           sizeof (fields_expected.bitfield)));
-    m_sensors[0]->sensor.data_get = dg_0;
 }
 
 /**
@@ -351,17 +408,18 @@ void test_app_sensor_find_provider_ok (void)
 {
     if (SENSOR_COUNT > 3)
     {
-        for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
+        for (size_t ii = 0; ii <= SHTCX_INDEX; ii++)
         {
-            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), (ii < 3));
+            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), (ii < SENSOR_COUNT));
         }
 
         // Mock provided data
-        m_sensors[0]->sensor.provides = fields_bme;
-        m_sensors[1]->sensor.provides = fields_lis;
-        m_sensors[2]->sensor.provides = fields_photo;
-        const rd_sensor_t * const  p_sensor = app_sensor_find_provider (fields_photo);
-        TEST_ASSERT (p_sensor == & (m_sensors[2]->sensor));
+        m_sensors[BME280_INDEX]->sensor.provides = fields_bme;
+        m_sensors[DPS310_INDEX]->sensor.provides = fields_dps;
+        m_sensors[LIS2DH12_INDEX]->sensor.provides = fields_lis;
+        m_sensors[SHTCX_INDEX]->sensor.provides = fields_shtcx;
+        const rd_sensor_t * const  p_sensor = app_sensor_find_provider (fields_shtcx);
+        TEST_ASSERT (p_sensor == & (m_sensors[SHTCX_INDEX]->sensor));
     }
 }
 
@@ -369,9 +427,9 @@ void test_app_sensor_find_provider_overlap (void)
 {
     if (SENSOR_COUNT > 3)
     {
-        for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
+        for (size_t ii = 0; ii <= TMP117_INDEX; ii++)
         {
-            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), (ii < 3));
+            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), (ii < SENSOR_COUNT));
         }
 
         // Mock provided data
@@ -379,11 +437,13 @@ void test_app_sensor_find_provider_overlap (void)
         {
             .datas.temperature_c = 1
         };
-        m_sensors[0]->sensor.provides = fields_bme;
-        m_sensors[1]->sensor.provides = fields_lis;
-        m_sensors[2]->sensor.provides = fields_photo;
+        m_sensors[BME280_INDEX]->sensor.provides = fields_bme;
+        m_sensors[LIS2DH12_INDEX]->sensor.provides = fields_lis;
+        m_sensors[SHTCX_INDEX]->sensor.provides = fields_shtcx;
+        m_sensors[DPS310_INDEX]->sensor.provides = fields_dps;
+        m_sensors[TMP117_INDEX]->sensor.provides = fields_tmp117;
         const rd_sensor_t * const  p_sensor = app_sensor_find_provider (fields_wanted);
-        TEST_ASSERT (p_sensor == & (m_sensors[0]->sensor));
+        TEST_ASSERT (p_sensor == & (m_sensors[TMP117_INDEX]->sensor));
     }
 }
 
@@ -391,9 +451,9 @@ void test_app_sensor_find_provider_empty (void)
 {
     if (SENSOR_COUNT > 3)
     {
-        for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
+        for (size_t ii = 0; ii < 1; ii++)
         {
-            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), (ii));
+            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), true);
         }
 
         // Mock provided data
@@ -401,11 +461,13 @@ void test_app_sensor_find_provider_empty (void)
         {
             0
         };
-        m_sensors[0]->sensor.provides = fields_bme;
-        m_sensors[1]->sensor.provides = fields_lis;
-        m_sensors[2]->sensor.provides = fields_photo;
+        m_sensors[BME280_INDEX]->sensor.provides = fields_bme;
+        m_sensors[LIS2DH12_INDEX]->sensor.provides = fields_lis;
+        m_sensors[SHTCX_INDEX]->sensor.provides = fields_shtcx;
+        m_sensors[DPS310_INDEX]->sensor.provides = fields_dps;
+        m_sensors[TMP117_INDEX]->sensor.provides = fields_tmp117;
         const rd_sensor_t * const  p_sensor = app_sensor_find_provider (fields_wanted);
-        TEST_ASSERT (p_sensor == & (m_sensors[1]->sensor));
+        TEST_ASSERT (p_sensor == & (m_sensors[TMP117_INDEX]->sensor));
     }
 }
 
@@ -415,7 +477,7 @@ void test_app_sensor_find_provider_no_valid (void)
     {
         for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
         {
-            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), (ii < 3));
+            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), (ii < SENSOR_COUNT));
         }
 
         // Mock provided data
@@ -424,9 +486,10 @@ void test_app_sensor_find_provider_no_valid (void)
             .datas.temperature_c = 1,
             .datas.luminosity = 1
         };
-        m_sensors[0]->sensor.provides = fields_bme;
-        m_sensors[1]->sensor.provides = fields_lis;
-        m_sensors[2]->sensor.provides = fields_photo;
+        m_sensors[BME280_INDEX]->sensor.provides = fields_bme;
+        m_sensors[LIS2DH12_INDEX]->sensor.provides = fields_lis;
+        m_sensors[SHTCX_INDEX]->sensor.provides = fields_shtcx;
+        m_sensors[DPS310_INDEX]->sensor.provides = fields_dps;
         const rd_sensor_t * const  p_sensor = app_sensor_find_provider (fields_wanted);
         TEST_ASSERT (p_sensor == NULL);
     }
@@ -436,21 +499,20 @@ void test_app_sensor_find_provider_null (void)
 {
     if (SENSOR_COUNT > 3)
     {
-        for (size_t ii = 1; ii < SENSOR_COUNT; ii++)
-        {
-            rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), (ii < 2));
-        }
-
+        rd_sensor_is_init_ExpectAndReturn (& (m_sensors[LIS2DH12_INDEX]->sensor), (true));
         // Mock provided data
         rd_sensor_data_fields_t fields_wanted =
         {
             .datas.temperature_c = 1,
         };
-        m_sensors[0] = NULL;
-        m_sensors[1]->sensor.provides = fields_lis;
-        m_sensors[2]->sensor.provides = fields_photo;
+        m_sensors[DPS310_INDEX] = NULL;
+        m_sensors[BME280_INDEX] = NULL;
+        m_sensors[LIS2DH12_INDEX]->sensor.provides = fields_lis;
+        m_sensors[SHTCX_INDEX] = NULL;
+        m_sensors[ENV_MCU_INDEX] = NULL;
+        m_sensors[TMP117_INDEX] = NULL;
         const rd_sensor_t * const  p_sensor = app_sensor_find_provider (fields_wanted);
-        TEST_ASSERT (p_sensor == & (m_sensors[1]->sensor));
+        TEST_ASSERT (p_sensor == & (m_sensors[LIS2DH12_INDEX]->sensor));
     }
 }
 
@@ -495,15 +557,15 @@ void test_app_sensor_acc_thr_set_ok (void)
 {
     if (SENSOR_COUNT > 2U && (RI_GPIO_ID_UNUSED != RB_INT_LEVEL_PIN))
     {
-        for (size_t ii = 0U; ii < 2U; ii++)
+        for (size_t ii = 0U; ii <= LIS2DH12_INDEX; ii++)
         {
             rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), true);
         }
 
         // Mock provided data
-        m_sensors[0]->sensor.provides = fields_bme;
-        m_sensors[1]->sensor.provides = fields_lis;
-        m_sensors[1]->sensor.level_interrupt_set = &mock_level_interrupt_set;
+        m_sensors[BME280_INDEX]->sensor.provides = fields_bme;
+        m_sensors[LIS2DH12_INDEX]->sensor.provides = fields_lis;
+        m_sensors[LIS2DH12_INDEX]->sensor.level_interrupt_set = &mock_level_interrupt_set;
         level_interrupt_set_enabled = 0U;
         float ths = 0.1F;
         ri_gpio_interrupt_enable_ExpectAndReturn (RB_INT_LEVEL_PIN,
@@ -521,15 +583,15 @@ void test_app_sensor_acc_thr_set_disable (void)
 {
     if (SENSOR_COUNT > 2U && (RI_GPIO_ID_UNUSED != RB_INT_LEVEL_PIN))
     {
-        for (size_t ii = 0U; ii < 2U; ii++)
+        for (size_t ii = 0U; ii <= LIS2DH12_INDEX; ii++)
         {
             rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), true);
         }
 
         // Mock provided data
-        m_sensors[0]->sensor.provides = fields_bme;
-        m_sensors[1]->sensor.provides = fields_lis;
-        m_sensors[1]->sensor.level_interrupt_set = &mock_level_interrupt_set;
+        m_sensors[BME280_INDEX]->sensor.provides = fields_bme;
+        m_sensors[LIS2DH12_INDEX]->sensor.provides = fields_lis;
+        m_sensors[LIS2DH12_INDEX]->sensor.level_interrupt_set = &mock_level_interrupt_set;
         level_interrupt_set_disabled = 0U;
         ri_gpio_interrupt_disable_ExpectAndReturn (RB_INT_LEVEL_PIN,
                 RD_SUCCESS);
@@ -543,16 +605,16 @@ void test_app_sensor_acc_thr_set_no_provider (void)
 {
     if (SENSOR_COUNT > 3U && (RI_GPIO_ID_UNUSED != RB_INT_LEVEL_PIN))
     {
-        for (size_t ii = 0U; ii < 3U; ii++)
+        for (size_t ii = 0U; ii < SENSOR_COUNT; ii++)
         {
             rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), true);
         }
 
         // Mock provided data
-        m_sensors[0]->sensor.provides = fields_bme;
-        m_sensors[1]->sensor.provides = fields_photo;
-        m_sensors[2]->sensor.provides = fields_photo;
-        m_sensors[1]->sensor.level_interrupt_set = &mock_level_interrupt_set;
+        m_sensors[BME280_INDEX]->sensor.provides = fields_bme;
+        m_sensors[LIS2DH12_INDEX]->sensor.provides = fields_shtcx;
+        m_sensors[SHTCX_INDEX]->sensor.provides = fields_shtcx;
+        m_sensors[LIS2DH12_INDEX]->sensor.level_interrupt_set = &mock_level_interrupt_set;
         level_interrupt_set_enabled = 0U;
         float ths = 0.1F;
         rd_status_t err_code = app_sensor_acc_thr_set (&ths);
@@ -565,16 +627,16 @@ void test_app_sensor_acc_thr_set_null_interrupt_set (void)
 {
     if (SENSOR_COUNT > 3U && (RI_GPIO_ID_UNUSED != RB_INT_LEVEL_PIN))
     {
-        for (size_t ii = 0U; ii < 3U; ii++)
+        for (size_t ii = 0U; ii < SENSOR_COUNT; ii++)
         {
             rd_sensor_is_init_ExpectAndReturn (& (m_sensors[ii]->sensor), true);
         }
 
         // Mock provided data
-        m_sensors[0]->sensor.provides = fields_bme;
-        m_sensors[1]->sensor.provides = fields_lis;
-        m_sensors[2]->sensor.provides = fields_photo;
-        m_sensors[1]->sensor.level_interrupt_set = NULL;
+        m_sensors[BME280_INDEX]->sensor.provides = fields_bme;
+        m_sensors[LIS2DH12_INDEX]->sensor.provides = fields_lis;
+        m_sensors[SHTCX_INDEX]->sensor.provides = fields_shtcx;
+        m_sensors[LIS2DH12_INDEX]->sensor.level_interrupt_set = NULL;
         level_interrupt_set_enabled = 0U;
         float ths = 0.1F;
         rd_status_t err_code = app_sensor_acc_thr_set (&ths);
@@ -664,6 +726,11 @@ static void app_sensor_send_eof_Expect (const ri_comm_xfer_fp_t reply_fp)
     app_sensor_blocking_send_Expect (reply_fp);
 }
 
+static void app_sensor_send_timeout_Expect (const ri_comm_xfer_fp_t reply_fp)
+{
+    app_sensor_blocking_send_Expect (reply_fp);
+}
+
 static void app_sensor_log_read_Expect (const ri_comm_xfer_fp_t reply_fp,
                                         const rd_sensor_data_fields_t fields,
                                         const uint8_t fieldcount,
@@ -677,7 +744,7 @@ static void app_sensor_log_read_Expect (const ri_comm_xfer_fp_t reply_fp,
     // 200 hours of uptime
     uint32_t system_time_ms = (200 * 3600U * 1000U);
     static rd_sensor_data_t sample = {0};
-    static app_log_read_state_t rs = 
+    static app_log_read_state_t rs =
     {
         .oldest_element_ms = (100U * 3600U * 1000U),
         .element_idx = 0,
@@ -692,11 +759,44 @@ static void app_sensor_log_read_Expect (const ri_comm_xfer_fp_t reply_fp,
     re_std_log_current_time_ExpectAndReturn (raw_message, current_time_s);
     re_std_log_start_time_ExpectAndReturn (raw_message, start_time_s);
     ri_rtc_millis_ExpectAndReturn (system_time_ms);
-
     app_log_read_ExpectWithArrayAndReturn (&sample, 1, &rs, 1, RD_SUCCESS);
+    app_heartbeat_overdue_ExpectAndReturn (false);
     // Assuming tests are run on 64-bit system, time doesn't overflow.
     app_sensor_send_data_Expect (reply_fp, raw_message, &sample, fieldcount, sources,
                                  types, current_time_s * 1000);
+}
+
+static void app_sensor_log_timeout_Expect (const ri_comm_xfer_fp_t reply_fp,
+        const rd_sensor_data_fields_t fields,
+        const uint8_t fieldcount,
+        const uint8_t * const sources,
+        const rd_sensor_data_bitfield_t * const types,
+        const uint8_t * const raw_message)
+{
+    uint32_t current_time_s = (1000U * 3600U);
+    // 100 hours of data requested
+    uint32_t start_time_s = (900U * 3600U);
+    // 200 hours of uptime
+    uint32_t system_time_ms = (200 * 3600U * 1000U);
+    static rd_sensor_data_t sample = {0};
+    static app_log_read_state_t rs =
+    {
+        .oldest_element_ms = (100U * 3600U * 1000U),
+        .element_idx = 0,
+        .page_idx = 0
+    };
+    sample.fields = fields;
+    float data[fieldcount];
+    sample.data = data;
+    sample.timestamp_ms = rs.oldest_element_ms;
+    rd_sensor_data_fieldcount_ExpectAndReturn (NULL, fieldcount);
+    rd_sensor_data_fieldcount_IgnoreArg_target();
+    re_std_log_current_time_ExpectAndReturn (raw_message, current_time_s);
+    re_std_log_start_time_ExpectAndReturn (raw_message, start_time_s);
+    ri_rtc_millis_ExpectAndReturn (system_time_ms);
+    app_log_read_ExpectWithArrayAndReturn (&sample, 1, &rs, 1, RD_SUCCESS);
+    app_heartbeat_overdue_ExpectAndReturn (true);
+    app_sensor_send_timeout_Expect (reply_fp);
 }
 
 static void app_sensor_log_read_eof_Expect (const ri_comm_xfer_fp_t reply_fp)
@@ -800,6 +900,101 @@ void test_app_sensor_handle_accxyz (void)
     TEST_ASSERT ( (fieldcount + 1) == m_expect_sends);
 }
 
+void test_app_sensor_handle_gyrox (void)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    m_expect_sends = 0;
+    uint8_t raw_message[RE_STANDARD_MESSAGE_LENGTH] = {0};
+    raw_message[RE_STANDARD_OPERATION_INDEX] = RE_STANDARD_LOG_VALUE_READ;
+    raw_message[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_GYRATION_X;
+    rd_sensor_data_fields_t fields = { .datas.gyro_x_dps = 1 };
+    const uint8_t fieldcount = 1;
+    const uint8_t sources[1] = { RE_STANDARD_DESTINATION_GYRATION_X };
+    const rd_sensor_data_bitfield_t types[1] = {RD_SENSOR_GYR_X_FIELD.datas};
+    app_sensor_log_read_Expect (&dummy_comm, fields, fieldcount, sources, types, raw_message);
+    app_sensor_log_read_eof_Expect (&dummy_comm);
+    err_code |= app_sensor_handle (&dummy_comm,
+                                   raw_message,
+                                   sizeof (raw_message));
+    TEST_ASSERT (RD_SUCCESS == err_code);
+    TEST_ASSERT (2 == m_expect_sends);
+}
+
+void test_app_sensor_handle_gyroy (void)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    m_expect_sends = 0;
+    uint8_t raw_message[RE_STANDARD_MESSAGE_LENGTH] = {0};
+    raw_message[RE_STANDARD_OPERATION_INDEX] = RE_STANDARD_LOG_VALUE_READ;
+    raw_message[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_GYRATION_Y;
+    rd_sensor_data_fields_t fields = { .datas.gyro_y_dps = 1 };
+    const uint8_t fieldcount = 1;
+    const uint8_t sources[1] = { RE_STANDARD_DESTINATION_GYRATION_Y };
+    const rd_sensor_data_bitfield_t types[1] = {RD_SENSOR_GYR_Y_FIELD.datas};
+    app_sensor_log_read_Expect (&dummy_comm, fields, fieldcount, sources, types, raw_message);
+    app_sensor_log_read_eof_Expect (&dummy_comm);
+    err_code |= app_sensor_handle (&dummy_comm,
+                                   raw_message,
+                                   sizeof (raw_message));
+    TEST_ASSERT (RD_SUCCESS == err_code);
+    TEST_ASSERT (2 == m_expect_sends);
+}
+
+void test_app_sensor_handle_gyroz (void)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    m_expect_sends = 0;
+    uint8_t raw_message[RE_STANDARD_MESSAGE_LENGTH] = {0};
+    raw_message[RE_STANDARD_OPERATION_INDEX] = RE_STANDARD_LOG_VALUE_READ;
+    raw_message[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_GYRATION_Z;
+    rd_sensor_data_fields_t fields = { .datas.gyro_z_dps = 1 };
+    const uint8_t fieldcount = 1;
+    const uint8_t sources[1] = { RE_STANDARD_DESTINATION_GYRATION_Z };
+    const rd_sensor_data_bitfield_t types[1] = {RD_SENSOR_GYR_Z_FIELD.datas};
+    app_sensor_log_read_Expect (&dummy_comm, fields, fieldcount, sources, types, raw_message);
+    app_sensor_log_read_eof_Expect (&dummy_comm);
+    err_code |= app_sensor_handle (&dummy_comm,
+                                   raw_message,
+                                   sizeof (raw_message));
+    TEST_ASSERT (RD_SUCCESS == err_code);
+    TEST_ASSERT (2 == m_expect_sends);
+}
+
+void test_app_sensor_handle_gyroxyz (void)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    m_expect_sends = 0;
+    uint8_t raw_message[RE_STANDARD_MESSAGE_LENGTH] = {0};
+    raw_message[RE_STANDARD_OPERATION_INDEX] = RE_STANDARD_LOG_VALUE_READ;
+    raw_message[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_GYRATION;
+    rd_sensor_data_fields_t fields =
+    {
+        .datas.gyro_x_dps = 1,
+        .datas.gyro_y_dps = 1,
+        .datas.gyro_z_dps = 1
+    };
+    const uint8_t fieldcount = 3;
+    const uint8_t sources[3] =
+    {
+        RE_STANDARD_DESTINATION_GYRATION_X,
+        RE_STANDARD_DESTINATION_GYRATION_Y,
+        RE_STANDARD_DESTINATION_GYRATION_Z,
+    };
+    const rd_sensor_data_bitfield_t types[3] =
+    {
+        RD_SENSOR_GYR_X_FIELD.datas,
+        RD_SENSOR_GYR_Y_FIELD.datas,
+        RD_SENSOR_GYR_Z_FIELD.datas
+    };
+    app_sensor_log_read_Expect (&dummy_comm, fields, fieldcount, sources, types, raw_message);
+    app_sensor_log_read_eof_Expect (&dummy_comm);
+    err_code |= app_sensor_handle (&dummy_comm,
+                                   raw_message,
+                                   sizeof (raw_message));
+    TEST_ASSERT (RD_SUCCESS == err_code);
+    TEST_ASSERT ( (fieldcount + 1) == m_expect_sends);
+}
+
 void test_app_sensor_handle_humidity (void)
 {
     rd_status_t err_code = RD_SUCCESS;
@@ -885,4 +1080,51 @@ void test_app_sensor_handle_temperature (void)
                                    sizeof (raw_message));
     TEST_ASSERT (RD_SUCCESS == err_code);
     TEST_ASSERT ( (fieldcount + 1) == m_expect_sends);
+}
+
+void test_app_sensor_handle_temperature_timeout (void)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    m_expect_sends = 0;
+    uint8_t raw_message[RE_STANDARD_MESSAGE_LENGTH] = {0};
+    raw_message[RE_STANDARD_OPERATION_INDEX] = RE_STANDARD_LOG_VALUE_READ;
+    raw_message[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_TEMPERATURE;
+    rd_sensor_data_fields_t fields =
+    {
+        .datas.temperature_c = 1,
+    };
+    const uint8_t fieldcount = 1;
+    const uint8_t sources[1] =
+    {
+        RE_STANDARD_DESTINATION_TEMPERATURE
+    };
+    const rd_sensor_data_bitfield_t types[1] =
+    {
+        RD_SENSOR_TEMP_FIELD.datas,
+    };
+    app_sensor_log_timeout_Expect (&dummy_comm, fields, fieldcount, sources, types,
+                                   raw_message);
+    err_code |= app_sensor_handle (&dummy_comm,
+                                   raw_message,
+                                   sizeof (raw_message));
+    TEST_ASSERT (RD_ERROR_TIMEOUT == err_code);
+    TEST_ASSERT (1 == m_expect_sends);
+}
+
+void test_app_sensor_vdd_sample_ok (void)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    static rd_sensor_configuration_t configuration =
+    {
+        .dsp_function  = RD_SENSOR_CFG_DEFAULT,
+        .dsp_parameter = RD_SENSOR_CFG_DEFAULT,
+        .mode          = RD_SENSOR_CFG_SINGLE,
+        .resolution    = RD_SENSOR_CFG_DEFAULT,
+        .samplerate    = RD_SENSOR_CFG_DEFAULT,
+        .scale         = RD_SENSOR_CFG_DEFAULT
+    };
+    rt_adc_vdd_prepare_ExpectWithArrayAndReturn (&configuration, 1, RD_SUCCESS);
+    rt_adc_vdd_sample_ExpectAndReturn (RD_SUCCESS);
+    err_code |= app_sensor_vdd_sample();
+    TEST_ASSERT (RD_SUCCESS == err_code);
 }

@@ -8,6 +8,7 @@
 #include "ruuvi_driver_sensor.h"
 #include "ruuvi_endpoints.h"
 #include "ruuvi_interface_communication.h"
+#include "ruuvi_interface_communication_ble_advertising.h"
 #include "ruuvi_interface_communication_radio.h"
 #include "ruuvi_interface_rtc.h"
 #include "ruuvi_interface_scheduler.h"
@@ -131,14 +132,14 @@ static rd_status_t prepare_mode_change (const mode_changes_t * p_change)
  */
 static uint8_t initial_adv_send_count (void)
 {
-    uint8_t num_sends = (APP_HEARTBEAT_INTERVAL_MS / 100U);
+    uint16_t num_sends = (APP_HEARTBEAT_INTERVAL_MS / 100U);
 
-    if (0 == num_sends)
+    if (0 == num_sends) //-V547
     {
         num_sends = 1;
     }
 
-    if (APP_COMM_ADV_REPEAT_FOREVER == num_sends)
+    if (APP_COMM_ADV_REPEAT_FOREVER <= num_sends) //-V547
     {
         num_sends = APP_COMM_ADV_REPEAT_FOREVER - 1;
     }
@@ -170,11 +171,11 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
       // Route message to proper handler
       switch (type)
       {
-        case 0x00:
-          // start interactive session
-          LOGD("start interactive session");
-          rt_gatt_nus_start_interactive();
-          break;
+        //case 0x00:
+        //  // start interactive session
+        //  LOGD("start interactive session");
+        //  rt_gatt_nus_start_interactive();
+        //  break;
         //case 0x01:
         //  // start transmitting testdata
         //  LOGD("start transmitting testdata\r\n");
@@ -389,7 +390,8 @@ void handle_gatt_connected (void * p_data, uint16_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     // Disables advertising for GATT, does not kick current connetion out.
-    rt_gatt_disable ();
+    rt_gatt_adv_disable ();
+    app_comms_ble_adv_init ();
     config_setup_on_this_conn ();
     RD_ERROR_CHECK (err_code, RD_SUCCESS);
 }
@@ -595,7 +597,8 @@ void comm_mode_change_isr (void * const p_context)
 
     if (p_change->switch_to_normal)
     {
-        app_comms_bleadv_send_count_set (1);
+        app_comms_bleadv_send_count_set (APP_NUM_REPEATS);
+        ri_adv_tx_interval_set (APP_BLE_INTERVAL_MS);
         p_change->switch_to_normal = 0;
     }
 
@@ -650,7 +653,7 @@ static rd_status_t gatt_init (const ri_comm_dis_init_t * const p_dis, const bool
     rt_gatt_set_on_connected_isr (&on_gatt_connected_isr);
     rt_gatt_set_on_disconn_isr (&on_gatt_disconnected_isr);
     rt_gatt_set_on_received_isr (&on_gatt_data_isr);
-    err_code |= rt_gatt_enable();
+    err_code |= rt_gatt_adv_enable();
 #endif
     return err_code;
 }
@@ -675,6 +678,7 @@ rd_status_t app_comms_init (const bool secure)
         err_code |= adv_init();
         err_code |= dis_init (&dis, secure);
         err_code |= gatt_init (&dis, secure);
+        ri_radio_activity_callback_set (&app_sensor_vdd_measure_isr);
     }
 
     return err_code;
@@ -687,6 +691,14 @@ rd_status_t app_comms_ble_init (const bool secure)
     err_code |= dis_init (&dis, secure);
     err_code |= adv_init();
     err_code |= gatt_init (&dis, secure);
+    ri_radio_activity_callback_set (&app_sensor_vdd_measure_isr);
+    return err_code;
+}
+
+rd_status_t app_comms_ble_adv_init (void)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    err_code |= adv_init();
     ri_radio_activity_callback_set (&app_sensor_vdd_measure_isr);
     return err_code;
 }
@@ -729,5 +741,4 @@ rd_status_t app_comms_blocking_send (const ri_comm_xfer_fp_t reply_fp,
 
     return err_code;
 }
-
 /** @} */

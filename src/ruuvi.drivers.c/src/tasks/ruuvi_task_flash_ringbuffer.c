@@ -6,7 +6,7 @@
 
 #include "ruuvi_driver_enabled_modules.h"
 
-#if RT_FLASH_ENABLED
+#if APP_SENSOR_LOGGING
 #include "ruuvi_driver_error.h"
 #include "ruuvi_driver_sensor.h"
 #include "ruuvi_task_flash.h"

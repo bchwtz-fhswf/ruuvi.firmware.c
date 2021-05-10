@@ -82,6 +82,7 @@ void test_main_ok (void)
     app_log_init_ExpectAndReturn (RD_SUCCESS);
     app_sensor_acc_thr_set_ExpectWithArrayAndReturn (&motion_threshold, 1, RD_SUCCESS);
     app_comms_init_ExpectAndReturn (true, RD_SUCCESS);
+    app_sensor_vdd_sample_ExpectAndReturn (RD_SUCCESS);
     app_heartbeat_init_ExpectAndReturn (RD_SUCCESS);
     app_heartbeat_start_ExpectAndReturn (RD_SUCCESS);
     app_led_deactivate_ExpectAndReturn (RB_LED_STATUS_ERROR, RD_SUCCESS);
@@ -92,9 +93,7 @@ void test_main_ok (void)
     rd_error_cb_set_Expect (&app_on_error);
     // </setup>
     ri_scheduler_execute_ExpectAndReturn (RD_SUCCESS);
-    app_led_activity_indicate_ExpectAndReturn (false, RD_SUCCESS);
     ri_yield_ExpectAndReturn (RD_SUCCESS);
-    app_led_activity_indicate_ExpectAndReturn (true, RD_SUCCESS);
     app_main();
 }
 
@@ -117,6 +116,7 @@ void test_main_error (void)
     app_log_init_ExpectAndReturn (RD_SUCCESS);
     app_sensor_acc_thr_set_ExpectWithArrayAndReturn (&motion_threshold, 1, RD_SUCCESS);
     app_comms_init_ExpectAndReturn (true, RD_SUCCESS);
+    app_sensor_vdd_sample_ExpectAndReturn (RD_SUCCESS);
     app_heartbeat_init_ExpectAndReturn (RD_ERROR_INTERNAL);
     app_heartbeat_start_ExpectAndReturn (RD_ERROR_INVALID_STATE);
     app_led_deactivate_ExpectAndReturn (RB_LED_STATUS_ERROR, RD_SUCCESS);
@@ -124,9 +124,7 @@ void test_main_error (void)
     rd_error_cb_set_Expect (&app_on_error);
     // </setup>
     ri_scheduler_execute_ExpectAndReturn (RD_SUCCESS);
-    app_led_activity_indicate_ExpectAndReturn (false, RD_SUCCESS);
     ri_yield_ExpectAndReturn (RD_SUCCESS);
-    app_led_activity_indicate_ExpectAndReturn (true, RD_SUCCESS);
     app_main();
 }
 

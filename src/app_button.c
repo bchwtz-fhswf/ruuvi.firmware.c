@@ -111,7 +111,6 @@ static void handle_enable_config_button (const bool activated)
         m_button_action.factory_reset = 1;
         // Disable activity led to not turn off the button indication led.
         app_led_activity_pause (true);
-        app_led_activate (RB_LED_BUTTON_PRESS);
         ri_timer_stop (m_button_timer);
         ri_timer_start (m_button_timer, APP_BUTTON_LONG_PRESS_TIME_MS, &m_button_action);
     }
@@ -119,7 +118,6 @@ static void handle_enable_config_button (const bool activated)
     {
         LOG ("Config button released\r\n");
         m_button_action.factory_reset = 0;
-        app_led_deactivate (RB_LED_BUTTON_PRESS);
         app_led_activity_pause (false);
         (void) ri_timer_stop (m_button_timer);
         (void) app_comms_configure_next_enable();
@@ -159,18 +157,11 @@ void on_button_1_press_isr (const ri_gpio_evt_t evt)
 #ifndef CEEDLING
 static
 #endif
-void on_button_2_press (const ri_gpio_evt_t evt)
+void on_button_2_press_isr (const ri_gpio_evt_t evt)
 {
-    ri_gpio_slope_t activation = get_activation (evt);
-
-    if (activation == evt.slope)
-    {
-        LOG ("Button 2 pressed\r\n");
-    }
-    else
-    {
-        LOG ("Button 2 released\r\n");
-    }
+    rd_status_t err_code = ri_scheduler_event_put (&evt, sizeof (ri_gpio_evt_t),
+                           &button_handler);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
 #endif
 
@@ -178,18 +169,11 @@ void on_button_2_press (const ri_gpio_evt_t evt)
 #ifndef CEEDLING
 static
 #endif
-void on_button_3_press (const ri_gpio_evt_t evt)
+void on_button_3_press_isr (const ri_gpio_evt_t evt)
 {
-    ri_gpio_slope_t activation = get_activation (evt);
-
-    if (activation == evt.slope)
-    {
-        LOG ("Button 3 pressed\r\n");
-    }
-    else
-    {
-        LOG ("Button 3 released\r\n");
-    }
+    rd_status_t err_code = ri_scheduler_event_put (&evt, sizeof (ri_gpio_evt_t),
+                           &button_handler);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
 #endif
 
@@ -197,18 +181,11 @@ void on_button_3_press (const ri_gpio_evt_t evt)
 #ifndef CEEDLING
 static
 #endif
-void on_button_4_press (const ri_gpio_evt_t evt)
+void on_button_4_press_isr (const ri_gpio_evt_t evt)
 {
-    ri_gpio_slope_t activation = get_activation (evt);
-
-    if (activation == evt.slope)
-    {
-        LOG ("Button 4 pressed\r\n");
-    }
-    else
-    {
-        LOG ("Button 4 released\r\n");
-    }
+    rd_status_t err_code = ri_scheduler_event_put (&evt, sizeof (ri_gpio_evt_t),
+                           &button_handler);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
 #endif
 

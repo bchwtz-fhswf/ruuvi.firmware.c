@@ -52,22 +52,35 @@ static
 #endif
 uint64_t m_last_sample_ms; //!< Timestamp of last processed sample.
 
-static rd_status_t store_block (const app_log_record_t * const record)
+#ifndef CEEDLING
+static
+#endif
+uint16_t m_boot_count = 0;
+
+static rd_status_t store_block (const app_log_record_t * const p_record)
 {
     static uint8_t record_idx = 0;
     uint8_t num_tries = 0;
-    uint32_t end_timestamp = m_log_input_block.end_timestamp_s;
     rd_status_t err_code = RD_SUCCESS;
 
     do
     {
-        err_code = rt_flash_free (APP_FLASH_LOG_FILE,
-                                  (APP_FLASH_LOG_DATA_RECORD_PREFIX << 8U) + record_idx);
+        uint8_t record_slot = (record_idx + num_tries) % APP_FLASH_LOG_DATA_RECORDS_NUM;
+        uint16_t target_record = (APP_FLASH_LOG_DATA_RECORD_PREFIX << 8U) + record_slot;
+        err_code = rt_flash_free (APP_FLASH_LOG_FILE, target_record);
 
         // It's not a problem if there wasn't old block to erase.
         if (RD_SUCCESS == err_code)
         {
-            LOG ("LOG: Erasing old block\r\n");
+            char msg[128];
+            snprintf (msg, sizeof (msg), "store_block:freed old record #%d\r\n", target_record);
+            LOG (msg);
+        }
+        else
+        {
+            char msg[128];
+            snprintf (msg, sizeof (msg), "store_block:creating new record #%d\r\n", target_record);
+            LOG (msg);
         }
 
         err_code &= ~RD_ERROR_NOT_FOUND;
@@ -85,8 +98,8 @@ static rd_status_t store_block (const app_log_record_t * const record)
         }
 
         err_code |= rt_flash_store (APP_FLASH_LOG_FILE,
-                                    (APP_FLASH_LOG_DATA_RECORD_PREFIX << 8U) + record_idx,
-                                    &m_log_input_block, sizeof (m_log_input_block));
+                                    target_record,
+                                    p_record, sizeof (app_log_record_t));
 
         while (rt_flash_busy())
         {
@@ -96,12 +109,13 @@ static rd_status_t store_block (const app_log_record_t * const record)
         RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
         // Erase another block and try again if there was error.
         num_tries++;
-        record_idx++;
-        record_idx = record_idx % APP_FLASH_LOG_DATA_RECORDS_NUM;
     } while ( (RD_SUCCESS != err_code) && (num_tries < APP_FLASH_LOG_DATA_RECORDS_NUM));
 
-    memset (&m_log_input_block, 0, sizeof (m_log_input_block));
-    m_log_input_block.start_timestamp_s = end_timestamp;
+    if (RD_SUCCESS == err_code)
+    {
+        record_idx++;
+    }
+
     return err_code;
 }
 
@@ -127,6 +141,32 @@ static rd_status_t purge_logs (void)
     return err_code;
 }
 
+#ifndef CEEDLING
+static
+#endif
+rd_status_t app_log_read_boot_count (void)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    err_code |= rt_flash_load (APP_FLASH_LOG_FILE, APP_FLASH_LOG_BOOT_COUNTER_RECORD,
+                               &m_boot_count, sizeof (uint32_t));
+
+    if (RD_ERROR_NOT_FOUND == err_code)
+    {
+        err_code = rt_flash_store (APP_FLASH_LOG_FILE, APP_FLASH_LOG_BOOT_COUNTER_RECORD,
+                                   &m_boot_count, sizeof (uint32_t));
+        err_code = rt_flash_load (APP_FLASH_LOG_FILE, APP_FLASH_LOG_BOOT_COUNTER_RECORD,
+                                  &m_boot_count, sizeof (uint32_t));
+    }
+
+    m_boot_count++;
+    err_code |= rt_flash_store (APP_FLASH_LOG_FILE, APP_FLASH_LOG_BOOT_COUNTER_RECORD,
+                                &m_boot_count, sizeof (uint32_t));
+    char msg[128];
+    snprintf (msg, sizeof (msg), "LOG: Boot count: %d\r\n", m_boot_count);
+    LOG (msg);
+    return err_code;
+}
+
 
 rd_status_t app_log_init (void)
 {
@@ -142,9 +182,9 @@ rd_status_t app_log_init (void)
             .datas.pressure_pa = APP_LOG_PRESSURE_ENABLED
         }
     };
-    err_code |= rt_flash_load (APP_FLASH_LOG_FILE,
-                               APP_FLASH_LOG_CONFIG_RECORD,
-                               &config, sizeof (config));
+    err_code = rt_flash_load (APP_FLASH_LOG_FILE,
+                              APP_FLASH_LOG_CONFIG_RECORD,
+                              &config, sizeof (config));
 
     if (RD_ERROR_NOT_FOUND == err_code)
     {
@@ -159,6 +199,7 @@ rd_status_t app_log_init (void)
         err_code |= purge_logs();
     }
 
+    err_code |= app_log_read_boot_count();
     return err_code;
 }
 
@@ -166,7 +207,8 @@ rd_status_t app_log_process (const rd_sensor_data_t * const sample)
 {
     rd_status_t err_code = RD_SUCCESS;
     uint64_t next_sample_ms = m_last_sample_ms + (m_log_config.interval_s * 1000U);
-    //LOGD ("LOG: Sample received\r\n");
+    uint32_t end_timestamp = m_log_input_block.end_timestamp_s;
+    LOGD ("LOG: Sample received\r\n");
 
     // Always store first sample.
     if (0 == m_last_sample_ms)
@@ -196,6 +238,8 @@ rd_status_t app_log_process (const rd_sensor_data_t * const sample)
             LOG ("LOG: Storing block\r\n");
             err_code |= store_block (&m_log_input_block);
             RD_ERROR_CHECK (err_code, RD_SUCCESS);
+            memset (&m_log_input_block, 0, sizeof (m_log_input_block));
+            m_log_input_block.start_timestamp_s = end_timestamp;
         }
 
         m_last_sample_ms = sample->timestamp_ms;
@@ -351,6 +395,7 @@ rd_status_t app_log_read (rd_sensor_data_t * const sample,
 rd_status_t app_log_config_set (const app_log_config_t * const configuration)
 {
     rd_status_t err_code = RD_SUCCESS;
+    uint32_t end_timestamp = m_log_input_block.end_timestamp_s;
 
     if (NULL == configuration)
     {
@@ -364,7 +409,10 @@ rd_status_t app_log_config_set (const app_log_config_t * const configuration)
 
         if (RD_SUCCESS == err_code)
         {
-            store_block (&m_log_input_block);
+            err_code |= store_block (&m_log_input_block);
+            RD_ERROR_CHECK (err_code, RD_SUCCESS);
+            memset (&m_log_input_block, 0, sizeof (m_log_input_block));
+            m_log_input_block.start_timestamp_s = end_timestamp;
             memcpy (&m_log_config, configuration, sizeof (m_log_config));
         }
     }
@@ -416,5 +464,3 @@ void app_log_purge_flash (void)
     return;
 }
 #endif
-
-/** @} */

@@ -274,9 +274,6 @@ rd_status_t app_enable_sensor_logging(void) {
 
     rd_status_t err_code = RD_SUCCESS;
 
-    // save original data_get function
-    nologging_data_get = lis2dh12->sensor.data_get;
-
     // create ringbuffer
     // When reactivating acceleration logging after reboot the ringbuffer exists.
     // Ignore RD_ERROR_INVALID_STATE
@@ -286,6 +283,9 @@ rd_status_t app_enable_sensor_logging(void) {
           RT_FLASH_RINGBUFFER_MAXSIZE, 4073);
 
     if(err_code==RD_SUCCESS) {
+      // save original data_get function
+      nologging_data_get = lis2dh12->sensor.data_get;
+
       logged_data.flashpage.max_size = 4073;
 
       // enable GPIO interrupt
@@ -314,9 +314,7 @@ rd_status_t app_enable_sensor_logging(void) {
 
       // with acceleration logging enabled we provide no temperature by LIS2DH12
       lis2dh12->sensor.provides.datas.temperature_c = 0;
-    }
 
-    if(err_code==RD_SUCCESS) {
       LOGD("Successfully initialized FIFO logging\r\n");
     } else {
       LOGD("Error initializing FIFO logging\r\n");

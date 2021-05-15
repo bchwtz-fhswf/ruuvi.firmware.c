@@ -444,17 +444,10 @@
 #ifndef APP_SENSOR_LOGGING
 #   define APP_SENSOR_LOGGING (1U)
 #   define CRC16_ENABLED (1U)
-#if DEBUG
-// Flash usage in Debug configuration
+// Flash usage with acceleration logging
 #   define APP_FLASH_LOG_DATA_RECORDS_NUM   (2U) //!< swap page + settings.
-#   define RT_FLASH_RINGBUFFER_MAXSIZE (12U)
-#   define APP_FLASH_PAGES (APP_FLASH_LOG_DATA_RECORDS_NUM + RT_FLASH_RINGBUFFER_MAXSIZE) //!< 64 kB flash storage if page size is 4 kB.
-#else
-// Flash usage in Release configuration
-#   define APP_FLASH_LOG_DATA_RECORDS_NUM   (4U) //!< swap page + settings.
-#   define RT_FLASH_RINGBUFFER_MAXSIZE (26U)
-#   define APP_FLASH_PAGES (APP_FLASH_LOG_DATA_RECORDS_NUM + RT_FLASH_RINGBUFFER_MAXSIZE) //!< 64 kB flash storage if page size is 4 kB.
-#endif
+#   define RT_FLASH_RINGBUFFER_MAXSIZE (16U)
+#   define APP_FLASH_PAGES (APP_FLASH_LOG_DATA_RECORDS_NUM + RT_FLASH_RINGBUFFER_MAXSIZE) 
 #else
 // Flash usage without acceleration logging
 #define APP_FLASH_PAGES (16U) //!< 64 kB flash storage if page size is 4 kB.

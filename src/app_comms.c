@@ -570,9 +570,26 @@ static rd_status_t dis_init (ri_comm_dis_init_t * const p_dis, const bool secure
     snprintf (p_dis->fw_version + name_idx,
               sizeof (p_dis->fw_version) - name_idx,
               APP_FW_VARIANT);
-    snprintf (p_dis->hw_version, sizeof (p_dis->hw_version), "Check PCB");
     snprintf (p_dis->manufacturer, sizeof (p_dis->manufacturer), RB_MANUFACTURER_STRING);
     snprintf (p_dis->model, sizeof (p_dis->model), RB_MODEL_STRING);
+
+    // Build hardware info string
+    #ifdef RUUVI_RUN_TESTS
+      name_idx = snprintf (p_dis->hw_version, sizeof (p_dis->hw_version), "With");
+      rt_sensor_ctx_t **sensors;
+      size_t num_sensors;
+      app_sensor_ctx_get(&sensors, &num_sensors);
+      for (size_t ii = 0; ii < num_sensors; ii++)
+      {
+          if ( rd_sensor_is_init (&sensors[ii]->sensor))
+          {
+              name_idx += snprintf(p_dis->hw_version+name_idx,  sizeof (p_dis->hw_version)-name_idx, " %s", sensors[ii]->sensor.name);
+          }
+      }
+    #else
+      snprintf (p_dis->hw_version, sizeof (p_dis->hw_version), "Check PCB");
+    #endif
+
 #endif
     return err_code;
 }

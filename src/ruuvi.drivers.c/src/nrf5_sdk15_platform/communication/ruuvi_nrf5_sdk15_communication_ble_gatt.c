@@ -122,10 +122,9 @@ static ble_gap_phys_t m_phys =
     .tx_phys = BLE_GAP_PHY_1MBPS
 };
 
-// Values selected for optimizing throughput/energy.
-#define MIN_CONN_INTERVAL MSEC_TO_UNITS(485U, UNIT_1_25_MS)
-// Apple guideline: max interval >= min interval + 15 ms
-#define MAX_CONN_INTERVAL MSEC_TO_UNITS(500U, UNIT_1_25_MS)
+// Values selected for optimizing throughput.
+#define MIN_CONN_INTERVAL BLE_GAP_CP_MIN_CONN_INTVL_MIN
+#define MAX_CONN_INTERVAL BLE_GAP_CP_MAX_CONN_INTVL_MIN
 // Apple guideline: MAX_CONN_INTERVAL * SLAVE_LATENCY <= 2 s.
 #define SLAVE_LATENCY     (0U)
 // Apple guideline: MAX_CONN_INTERVAL * (SLAVE_LATENCY + 1) * 3 < CONN_SUP_TIMEOUT
@@ -230,6 +229,7 @@ static ret_code_t conn_params_init (void)
     cp_init.disconnect_on_fail             = false;
     cp_init.evt_handler                    = on_conn_params_evt;
     cp_init.error_handler                  = conn_params_error_handler;
+    ble_conn_params_stop(); // added to solve issue 230
     err_code = ble_conn_params_init (&cp_init);
     return err_code;
 }

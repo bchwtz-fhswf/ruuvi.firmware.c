@@ -166,6 +166,16 @@ rd_status_t ri_lis2dh12_acceleration_raw_get (uint8_t * const raw_data);
 
 
 /**
+ * @brief Return raw temperature data
+ *
+ * @param[out] raw_data, data returned from sensor
+ * @return RD_SUCCESS in case of success
+ * @return RD_ERROR_INTERNAL in case of error
+ */
+rd_status_t ri_lis2dh12_temperature_raw_get(uint8_t *raw_temperature);
+
+
+/**
 * @brief Parse raw data from LIS2DH12 into rd_sensor_data_t
 *
 * @param[in/out] rd_sensor_data_t structure to be filled with parsed data.

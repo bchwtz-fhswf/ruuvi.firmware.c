@@ -201,18 +201,37 @@ rd_status_t lis2dh12_logged_data_get (rd_sensor_data_t * const data)
 
     rd_status_t err_code = RD_SUCCESS;
 
+    uint8_t raw_temperature[2];
+    err_code |= ri_lis2dh12_temperature_raw_get(raw_temperature);
+
     if(logged_data.element_pos < RI_LIS2DH12_FIFO_SIZE) {
 
-      axis3bit16_t* raw_acceleration = (axis3bit16_t*)logged_data.data + logged_data.element_pos*SIZE_ELEMENT;
+      axis3bit16_t* raw_acceleration = (axis3bit16_t*)(logged_data.data + logged_data.element_pos*SIZE_ELEMENT);
 
       // Parse raw data
-      err_code |= ri_lis2dh12_raw_data_parse(data, raw_acceleration, NULL);
-
-      //LOGD("\r\nDequeued RAW accelaration data");
-      //ri_log_hex (RI_LOG_LEVEL_DEBUG, raw_acceleration.u8bit, 6);
+      err_code |= ri_lis2dh12_raw_data_parse(data, raw_acceleration, raw_temperature);
 
       // position for next element
       logged_data.element_pos++;
+    } else {
+        rd_sensor_data_t d_acceleration;
+        float values[3];
+        rd_sensor_data_fields_t acc_fields = {.bitfield = 0};
+        rd_sensor_data_fields_t valid_fields = {.bitfield = 0};
+        d_acceleration.data = values;
+        acc_fields.datas.acceleration_x_g = 1;
+        acc_fields.datas.acceleration_y_g = 1;
+        acc_fields.datas.acceleration_z_g = 1;
+        
+        values[0] = RD_FLOAT_INVALID;
+        values[1] = RD_FLOAT_INVALID;
+        values[2] = RD_FLOAT_INVALID;
+
+        d_acceleration.valid  = valid_fields;
+        d_acceleration.fields = acc_fields;
+        rd_sensor_data_populate (data,
+                                 &d_acceleration,
+                                 data->fields);
     }
 
     return err_code;
@@ -244,9 +263,6 @@ rd_status_t app_disable_sensor_logging(void) {
     // save nologging data_get function in sensor context
     lis2dh12->sensor.data_get = nologging_data_get;
     nologging_data_get = NULL;
-
-    // Enable temperature
-    lis2dh12->sensor.provides.datas.temperature_c = 1;
 
     // drop ringbuffer
     err_code = rt_flash_ringbuffer_delete(APP_FLASH_FILE_ACCELERATION_RINGBUFFER,  APP_FLASH_RECORD_ACCELERATION_RINGBUFFER);
@@ -291,7 +307,7 @@ rd_status_t app_enable_sensor_logging(void) {
       // enable GPIO interrupt
       err_code |= ri_gpio_interrupt_enable (lis2dh12->fifo_pin,
                                        RI_GPIO_SLOPE_LOTOHI, 
-                                       RI_GPIO_MODE_INPUT_PULLUP,
+                                       RI_GPIO_MODE_INPUT_NOPULL,
                                        &on_fifo_full);
 
       // enable fifo on sensor
@@ -311,9 +327,6 @@ rd_status_t app_enable_sensor_logging(void) {
       logged_data.sample_counter = 0;
       logged_data.num_elements = 0;
       logged_data.element_pos = 0xff;
-
-      // with acceleration logging enabled we provide no temperature by LIS2DH12
-      lis2dh12->sensor.provides.datas.temperature_c = 0;
 
       LOGD("Successfully initialized FIFO logging\r\n");
     } else {

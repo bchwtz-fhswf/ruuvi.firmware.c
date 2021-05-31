@@ -974,9 +974,13 @@ rd_status_t ri_lis2dh12_acceleration_raw_get (uint8_t * const raw_data)
     int32_t lis_ret_code;
     lis_ret_code = lis2dh12_acceleration_raw_get (& (dev.ctx), raw_data);
 
-    //LOGD("\r\nRAW accelaration data");
-    //ri_log_hex (RI_LOG_LEVEL_DEBUG, raw_data, 6);
+    return (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
+}
 
+rd_status_t ri_lis2dh12_temperature_raw_get(uint8_t *raw_temperature) 
+{
+    int32_t lis_ret_code;
+    lis_ret_code = lis2dh12_temperature_raw_get (& (dev.ctx), raw_temperature);
     return (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
 }
 
@@ -986,14 +990,11 @@ rd_status_t ri_lis2dh12_data_get (rd_sensor_data_t * const
     if (NULL == data) { return RD_ERROR_NULL; }
 
     rd_status_t err_code = RD_SUCCESS;
-    int32_t lis_ret_code;
     axis3bit16_t raw_acceleration;
     uint8_t raw_temperature[2];
     memset (raw_acceleration.u8bit, 0x00, 3 * sizeof (int16_t));
-    lis_ret_code = lis2dh12_acceleration_raw_get (& (dev.ctx), raw_acceleration.u8bit);
-    err_code |= (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
-    lis_ret_code = lis2dh12_temperature_raw_get (& (dev.ctx), raw_temperature);
-    err_code |= (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
+    err_code |= ri_lis2dh12_acceleration_raw_get(raw_acceleration.u8bit);
+    err_code |= ri_lis2dh12_temperature_raw_get(raw_temperature);
     err_code |= ri_lis2dh12_raw_data_parse(data, &raw_acceleration, raw_temperature);
 
     return err_code;

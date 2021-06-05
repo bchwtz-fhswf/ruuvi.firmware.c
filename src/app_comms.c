@@ -151,7 +151,7 @@ static uint8_t initial_adv_send_count (void)
 
 #if APP_SENSOR_LOGGING
 static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
-                          size_t data_len)
+                          const size_t data_len)
 {
     // Parse message type
     uint8_t type = raw_message[2];
@@ -171,23 +171,14 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
       // Route message to proper handler
       switch (type)
       {
-        //case 0x00:
-        //  // start interactive session
-        //  LOGD("start interactive session");
-        //  rt_gatt_nus_start_interactive();
-        //  break;
-        //case 0x01:
-        //  // start transmitting testdata
-        //  LOGD("start transmitting testdata\r\n");
-        //  return send_test_data(reply_fp);
         case 0x03:
           // start transmitting last sample
           LOGD("start transmitting last sample\r\n");
-          return app_acc_logging_send_last_sample(reply_fp);
+          return app_acc_logging_send_last_sample(reply_fp, false);
         case 0x05:
           // start transmitting logged data
           LOGD("start transmitting logged data\r\n");
-          return app_acc_logging_send_logged_data(reply_fp);
+          return app_acc_logging_send_logged_data(reply_fp, false);
         case 0x06:
           // set sensor configuration
           LOGD("set sensor configuration\r\n");
@@ -240,7 +231,7 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
           // return flash statistic
           LOGD("return flash and ringbuffer statistic\r\n");
           msg.data[1] = 0x0d;
-          msg.data_length = 17 + 3;
+          msg.data_length = 16 + 3;
           err_code |=app_acc_logging_statistic(msg.data+3);
           break;
 
@@ -260,7 +251,144 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
 
     return err_code;
 }
+
+static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
+                          const size_t data_len)
+{
+    // Parse message type
+    uint8_t type = raw_message[2];
+
+    // Parse desired operation.
+    re_op_t op = (re_op_t) raw_message[RE_STANDARD_OPERATION_INDEX];
+
+    // find LIS2DH12
+    rt_sensor_ctx_t *lis2dh12 = app_sensor_find("LIS2DH12");
+
+    rd_status_t err_code = RD_SUCCESS;
+    ri_comm_message_t msg;
+    msg.data_length = 4;
+    msg.repeat_count = 1;
+    msg.data[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_ACCELERATION;
+    msg.data[RE_STANDARD_SOURCE_INDEX     ] = RE_STANDARD_DESTINATION_ACCELERATION;
+    msg.data[RE_STANDARD_OPERATION_INDEX  ] = op;
+
+    if(lis2dh12!=NULL) {
+
+      // If target and op are valid, execute.
+      switch (op)
+      {
+        case RE_STANDARD_LOG_VALUE_READ:
+          if(raw_message[3]==0) {
+              // start transmitting last sample
+              LOGD("start transmitting last sample\r\n");
+              return app_acc_logging_send_last_sample(reply_fp, true);
+          } else if(raw_message[3]==1) {
+              // start transmitting logged data
+              LOGD("start transmitting logged data\r\n");
+              return app_acc_logging_send_logged_data(reply_fp, true);
+          } else {
+              err_code |= RD_ERROR_INVALID_PARAM;
+          }
+
+        case RE_STANDARD_SENSOR_CONFIGURATION_WRITE:
+          // set sensor configuration
+          LOGD("set sensor configuration\r\n");
+          rd_sensor_configuration_t newConfiguration;
+          memcpy(&newConfiguration, raw_message+3, sizeof(rd_sensor_configuration_t));
+          // set new sensor configuration
+          err_code |= app_acc_logging_configuration_set(lis2dh12, &newConfiguration);
+          break;
+
+        case RE_STANDARD_SENSOR_CONFIGURATION_READ:
+          // read sensor configuration
+          LOGD("read sensor configuration\r\n");
+          msg.data_length += sizeof(rd_sensor_configuration_t);
+          memcpy(msg.data+4, &lis2dh12->configuration, sizeof(rd_sensor_configuration_t));
+          break;
+
+        case RE_STANDARD_VALUE_WRITE:
+          // enable / disable logging of acceleration data
+          if(raw_message[3]==1) {
+            LOGD("enable logging\r\n");
+            err_code |= app_enable_sensor_logging();
+          } else if(raw_message[3]==0) {
+            LOGD("disable logging\r\n");
+            err_code |= app_disable_sensor_logging();
+          } else {
+              err_code |= RD_ERROR_INVALID_PARAM;
+          }
+          break;
+
+        case RE_STANDARD_VALUE_READ:
+          // query logging data
+          LOGD("query state of logging data\r\n");
+          err_code |= app_acc_logging_state();
+          break;
+
+        default:
+          LOGD("unknown message type\r\n");
+          err_code |= RD_ERROR_INVALID_PARAM;
+          break;
+      }
+    } else {
+      LOGD("LIS2DH12 not found\r\n");
+      err_code = RD_ERROR_NOT_FOUND;
+    }
+
+    // send response
+    msg.data[3] = err_code;
+    err_code |= app_comms_blocking_send(reply_fp, &msg);
+
+    return err_code;
+}
 #endif
+
+static rd_status_t handle_rtc_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
+                          const size_t data_len)
+{
+    // create return message
+    rd_status_t err_code = RD_SUCCESS;
+    ri_comm_message_t msg;
+    msg.data_length = 4;
+    msg.repeat_count = 1;
+    msg.data[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_RTC;
+    msg.data[RE_STANDARD_SOURCE_INDEX     ] = RE_STANDARD_DESTINATION_RTC;
+
+    // Parse desired operation.
+    re_op_t op = (re_op_t) raw_message[RE_STANDARD_OPERATION_INDEX];
+    msg.data[RE_STANDARD_OPERATION_INDEX] = op;
+
+    // If target and op are valid, execute.
+    switch (op)
+    {
+        case RE_STANDARD_VALUE_WRITE:
+          // set time
+          LOGD("set time\r\n");
+          uint64_t millis;
+          memcpy(&millis, raw_message+3, sizeof(uint64_t));
+          err_code |= ri_set_rtc_millis(millis);
+          break;
+
+        case RE_STANDARD_VALUE_READ:
+          // read time
+          LOGD("read time\r\n");
+          uint64_t currentTimestamp = rd_sensor_timestamp_get();
+          msg.data_length += sizeof(uint64_t);
+          memcpy(msg.data+4, &currentTimestamp, sizeof(uint64_t));
+          break;
+
+        default:
+          LOGD("unknown message type\r\n");
+          err_code |= RD_ERROR_INVALID_PARAM;
+          break;
+    }
+
+    // send response
+    msg.data[3] = err_code;
+    err_code |= app_comms_blocking_send(reply_fp, &msg);
+
+    return err_code;
+}
 
 static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
                           size_t data_len)
@@ -287,6 +415,10 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
         switch (type)
         {
             case RE_ACC_XYZ:
+#if APP_SENSOR_LOGGING
+              err_code |= handle_lis2dh12_comms_v2(reply_fp, raw_message, data_len);
+              break;
+#endif
             case RE_ACC_X:
             case RE_ACC_Y:
             case RE_ACC_Z:
@@ -306,6 +438,9 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
               err_code |= handle_lis2dh12_comms(reply_fp, raw_message, data_len);
               break;
 #endif
+            case RE_STANDARD_DESTINATION_RTC:
+              err_code |= handle_rtc_comms_v2(reply_fp, raw_message, data_len);
+              break;
 
             default:
                 break;

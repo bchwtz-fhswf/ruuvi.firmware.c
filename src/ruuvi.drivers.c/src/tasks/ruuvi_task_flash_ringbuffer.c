@@ -94,6 +94,12 @@ rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t r
       }
       LOGDf("Page %d reserved. Status %x\r\n", i, err_code);
     }
+
+    if(err_code==RD_ERROR_NO_MEM && state.size>2) {
+      // ignore RD_ERROR_NO_MEM in case of not enough flash memory to reserve the desired size of ringbuffer
+      // and if a minimum of 3 pages were reserved
+      err_code = RD_SUCCESS;
+    }
   
     // Log result
     if (RD_SUCCESS == err_code) {
@@ -116,7 +122,8 @@ rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t r
     return err_code;
 }
 
-rd_status_t rt_flash_ringbuffer_collect_flashpage (const uint32_t page_id, const uint32_t record_id, const uint16_t size, const uint8_t* packeddata, rt_flash_ringbuffer_flashpage_t* flashpage) {
+rd_status_t rt_flash_ringbuffer_collect_flashpage (const uint32_t page_id, const uint32_t record_id, const uint16_t size, 
+              const uint8_t* packeddata, rt_flash_ringbuffer_flashpage_t* flashpage) {
   
   rd_status_t err_code = RD_SUCCESS;
 
@@ -327,17 +334,17 @@ rd_status_t rt_flash_ringbuffer_statistic (const uint32_t page_id,
   if(err_code & RD_ERROR_NOT_FOUND) {
     statistik[pos++] = 0xff;
     statistik[pos++] = 0xff;
+    statistik[pos++] = 0xff;
   } else {
     statistik[pos++] = state.start;
     statistik[pos++] = state.end;
+    statistik[pos++] = state.size;
   }
 
   // gather flash statistics
   fds_stat_t stat;
   fds_stat(&stat);
 
-  memcpy(statistik+pos, &stat.pages_available, 2);
-  pos+=2;
   memcpy(statistik+pos, &stat.valid_records, 2);
   pos+=2;
   memcpy(statistik+pos, &stat.dirty_records, 2);

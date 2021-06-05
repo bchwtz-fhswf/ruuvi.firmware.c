@@ -33,14 +33,14 @@ rd_status_t app_enable_sensor_logging(void);
  *
  * @return RD_SUCCESS on success, error code from stack otherwise.
  */
-rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp);
+rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp, const bool is_v2);
 
 /**
  * @brief Send logged data from ringbuffer using GATT
  *
  * @return RD_SUCCESS on success, error code from stack otherwise.
  */
-rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp);
+rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp, const bool is_v2);
 
 /**
  * @brief Handle Configuration Change
@@ -51,8 +51,8 @@ rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp);
  *
  * @return Error code from stack
  */
-rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* sensor, 
-                          rd_sensor_configuration_t* new_config);
+rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor, 
+                          const rd_sensor_configuration_t* const new_config);
 
 /**
  * @brief Initialize acceleration logging during boot.

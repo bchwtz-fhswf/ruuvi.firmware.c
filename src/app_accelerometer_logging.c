@@ -10,6 +10,7 @@
 
 #include "ruuvi_boards.h"
 #include "ruuvi_driver_error.h"
+#include "ruuvi_endpoints.h"
 #include "ruuvi_interface_log.h"
 #include "ruuvi_interface_gpio.h"
 #include "ruuvi_interface_lis2dh12.h"
@@ -336,7 +337,7 @@ rd_status_t app_enable_sensor_logging(void) {
     return err_code;
 }
 
-rd_status_t send_data_block(const ri_comm_xfer_fp_t reply_fp, uint32_t size_of_data, uint8_t *data, uint16_t *crc) {
+rd_status_t send_data_block(const ri_comm_xfer_fp_t reply_fp, uint32_t size_of_data, uint8_t *data, uint16_t *crc, bool is_v2) {
 
     rd_status_t err_code = RD_SUCCESS;
     uint32_t pos = 0;
@@ -350,7 +351,7 @@ rd_status_t send_data_block(const ri_comm_xfer_fp_t reply_fp, uint32_t size_of_d
             msg.data_length = 1 + size_of_data - pos;
         }
 
-        msg.data[0] = 0xfc;
+        msg.data[0] = is_v2 ? RE_STANDARD_LOG_VALUE_READ : 0xfc;
         memcpy(msg.data+1, data+pos, msg.data_length-1);
         err_code |= app_comms_blocking_send(reply_fp, &msg);
         pos += msg.data_length-1;
@@ -362,8 +363,70 @@ rd_status_t send_data_block(const ri_comm_xfer_fp_t reply_fp, uint32_t size_of_d
     return err_code;
 }
 
+rd_status_t app_acc_logging_send_eof(const ri_comm_xfer_fp_t reply_fp, const rd_status_t status_code, const uint16_t crc) {
 
-rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp) {
+    rd_status_t err_code = RD_SUCCESS;
+
+    LOGD("send footer\r\n");
+    ri_comm_message_t msg;
+    msg.repeat_count = 1;
+    msg.data[0] = 0xfb; // Header
+    msg.data[2] = status_code;
+
+    if(status_code==RD_SUCCESS) {
+      msg.data[1] = 0x03;
+
+      // Bytes 3 to 10: Config
+      memcpy(msg.data+3, logged_data.config, sizeof(rd_sensor_configuration_t));
+
+      // CRC
+      msg.data[11] = (crc & 0xff00) >> 8; 
+      msg.data[12] = crc & 0xff;
+      msg.data_length = 13;
+
+    } else {
+      // in case of error only send error code
+      msg.data[1] = 0x00;
+      msg.data_length = 3;
+    }
+
+    err_code |= app_comms_blocking_send(reply_fp, &msg);
+
+    return err_code;
+}
+
+rd_status_t app_acc_logging_send_eof_v2(const ri_comm_xfer_fp_t reply_fp, const rd_status_t status_code, const uint16_t crc) {
+
+    rd_status_t err_code = RD_SUCCESS;
+
+    LOGD("send footer\r\n");
+    ri_comm_message_t msg;
+    msg.repeat_count = 1;
+    msg.data[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_ACCELERATION; 
+    msg.data[RE_STANDARD_SOURCE_INDEX     ] = RE_STANDARD_DESTINATION_ACCELERATION; 
+    msg.data[RE_STANDARD_OPERATION_INDEX  ] = RE_STANDARD_LOG_VALUE_READ;
+    msg.data[3] = status_code;
+    msg.data_length = 4;
+
+    if(status_code==RD_SUCCESS) {
+      // Config
+      memcpy(msg.data+msg.data_length, logged_data.config, sizeof(rd_sensor_configuration_t));
+      msg.data_length += sizeof(rd_sensor_configuration_t);
+
+      // CRC
+      msg.data[msg.data_length++] = (crc & 0xff00) >> 8; 
+      msg.data[msg.data_length++] = crc & 0xff;
+
+    } else {
+      // in case of error only send error code
+    }
+
+    err_code |= app_comms_blocking_send(reply_fp, &msg);
+
+    return err_code;
+}
+
+rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp, const bool is_v2) {
 
     // when logging is not active return error
     if(nologging_data_get==NULL) {
@@ -398,37 +461,19 @@ rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp) {
     uint16_t crc = 0xffff;
 
     // send data
-    err_code |= send_data_block(reply_fp, sizeOfPackedData, packeddata, &crc);
+    err_code |= send_data_block(reply_fp, sizeOfPackedData, packeddata, &crc, is_v2);
 
-    LOGD("send footer\r\n");
-    ri_comm_message_t msg;
-    msg.repeat_count = 1;
-    msg.data[0] = 0xfb; // Header
-    msg.data[2] = err_code;
-
-    if(err_code==RD_SUCCESS) {
-      msg.data[1] = 0x03;
-
-      // Bytes 3 to 10: Config
-      memcpy(msg.data+3, logged_data.config, sizeof(rd_sensor_configuration_t));
-
-      // CRC
-      msg.data[11] = (crc & 0xff00) >> 8; 
-      msg.data[12] = crc & 0xff;
-      msg.data_length = 13;
-
+    // send EOF
+    if(is_v2) {
+      err_code |= app_acc_logging_send_eof_v2(reply_fp, err_code, crc);
     } else {
-      // in case of error only send error code
-      msg.data[1] = 0x00;
-      msg.data_length = 3;
+      err_code |= app_acc_logging_send_eof(reply_fp, err_code, crc);
     }
-
-    err_code |= app_comms_blocking_send(reply_fp, &msg);
 
     return err_code;
 }
 
-rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp) {
+rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp, const bool is_v2) {
 
     // when logging is not active return error
     if(nologging_data_get==NULL) {
@@ -450,7 +495,7 @@ rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp) {
         LOGD("send data from ringbuffer\r\n");
 
         // send data
-        err_code |= send_data_block(reply_fp, flashpage.actual_size, flashpage.packeddata, &crc);
+        err_code |= send_data_block(reply_fp, flashpage.actual_size, flashpage.packeddata, &crc, is_v2);
 
         // read next page from ringbuffer
         ringbuffer_status = rt_flash_ringbuffer_read(APP_FLASH_FILE_ACCELERATION_RINGBUFFER,  
@@ -468,33 +513,15 @@ rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp) {
       logged_data.flashpage.actual_size = 0;
 
       // send data
-      err_code |= send_data_block(reply_fp, flashpage.actual_size, flashpage.packeddata, &crc);
+      err_code |= send_data_block(reply_fp, flashpage.actual_size, flashpage.packeddata, &crc, is_v2);
     }
 
-    LOGD("send footer\r\n");
-    ri_comm_message_t msg;
-    msg.repeat_count = 1;
-    msg.data[0] = 0xfb; // Header
-    msg.data[2] = err_code;
-
-    if(err_code==RD_SUCCESS) {
-      msg.data[1] = 0x03;
-
-      // Bytes 3 to 10: Config
-      memcpy(msg.data+3, logged_data.config, sizeof(rd_sensor_configuration_t));
-
-      // CRC
-      msg.data[11] = (crc & 0xff00) >> 8; 
-      msg.data[12] = crc & 0xff;
-      msg.data_length = 13;
-
+    // send EOF
+    if(is_v2) {
+      err_code |= app_acc_logging_send_eof_v2(reply_fp, err_code, crc);
     } else {
-      // in case of error only send error code
-      msg.data[1] = 0x00;
-      msg.data_length = 3;
+      err_code |= app_acc_logging_send_eof(reply_fp, err_code, crc);
     }
-
-    err_code |= app_comms_blocking_send(reply_fp, &msg);
 
     return err_code;
 }
@@ -509,8 +536,8 @@ rd_status_t app_acc_logging_state(void) {
     }
 }
 
-rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* sensor, 
-                          rd_sensor_configuration_t* new_config) {
+rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor, 
+                          const rd_sensor_configuration_t* const new_config) {
 
     rd_status_t err_code = RD_SUCCESS;
     bool is_new_configuration = false;

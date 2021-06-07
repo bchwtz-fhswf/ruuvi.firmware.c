@@ -58,6 +58,13 @@ rd_status_t rt_flash_ringbuffer_free_flash (rt_flash_ringbuffer_state_t *state) 
         err_code |= rt_flash_reserve_cancel(&state->reserved_pages[i]);
         LOGDf("Page %d reservation canceled. Status %x\r\n", i, err_code);
       }
+
+      // Wait while flash is busy
+      while (rt_flash_busy())
+      {
+          ri_yield();
+      }
+
     }
 
     return err_code;
@@ -79,6 +86,15 @@ rd_status_t rt_flash_ringbuffer_create (const uint32_t page_id, const uint32_t r
     }
 
     err_code = RD_SUCCESS;
+
+    // run garbage collector
+    rt_flash_gc_run();
+
+    // Wait while flash is busy
+    while (rt_flash_busy())
+    {
+        ri_yield();
+    }
 
     // Set state attributes
     state.size = 0;

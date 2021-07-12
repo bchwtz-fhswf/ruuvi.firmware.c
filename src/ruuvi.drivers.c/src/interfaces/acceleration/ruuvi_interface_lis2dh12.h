@@ -172,7 +172,7 @@ rd_status_t ri_lis2dh12_acceleration_raw_get (uint8_t * const raw_data);
  * @return RD_SUCCESS in case of success
  * @return RD_ERROR_INTERNAL in case of error
  */
-rd_status_t ri_lis2dh12_temperature_raw_get(uint8_t *raw_temperature);
+rd_status_t ri_lis2dh12_temperature_raw_get(uint8_t * const raw_temperature);
 
 
 /**

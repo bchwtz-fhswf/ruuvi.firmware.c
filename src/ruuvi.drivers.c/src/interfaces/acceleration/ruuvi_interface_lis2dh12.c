@@ -977,7 +977,7 @@ rd_status_t ri_lis2dh12_acceleration_raw_get (uint8_t * const raw_data)
     return (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
 }
 
-rd_status_t ri_lis2dh12_temperature_raw_get(uint8_t *raw_temperature) 
+rd_status_t ri_lis2dh12_temperature_raw_get(uint8_t * const raw_temperature) 
 {
     int32_t lis_ret_code;
     lis_ret_code = lis2dh12_temperature_raw_get (& (dev.ctx), raw_temperature);

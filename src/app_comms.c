@@ -216,7 +216,7 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
           // enable / disable logging of acceleration data
           if(raw_message[3]) {
             LOGD("enable logging\r\n");
-            err_code |= app_enable_sensor_logging();
+            err_code |= app_enable_sensor_logging(NULL);
           } else {
             LOGD("disable logging\r\n");
             err_code |= app_disable_sensor_logging();
@@ -308,14 +308,22 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
 
         case RE_STANDARD_VALUE_WRITE:
           // enable / disable logging of acceleration data
-          if(raw_message[3]==1) {
-            LOGD("enable logging\r\n");
-            err_code |= app_enable_sensor_logging();
-          } else if(raw_message[3]==0) {
-            LOGD("disable logging\r\n");
-            err_code |= app_disable_sensor_logging();
-          } else {
+          switch(raw_message[3]) {
+            case 2:
+              LOGD("enable streaming\r\n");
+              err_code |= app_enable_sensor_logging(reply_fp);
+              break;
+            case 1:
+              LOGD("enable logging\r\n");
+              err_code |= app_enable_sensor_logging(NULL);
+              break;
+            case 0:
+              LOGD("disable logging\r\n");
+              err_code |= app_disable_sensor_logging();
+              break;
+            default:
               err_code |= RD_ERROR_INVALID_PARAM;
+              break;
           }
           break;
 

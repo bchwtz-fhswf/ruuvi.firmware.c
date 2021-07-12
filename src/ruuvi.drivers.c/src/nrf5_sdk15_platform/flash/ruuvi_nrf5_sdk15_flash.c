@@ -557,11 +557,9 @@ bool ri_flash_is_busy()
 
 
 /**
- * Set data to record in page. Writes a new record if given record ID does not exist in page.
- * Updates record if it already exists.
- * Automatically runs garbage collection if record cannot fit on page.
+ * Write data to formerly reserved flash page. 
  *
- * @param[in] page_id ID of a page. Can be random number.
+ * @param[in] reserve_token received from ri_flash_reserve.
  * @param[in] record_id ID of a record. Can be a random number.
  * @param[in] data_size size data to store
  * @param[in] data pointer to data to store.

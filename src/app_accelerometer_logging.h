@@ -33,14 +33,14 @@ rd_status_t app_enable_sensor_logging(const ri_comm_xfer_fp_t reply_fp);
  *
  * @return RD_SUCCESS on success, error code from stack otherwise.
  */
-rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp, const bool is_v2);
+rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp);
 
 /**
  * @brief Send logged data from ringbuffer using GATT
  *
  * @return RD_SUCCESS on success, error code from stack otherwise.
  */
-rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp, const bool is_v2);
+rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp);
 
 /**
  * @brief Handle Configuration Change

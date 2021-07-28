@@ -93,7 +93,7 @@ void access_flash(void)
             LOGDf("Status: %i\r\n", (int)status_register);
 
             // If the WIP bit is set, don't advance to the next state
-            if(status_register & REG_SR_BIT_WIP) flash_state--;
+            if(status_register & (1 << REG_SR_BIT_WIP) ) flash_state--;
             break;
 
         case 7:
@@ -117,7 +117,7 @@ void access_flash(void)
             LOGDf("Status: %i\r\n", (int)status_register);
 
             // If the WIP bit is set, don't advance to the next state
-            if(status_register & REG_SR_BIT_WIP) flash_state--;
+            if(status_register & (1 << REG_SR_BIT_WIP) ) flash_state--;
             break;
 
         case 11:

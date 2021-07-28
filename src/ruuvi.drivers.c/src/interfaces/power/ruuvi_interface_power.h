@@ -64,5 +64,10 @@ void ri_power_reset (void);
  */
 void ri_power_enter_bootloader (void);
 
+/**
+ * @brief Return boot counter
+ */
+rd_status_t ri_power_read_boot_count (uint32_t *boot_count);
+
 /*@}*/
 #endif

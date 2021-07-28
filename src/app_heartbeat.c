@@ -25,8 +25,6 @@
 #include "ruuvi_task_gatt.h"
 #include "ruuvi_task_nfc.h"
 
-#include "ruuvi.drivers.c/macronix/spi_flash.h"
-
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -144,8 +142,6 @@ void heartbeat (void * p_event, uint16_t event_size)
     LOGDf("Heartbeat: ACC Value X Value %f\r\n", accelerationx_g);
     LOGDf("Heartbeat: ACC Value Y Value %f\r\n", accelerationy_g);
     LOGDf("Heartbeat: ACC Value Z Value %f\r\n\r\n", accelerationz_g);
-
-    access_flash();
 
     if (RE_5_INVALID_SEQUENCE == ++m_measurement_count)
     {

@@ -316,10 +316,6 @@
 #define APP_FLASH_LOG_BOOT_COUNTER_RECORD (0xEFU)
 #define APP_FLASH_LOG_DATA_RECORD_PREFIX (0xF0U) //!< Prefix, append with U8 number
 
-// File constant for acceleration logging ringbuffer
-#define APP_FLASH_FILE_ACCELERATION_RINGBUFFER (0xCFU)
-#define APP_FLASH_RECORD_ACCELERATION_RINGBUFFER (0x0001U)
-
 // ** Logging constants ** //
 #ifndef APP_LOG_INTERVAL_S
 #   define APP_LOG_INTERVAL_S (5U * 60U)
@@ -445,9 +441,9 @@
 #   define APP_SENSOR_LOGGING (1U)
 #   define CRC16_ENABLED (1U)
 // Flash usage with acceleration logging
-#   define APP_FLASH_LOG_DATA_RECORDS_NUM   (2U) //!< swap page + settings.
-#   define RT_FLASH_RINGBUFFER_MAXSIZE (16U)
-#   define APP_FLASH_PAGES (APP_FLASH_LOG_DATA_RECORDS_NUM + RT_FLASH_RINGBUFFER_MAXSIZE) 
+#   define APP_FLASH_LOG_DATA_RECORDS_NUM   (2U)
+#   define RT_FLASH_RINGBUFFER_MAXSIZE (14U)
+#   define APP_FLASH_PAGES (APP_FLASH_LOG_DATA_RECORDS_NUM + RT_FLASH_RINGBUFFER_MAXSIZE + 2)  //!< swap page + settings.
 #else
 // Flash usage without acceleration logging
 #define APP_FLASH_PAGES (16U) //!< 64 kB flash storage if page size is 4 kB.

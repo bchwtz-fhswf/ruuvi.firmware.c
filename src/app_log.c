@@ -106,6 +106,8 @@ static rd_status_t store_block (const app_log_record_t * const p_record)
             ri_yield();
         }
 
+        rt_print_flash_statistic();
+
         RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
         // Erase another block and try again if there was error.
         num_tries++;

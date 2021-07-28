@@ -14,6 +14,7 @@
 #include "ruuvi_interface_scheduler.h"
 #include "ruuvi_interface_timer.h"
 #include "ruuvi_interface_yield.h"
+#include "ruuvi_interface_power.h"
 #include "ruuvi_task_advertisement.h"
 #include "ruuvi_task_communication.h"
 #include "ruuvi_task_gatt.h"
@@ -171,68 +172,22 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
       // Route message to proper handler
       switch (type)
       {
-        case 0x03:
-          // start transmitting last sample
-          LOGD("start transmitting last sample\r\n");
-          return app_acc_logging_send_last_sample(reply_fp, false);
-        case 0x05:
-          // start transmitting logged data
-          LOGD("start transmitting logged data\r\n");
-          return app_acc_logging_send_logged_data(reply_fp, false);
-        case 0x06:
-          // set sensor configuration
-          LOGD("set sensor configuration\r\n");
-          rd_sensor_configuration_t newConfiguration;
-          memcpy(&newConfiguration, raw_message+3, sizeof(rd_sensor_configuration_t));
-          // set new sensor configuration
-          err_code |= app_acc_logging_configuration_set(lis2dh12, &newConfiguration);
-          break;
-        case 0x07:
-          // read sensor configuration
-          LOGD("read sensor configuration\r\n");
-          rd_sensor_configuration_t currentConfiguration;
-          memset(&currentConfiguration, 0, sizeof(rd_sensor_configuration_t));
-          err_code |= rd_sensor_configuration_get(&lis2dh12->sensor, &currentConfiguration);
-          msg.data[1] = 0x07;
-          msg.data_length += sizeof(rd_sensor_configuration_t);
-          memcpy(msg.data+3, &currentConfiguration, sizeof(rd_sensor_configuration_t));
-          break;
-        case 0x08:
-          // set time
-          LOGD("set time\r\n");
-          uint64_t millis;
-          memcpy(&millis, raw_message+3, sizeof(uint64_t));
-          err_code |= ri_set_rtc_millis(millis);
-          break;
-        case 0x09:
-          // read time
-          LOGD("read time\r\n");
-          uint64_t currentTimestamp = rd_sensor_timestamp_get();
-          msg.data[1] = 0x09;
-          msg.data_length += sizeof(uint64_t);
-          memcpy(msg.data+3, &currentTimestamp, sizeof(uint64_t));
-          break;
-        case 0x0a:
-          // enable / disable logging of acceleration data
-          if(raw_message[3]) {
-            LOGD("enable logging\r\n");
-            err_code |= app_enable_sensor_logging(NULL);
-          } else {
-            LOGD("disable logging\r\n");
-            err_code |= app_disable_sensor_logging();
-          }
-          break;
-        case 0x0b:
-          // query logging data
-          LOGD("query state of logging data\r\n");
-          err_code |= app_acc_logging_state();
-          break;
         case 0x0d:
           // return flash statistic
           LOGD("return flash and ringbuffer statistic\r\n");
           msg.data[1] = 0x0d;
           msg.data_length = 16 + 3;
           err_code |=app_acc_logging_statistic(msg.data+3);
+          break;
+
+        case 0x0e:
+          // return boot count;
+          LOGD("return boot count\r\n");
+          uint32_t boot_count;
+          msg.data[1] = 0x0e;
+          err_code |= ri_power_read_boot_count( &boot_count );
+          msg.data_length = sizeof(uint32_t) + 3;
+          memcpy(msg.data+3, &boot_count, sizeof(uint32_t));
           break;
 
         default:
@@ -281,11 +236,11 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
           if(raw_message[3]==0) {
               // start transmitting last sample
               LOGD("start transmitting last sample\r\n");
-              return app_acc_logging_send_last_sample(reply_fp, true);
+              return app_acc_logging_send_last_sample(reply_fp);
           } else if(raw_message[3]==1) {
               // start transmitting logged data
               LOGD("start transmitting logged data\r\n");
-              return app_acc_logging_send_logged_data(reply_fp, true);
+              return app_acc_logging_send_logged_data(reply_fp);
           } else {
               err_code |= RD_ERROR_INVALID_PARAM;
           }

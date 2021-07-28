@@ -19,6 +19,7 @@
 #include "nrf_sdh.h"
 #include "ruuvi_driver_error.h"
 #include "ruuvi_nrf5_sdk15_error.h"
+#include "ruuvi_task_flash.h"
 #include "sdk_errors.h"
 
 
@@ -81,4 +82,17 @@ void ri_power_enter_bootloader (void)
     }
 }
 
+rd_status_t ri_power_read_boot_count (uint32_t *boot_count)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    err_code |= rt_flash_load (APP_FLASH_LOG_FILE, APP_FLASH_LOG_BOOT_COUNTER_RECORD,
+                               boot_count, sizeof (uint32_t));
+
+    if (RD_ERROR_NOT_FOUND == err_code)
+    {
+        *boot_count = 0;
+    }
+
+    return err_code & ~RD_ERROR_NOT_FOUND;
+}
 #endif

@@ -260,6 +260,9 @@
       <file file_name="run_integration_tests.c" />
       <file file_name="run_integration_tests.h" />
     </folder>
+    <configuration
+      Name="Debug"
+      c_user_include_directories=". $(ProjectDir)" />
   </project>
   <project Name="pca10040">
     <configuration

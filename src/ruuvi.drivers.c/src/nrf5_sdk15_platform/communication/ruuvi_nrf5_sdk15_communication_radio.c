@@ -154,6 +154,8 @@ rd_status_t ri_radio_address_set (const uint64_t address)
 
 void ri_radio_activity_callback_set (const ri_radio_activity_interrupt_fp_t handler)
 {
+  // not relevant if current callback handler and new pointer are the same
+  if(on_radio_activity_callback != handler) {
     // Warn user if CB is not NULL and non-null pointer is set, do not overwrite previous pointer.
     if (NULL != handler && NULL != on_radio_activity_callback)
     {
@@ -163,6 +165,7 @@ void ri_radio_activity_callback_set (const ri_radio_activity_interrupt_fp_t hand
     {
         on_radio_activity_callback = handler;
     }
+  }
 }
 
 bool ri_radio_is_init (void)

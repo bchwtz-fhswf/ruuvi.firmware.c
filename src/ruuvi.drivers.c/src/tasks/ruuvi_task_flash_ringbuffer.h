@@ -17,8 +17,11 @@
 
 /*
  *  Creates a new ringbuffer, reserves the pages in flash and initializes the state
+ *
+ * @param[in] partition Name of the partition
+ * @param[in] get_time Function pointer to function to retrieve timestamp
  */
-rd_status_t rt_flash_ringbuffer_create (void);
+rd_status_t rt_flash_ringbuffer_create (const char* partition, fdb_get_time get_time);
 
 /*
  *  Write data to ringbuffer
@@ -44,6 +47,11 @@ void rt_flash_ringbuffer_read (const fdb_tsl_cb callback, const ri_comm_xfer_fp_
  *  Clears the contents of the ringbuffer
  */
 rd_status_t rt_flash_ringbuffer_clear (void);
+
+/*
+ *  Drops the whole ringbuffer
+ */
+rd_status_t rt_flash_ringbuffer_drop (void);
 
 /*
  *  Return Ringbuffer and flash statistic

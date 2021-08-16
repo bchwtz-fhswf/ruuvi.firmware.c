@@ -47,7 +47,7 @@ static inline void LOGDf (const char * const msg, ...)
 static uint16_t current_fileId = 0xffff;
 static uint8_t current_file_content[FDB_RUUVI_BLOCK_SIZE];
 
-static int init(void)
+static int fal_ruuvi_flash_init(void)
 {
     LOGDf("Initialize fal_ruuvi_flash_port.c with %d sectors of %d bytes\r\n", FDB_RUUVI_BLOCK_COUNT, FDB_RUUVI_BLOCK_SIZE);
     return 1;
@@ -67,7 +67,7 @@ static rd_status_t reserve_page(const uint16_t fileId) {
     }
 }
 
-static int read(long offset, uint8_t *buf, size_t size)
+static int fal_ruuvi_flash_read(long offset, uint8_t *buf, size_t size)
 {
     rd_status_t err_code = RD_SUCCESS;
     uint16_t fileId = offset / FDB_RUUVI_BLOCK_SIZE;
@@ -98,7 +98,7 @@ static int read(long offset, uint8_t *buf, size_t size)
     }
 }
 
-static int write(long offset, const uint8_t *buf, size_t size) {
+static int fal_ruuvi_flash_write(long offset, const uint8_t *buf, size_t size) {
 
     rd_status_t err_code = RD_SUCCESS;
     uint16_t fileId = offset / FDB_RUUVI_BLOCK_SIZE;
@@ -132,9 +132,6 @@ static int write(long offset, const uint8_t *buf, size_t size) {
     memcpy(current_file_content + fileOffset, buf, size);
 
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
-    if(err_code!=RD_SUCCESS) {
-      rt_print_flash_statistic();
-    }
 
     if(err_code==RD_SUCCESS) {
       return size;
@@ -143,7 +140,7 @@ static int write(long offset, const uint8_t *buf, size_t size) {
     }
 }
 
-static int erase(long offset, size_t size)
+static int fal_ruuvi_flash_erase(long offset, size_t size)
 {    
     uint8_t content[FDB_RUUVI_BLOCK_SIZE];
     uint16_t fileId = offset / FDB_RUUVI_BLOCK_SIZE;
@@ -151,7 +148,7 @@ static int erase(long offset, size_t size)
 
     LOGDf("Erase Page %x, Size %d\r\n", FDB_RUUVI_FLASH_BASE_FILE_ID + fileId, size);
 
-    return write(offset, content, size);
+    return fal_ruuvi_flash_write(offset, content, size);
 }
 
 const struct fal_flash_dev ruuvi_flash0 =
@@ -160,6 +157,6 @@ const struct fal_flash_dev ruuvi_flash0 =
     .addr       = 0,
     .len        = FDB_RUUVI_BLOCK_COUNT*FDB_RUUVI_BLOCK_SIZE,
     .blk_size   = FDB_RUUVI_BLOCK_SIZE,
-    .ops        = {init, read, write, erase},
+    .ops        = {fal_ruuvi_flash_init, fal_ruuvi_flash_read, fal_ruuvi_flash_write, fal_ruuvi_flash_erase},
     .write_gran = 0 // not used
 };

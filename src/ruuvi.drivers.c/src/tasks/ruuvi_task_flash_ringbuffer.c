@@ -47,18 +47,15 @@ static inline void LOGDf (const char * const msg, ...)
 #endif
 
 /* TSDB object */
-static struct fdb_tsdb tsdb = { 0 };
+static struct fdb_tsdb tsdb;
 
-int64_t fdb_timestamp_get(void) {
-  return (int64_t) rd_sensor_timestamp_get();
-}
-
-rd_status_t rt_flash_ringbuffer_create ()
+rd_status_t rt_flash_ringbuffer_create (const char *partition, fdb_get_time get_time)
 {
 
   /* Time Series database initialization
    */
-  fdb_err_t result = fdb_tsdb_init(&tsdb, "acceleration_data", "fdb_tsdb1", fdb_timestamp_get, 144, NULL);
+  memset(&tsdb, 0, sizeof(tsdb));
+  fdb_err_t result = fdb_tsdb_init(&tsdb, "acceleration_data", partition, get_time, 144, NULL);
 
   // Log result
   if (result==FDB_NO_ERR) {
@@ -95,6 +92,14 @@ rd_status_t rt_flash_ringbuffer_clear (void) {
   
   fdb_tsl_clean(&tsdb);
   LOGD("Ringbuffer cleared\r\n");
+
+  return RD_SUCCESS;
+}
+
+rd_status_t rt_flash_ringbuffer_drop (void) {
+  
+  fdb_tsdb_deinit(&tsdb);
+  LOGD("Ringbuffer droped\r\n");
 
   return RD_SUCCESS;
 }

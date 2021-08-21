@@ -29,13 +29,6 @@ rd_status_t app_disable_sensor_logging (void);
 rd_status_t app_enable_sensor_logging(const bool use_ram_db);
 
 /**
- * @brief Send last logged data sample using GATT
- *
- * @return RD_SUCCESS on success, error code from stack otherwise.
- */
-rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp);
-
-/**
  * @brief Send logged data from ringbuffer using GATT
  *
  * @return RD_SUCCESS on success, error code from stack otherwise.

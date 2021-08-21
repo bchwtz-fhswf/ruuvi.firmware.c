@@ -81,6 +81,12 @@ static int fal_ruuvi_flash_read(long offset, uint8_t *buf, size_t size)
       memcpy(buf, current_file_content + fileOffset, size);
 
     } else {
+      // Wait while flash is busy
+      while (rt_flash_busy())
+      {
+          ri_yield();
+      }
+
       // read from flash
       err_code |= rt_flash_load (FDB_RUUVI_FLASH_BASE_FILE_ID + fileId, 1, content, FDB_RUUVI_BLOCK_SIZE);
 
@@ -94,6 +100,7 @@ static int fal_ruuvi_flash_read(long offset, uint8_t *buf, size_t size)
     if(err_code==RD_SUCCESS) {
       return size;
     } else {
+      RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
       return -1;
     }
 }
@@ -109,6 +116,7 @@ static int fal_ruuvi_flash_write(long offset, const uint8_t *buf, size_t size) {
     if(current_fileId!=0xffff && current_fileId!=fileId) {
       // persist current sector to flash
       err_code |= rt_flash_store (FDB_RUUVI_FLASH_BASE_FILE_ID + current_fileId, 1, current_file_content, FDB_RUUVI_BLOCK_SIZE);
+      RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
         
       // Wait while flash is busy
       while (rt_flash_busy())
@@ -122,16 +130,15 @@ static int fal_ruuvi_flash_write(long offset, const uint8_t *buf, size_t size) {
     // load new file
     if(current_fileId==0xffff) {
       err_code |= rt_flash_load (FDB_RUUVI_FLASH_BASE_FILE_ID + fileId, 1, current_file_content, FDB_RUUVI_BLOCK_SIZE);
+      RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
       current_fileId = fileId;
       if(err_code==RD_ERROR_NOT_FOUND) {
         err_code = reserve_page(fileId);
-        memset(current_file_content, 0xff, FDB_RUUVI_BLOCK_SIZE);
+        RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
       }
     }
 
     memcpy(current_file_content + fileOffset, buf, size);
-
-    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 
     if(err_code==RD_SUCCESS) {
       return size;

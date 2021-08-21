@@ -523,63 +523,6 @@ rd_status_t app_acc_logging_send_eof_v2(const ri_comm_xfer_fp_t reply_fp, const 
     return err_code;
 }
 
-rd_status_t send_data_block(const ri_comm_xfer_fp_t reply_fp, uint32_t size_of_data, uint8_t *data, uint16_t *crc) {
-
-    rd_status_t err_code = RD_SUCCESS;
-    uint32_t pos = 0;
-    ri_comm_message_t msg;
-    msg.data_length = 20;
-    msg.repeat_count = 1;
-
-    while(pos<size_of_data && err_code==RD_SUCCESS) {
-        LOGD("send block\r\n");
-        if(pos+msg.data_length > size_of_data) {
-            msg.data_length = 1 + size_of_data - pos;
-        }
-
-        msg.data[0] = RE_STANDARD_LOG_VALUE_READ;
-        memcpy(msg.data+1, data+pos, msg.data_length-1);
-        err_code |= app_comms_blocking_send(reply_fp, &msg);
-        pos += msg.data_length-1;
-
-        // update crc
-        *crc = crc16_compute(msg.data+1, msg.data_length-1, crc);
-    }
-
-    return err_code;
-}
-
-rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp) {
-
-    // when logging is not active return error
-    if(nologging_data_get==NULL) {
-        return RD_ERROR_INVALID_STATE;
-    }
-
-    rd_status_t err_code = RD_SUCCESS;
-
-    // pack the bits
-    uint8_t sizeOfPackedData = sizeof(uint64_t) + (RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT * logged_data.config->resolution)/16; // how many bytes
-    uint8_t packeddata[sizeof(uint64_t) + (RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT)];
-
-    // copy timestamp
-    uint64_t timestamp = rd_sensor_timestamp_get();
-    memcpy(packeddata, &timestamp, sizeof(uint64_t));
-
-    // copy compacted sensor data
-    pack(logged_data.config->resolution, RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT, logged_data.data, packeddata + sizeof(uint64_t));
-
-    uint16_t crc = 0xffff;
-
-    // send data
-    err_code |= send_data_block(reply_fp, sizeOfPackedData, packeddata, &crc);
-
-    // send EOF
-    err_code |= app_acc_logging_send_eof_v2(reply_fp, err_code, crc);
-
-    return err_code;
-}
-
 rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp) {
 
     // when logging is not active return error
@@ -621,23 +564,23 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
       is_new_configuration = true;
       sensor->configuration.samplerate = new_config->samplerate;
     }
-    if(new_config->resolution!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.resolution) {
+    if(new_config->resolution!=RD_SENSOR_CFG_NO_CHANGE && new_config->resolution!=sensor->configuration.resolution) {
       is_new_configuration = true;
       sensor->configuration.resolution = new_config->resolution;
     }
-    if(new_config->scale!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.scale) {
+    if(new_config->scale!=RD_SENSOR_CFG_NO_CHANGE && new_config->scale!=sensor->configuration.scale) {
       is_new_configuration = true;
       sensor->configuration.scale = new_config->scale;
     }
-    if(new_config->dsp_function!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.dsp_function) {
+    if(new_config->dsp_function!=RD_SENSOR_CFG_NO_CHANGE && new_config->dsp_function!=sensor->configuration.dsp_function) {
       is_new_configuration = true;
       sensor->configuration.dsp_function = new_config->dsp_function;
     }
-    if(new_config->dsp_parameter!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.dsp_parameter) {
+    if(new_config->dsp_parameter!=RD_SENSOR_CFG_NO_CHANGE && new_config->dsp_parameter!=sensor->configuration.dsp_parameter) {
       is_new_configuration = true;
       sensor->configuration.dsp_parameter = new_config->dsp_parameter;
     }
-    if(new_config->mode!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.mode) {
+    if(new_config->mode!=RD_SENSOR_CFG_NO_CHANGE && new_config->mode!=sensor->configuration.mode) {
       is_new_configuration = true;
       sensor->configuration.mode = new_config->mode;
     }

@@ -233,11 +233,7 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
       switch (op)
       {
         case RE_STANDARD_LOG_VALUE_READ:
-          if(raw_message[3]==0) {
-              // start transmitting last sample
-              LOGD("start transmitting last sample\r\n");
-              return app_acc_logging_send_last_sample(reply_fp);
-          } else if(raw_message[3]==1) {
+          if(raw_message[3]==1) {
               // start transmitting logged data
               LOGD("start transmitting logged data\r\n");
               return app_acc_logging_send_logged_data(reply_fp);

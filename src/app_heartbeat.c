@@ -187,7 +187,7 @@ void heartbeat (void * p_event, uint16_t event_size)
     err_code = app_log_process (&data);
     app_led_activity_indicate (false);
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
-    access_flash();
+    //access_flash();
 }
 
 /**

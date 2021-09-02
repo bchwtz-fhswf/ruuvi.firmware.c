@@ -28,10 +28,10 @@
 #define REG_SR_BIT_SRWD             7
 
 // SPI definitions for Macronix Flash
-#define SCK_SPI_MACRONIX                  RB_PORT_PIN_MAP(0, 20) // SPI clock GPIO pin number. Original:29, Neu 20
-#define MOSI_SPI_MACRONIX                 RB_PORT_PIN_MAP(0, 30) // SPI Master Out Slave In GPIO pin number. Original:25 Neu 30
-#define MISO_SPI_MACRONIX                 RB_PORT_PIN_MAP(0, 31) // SPI Master In Slave Out GPIO pin number. Original:28 Neu 31
-#define SS_SPI_MACRONIX                   RB_PORT_PIN_MAP(0, 16)  // SPI Slave Select (Macrnoix external flash)
+#define SCK_SPI_MACRONIX                  RB_PORT_PIN_MAP(0, 24) // SPI clock GPIO pin number. Original:29, Neu 20
+#define MOSI_SPI_MACRONIX                 RB_PORT_PIN_MAP(0, 23) // SPI Master Out Slave In GPIO pin number. Original:25 Neu 30
+#define MISO_SPI_MACRONIX                 RB_PORT_PIN_MAP(0, 22) // SPI Master In Slave Out GPIO pin number. Original:28 Neu 31
+#define SS_SPI_MACRONIX                   RB_PORT_PIN_MAP(0, 11)  // SPI Slave Select (Macrnoix external flash)
 #define SPI_SS_LIST_MACRONIX               {SS_SPI_MACRONIX}
 #define SPI_SS_NUMBER_MACRONIX             1
 #define SPI_FREQUENCY_1M_MACRONIX          0

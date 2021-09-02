@@ -16,6 +16,7 @@
 #include "fds.h"
 #include <string.h>
 
+
 #if RI_LOG_ENABLED
 #include <stdio.h>
 #include <stdarg.h>
@@ -46,6 +47,7 @@ static inline void LOGDf (const char * const msg, ...)
 #define snprintf(...)
 #endif
 
+
 /* TSDB object */
 static struct fdb_tsdb tsdb = { 0 };
 
@@ -58,7 +60,7 @@ rd_status_t rt_flash_ringbuffer_create ()
 
   /* Time Series database initialization
    */
-  fdb_err_t result = fdb_tsdb_init(&tsdb, "acceleration_data", "fdb_tsdb1", fdb_timestamp_get, 144, NULL);
+  fdb_err_t result = fdb_tsdb_init(&tsdb, "acceleration_data", "fdb_tsdb2", fdb_timestamp_get, 144, NULL);
 
   // Log result
   if (result==FDB_NO_ERR) {

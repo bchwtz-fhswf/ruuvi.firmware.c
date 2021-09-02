@@ -1,22 +1,25 @@
-/**
- * @file fal_ruuvi_flash_port.c
- * @author Thomas Hoof <thomas.hoof@gmx.de>
- * @date 2021-07-14
+/*
+ * @file fal_macronix_flash_port.c
+ * @author Jenny Kuhn & Jendrik Kraft, original: Thomas Hoof <thomas.hoof@gmx.de>
+ * @date 2021-08-31
  * @copyright Ruuvi Innovations Ltd, License BSD-3-Clause.
  */
 
 #include <string.h>
 //#include "fal.h"
 #include "fal_def.h"
+
 #include "ruuvi_interface_yield.h"
 #include "ruuvi_task_flash.h"
 #include "ruuvi_driver_error.h"
-#include "fal_ruuvi_flash_port.h"
+#include "fal_macronix_flash_port.h"
+#include "..\ruuvi.drivers.c\macronix\spi_flash.h"
 
 
 #if RI_LOG_ENABLED
 #include <stdio.h>
 #include <stdarg.h>
+
 static inline void LOG (const char * const msg)
 {
     ri_log (RI_LOG_LEVEL_INFO, msg);
@@ -45,15 +48,17 @@ static inline void LOGDf (const char * const msg, ...)
 #endif
 
 // Cache current file/sector
-static uint16_t current_fileId = 0xffff;
-static uint8_t current_file_content[FDB_RUUVI_BLOCK_SIZE];
+//static uint16_t current_fileId = 0xffff;
+//static uint8_t current_file_content[FDB_RUUVI_BLOCK_SIZE];
 
 static int init(void)
 {
-    LOGDf("Initialize fal_ruuvi_flash_port.c with %d sectors of %d bytes\r\n", FDB_RUUVI_BLOCK_COUNT, FDB_RUUVI_BLOCK_SIZE);
-    return 1;
+    LOGDf("Initialize fal_macronix_flash_port.c with %d sectors of %d bytes\r\n", FDB_MACRONIX_BLOCK_COUNT, FDB_MACRONIX_BLOCK_SIZE);
+    rd_status_t status = mx_init();
+    return status;
 }
 
+/*
 static rd_status_t reserve_page(const uint16_t fileId) {
     uint8_t content[FDB_RUUVI_BLOCK_SIZE];
     rd_status_t err_code = RD_SUCCESS;
@@ -67,10 +72,13 @@ static rd_status_t reserve_page(const uint16_t fileId) {
         ri_yield();
     }
 }
+*/
 
 static int read(long offset, uint8_t *buf, size_t size)
 {
-    rd_status_t err_code = RD_SUCCESS;
+    return mx_read(offset, buf, size);
+
+    /*rd_status_t err_code = RD_SUCCESS;
     uint16_t fileId = offset / FDB_RUUVI_BLOCK_SIZE;
     uint16_t fileOffset = offset % FDB_RUUVI_BLOCK_SIZE;
     uint8_t content[FDB_RUUVI_BLOCK_SIZE];
@@ -96,11 +104,15 @@ static int read(long offset, uint8_t *buf, size_t size)
       return size;
     } else {
       return -1;
-    }
+    }*/
 }
 
 static int write(long offset, const uint8_t *buf, size_t size) {
+    
+    mx_write_enable();
+    return mx_program(offset, buf, size);
 
+    /*
     rd_status_t err_code = RD_SUCCESS;
     uint16_t fileId = offset / FDB_RUUVI_BLOCK_SIZE;
     uint16_t fileOffset = offset % FDB_RUUVI_BLOCK_SIZE;
@@ -141,26 +153,33 @@ static int write(long offset, const uint8_t *buf, size_t size) {
       return size;
     } else {
       return -1;
-    }
+    }*/
 }
 
 static int erase(long offset, size_t size)
 {    
-    uint8_t content[FDB_RUUVI_BLOCK_SIZE];
+    //Berechnung wie viele Sektoren gelöscht werden ?
+    mx_write_enable();
+    return mx_sector_erase(offset);
+
+    /*uint8_t content[FDB_RUUVI_BLOCK_SIZE];
     uint16_t fileId = offset / FDB_RUUVI_BLOCK_SIZE;
     memset(content, 0xff, FDB_RUUVI_BLOCK_SIZE);
 
     LOGDf("Erase Page %x, Size %d\r\n", FDB_RUUVI_FLASH_BASE_FILE_ID + fileId, size);
 
-    return write(offset, content, size);
+    return write(offset, content, size);*/
 }
 
-const struct fal_flash_dev ruuvi_flash0 =
-{
-    .name       = "ruuviflash0",
+const struct fal_flash_dev macronix_flash0 =
+{    
+    .name       = "macronixflash0",
     .addr       = 0,
-    .len        = FDB_RUUVI_BLOCK_COUNT*FDB_RUUVI_BLOCK_SIZE,
-    .blk_size   = FDB_RUUVI_BLOCK_SIZE,
+    .len        = FDB_MACRONIX_BLOCK_COUNT*FDB_MACRONIX_BLOCK_SIZE,
+    .blk_size   = FDB_MACRONIX_BLOCK_SIZE,
     .ops        = {init, read, write, erase},
     .write_gran = 0 // not used
-};
+ };
+
+
+

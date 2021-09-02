@@ -86,7 +86,7 @@ void access_flash(void)
             break;
 
         case 3:
-            test_mx_read(0x1000);
+            test_mx_read(0x9000);
             break;
 
         case 4:
@@ -95,8 +95,8 @@ void access_flash(void)
             break;
         
         case 5:
-            printf("Running sector erase at address 0x1000\r\n");
-            mx_sector_erase(0x1000);
+            printf("Running sector erase at address 0x9000\r\n");
+            mx_sector_erase(0x9000);
             break;
 
         case 6:
@@ -108,7 +108,7 @@ void access_flash(void)
             break;
 
         case 7:
-            test_mx_read(0x1000);
+            test_mx_read(0x9000);
             break;
 
         case 8:
@@ -117,7 +117,7 @@ void access_flash(void)
             break;
 
         case 9:
-            address = 0x1000;
+            address = 0x9000;
             for(int i = 0; i < READ_WRITE_LENGTH; i++) data_buf[i] = 1;
             mx_program(address, data_buf, READ_WRITE_LENGTH);
             LOGDf("Programming data at address %.8X\r\n", address);
@@ -132,7 +132,7 @@ void access_flash(void)
             break;
 
         case 11:
-            test_mx_read(0x1000);
+            test_mx_read(0x9000);
             flash_state=0;
             break;
     }
@@ -171,7 +171,7 @@ rd_status_t mx_init(void)
     spi_config_macronix.sck_pin      = SCK_SPI_MACRONIX;
     spi_config_macronix.irq_priority = SPI_DEFAULT_CONFIG_IRQ_PRIORITY;
     spi_config_macronix.orc          = 0xFF;
-    spi_config_macronix.frequency    = NRF_DRV_SPI_FREQ_1M;
+    spi_config_macronix.frequency    = NRF_DRV_SPI_FREQ_125K;
     spi_config_macronix.mode         = mode; //Könnte man auch direkt den Wert rein schreiben?
     spi_config_macronix.bit_order    = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST;
     // Use blocking mode by using NULL as event handler
@@ -190,7 +190,7 @@ rd_status_t mx_init(void)
     return (status | ruuvi_nrf5_sdk15_to_ruuvi_error (err_code));
 }
 
-
+/*
 rd_status_t mx_read_rems(uint8_t * manufacturer_id, uint8_t * device_id)
 {
     rd_status_t err_code = RD_SUCCESS;
@@ -201,12 +201,38 @@ rd_status_t mx_read_rems(uint8_t * manufacturer_id, uint8_t * device_id)
     ri_gpio_id_t chipSelect = RB_PORT_PIN_MAP(0, SS_SPI_MACRONIX);
 
     err_code |= ri_gpio_write (chipSelect, RI_GPIO_LOW);
-    //Kann nicht genutzt werden weil es fest die ruuvi spi Funktion nutzt
     err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), spi_rx_response, sizeof(spi_rx_response));
     err_code |= ri_gpio_write (chipSelect, RI_GPIO_HIGH);
 
     *manufacturer_id = spi_rx_response[4];
     *device_id = spi_rx_response[5];
+
+    LOGD("mx_read_rems: ");
+    ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_response, sizeof(spi_rx_response));
+    LOGD("\r\n");
+
+    //RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
+
+    return err_code;
+}*/
+
+rd_status_t mx_read_rems(uint8_t * manufacturer_id, uint8_t * device_id)
+{
+    rd_status_t err_code = RD_SUCCESS;
+
+    uint8_t spi_tx_cmd[] = {CMD_REMS, 0x00, 0x00, CMD_REMS_ADDRESS_DEFAULT};
+    uint8_t spi_rx_response[2];
+
+    ri_gpio_id_t chipSelect = RB_PORT_PIN_MAP(0, SS_SPI_MACRONIX);
+
+    err_code |= ri_gpio_write (chipSelect, RI_GPIO_LOW);
+    //Kann nicht genutzt werden weil es fest die ruuvi spi Funktion nutzt
+    err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0,0);
+    err_code |= ri_spi_xfer_blocking_macronix(0,0, spi_rx_response, sizeof(spi_rx_response));
+    err_code |= ri_gpio_write (chipSelect, RI_GPIO_HIGH);
+
+    *manufacturer_id = spi_rx_response[0];
+    *device_id = spi_rx_response[1];
 
     LOGD("mx_read_rems: ");
     ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_response, sizeof(spi_rx_response));
@@ -226,7 +252,8 @@ rd_status_t mx_read_status_register(uint8_t *status)
 
     rd_status_t err_code = RD_SUCCESS;
     err_code |= ri_gpio_write (chipSelect, RI_GPIO_LOW);
-    err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), spi_rx_rsp, sizeof(spi_rx_rsp));
+    err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
+    err_code |= ri_spi_xfer_blocking_macronix(0, 0, spi_rx_rsp, sizeof(spi_rx_rsp));
     err_code |= ri_gpio_write (chipSelect, RI_GPIO_HIGH);
 
     *status = spi_rx_rsp[1];
@@ -250,7 +277,8 @@ rd_status_t mx_read_config_register(uint8_t *config)
 
     rd_status_t err_code = RD_SUCCESS;
     err_code |= ri_gpio_write (chipSelect, RI_GPIO_LOW);
-    err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), spi_rx_rsp, sizeof(spi_rx_rsp));
+    err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
+    err_code |= ri_spi_xfer_blocking_macronix(0, 0, spi_rx_rsp, sizeof(spi_rx_rsp));
     err_code |= ri_gpio_write (chipSelect, RI_GPIO_HIGH);
 
     *config = spi_rx_rsp[1];

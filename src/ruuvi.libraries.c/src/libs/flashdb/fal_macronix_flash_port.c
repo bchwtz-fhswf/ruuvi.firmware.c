@@ -76,7 +76,13 @@ static rd_status_t reserve_page(const uint16_t fileId) {
 
 static int read(long offset, uint8_t *buf, size_t size)
 {
-    return mx_read(offset, buf, size);
+    rd_status_t err_code = RD_SUCCESS;
+    err_code = mx_read(offset, buf, size);
+    if(err_code==RD_SUCCESS) {
+      return size;
+    } else {
+      return -1;
+    }
 
     /*rd_status_t err_code = RD_SUCCESS;
     uint16_t fileId = offset / FDB_RUUVI_BLOCK_SIZE;
@@ -108,9 +114,16 @@ static int read(long offset, uint8_t *buf, size_t size)
 }
 
 static int write(long offset, const uint8_t *buf, size_t size) {
-    
     mx_write_enable();
-    return mx_program(offset, buf, size);
+    rd_status_t err_code = RD_SUCCESS;
+    err_code=mx_program(offset, buf, size);
+    LOGDf("%x",err_code);
+    LOGDf("error code\r\n");
+    if(err_code==RD_SUCCESS) {
+      return size;
+    } else {
+      return -1;
+    }
 
     /*
     rd_status_t err_code = RD_SUCCESS;
@@ -160,7 +173,13 @@ static int erase(long offset, size_t size)
 {    
     //Berechnung wie viele Sektoren gelöscht werden ?
     mx_write_enable();
-    return mx_sector_erase(offset);
+    rd_status_t err_code = RD_SUCCESS;
+    err_code = mx_sector_erase(offset);
+    if(err_code==RD_SUCCESS) {
+      return size;
+    } else {
+      return -1;
+    }
 
     /*uint8_t content[FDB_RUUVI_BLOCK_SIZE];
     uint16_t fileId = offset / FDB_RUUVI_BLOCK_SIZE;
@@ -174,7 +193,7 @@ static int erase(long offset, size_t size)
 const struct fal_flash_dev macronix_flash0 =
 {    
     .name       = "macronixflash0",
-    .addr       = 0,
+    .addr       = 0x008000,
     .len        = FDB_MACRONIX_BLOCK_COUNT*FDB_MACRONIX_BLOCK_SIZE,
     .blk_size   = FDB_MACRONIX_BLOCK_SIZE,
     .ops        = {init, read, write, erase},

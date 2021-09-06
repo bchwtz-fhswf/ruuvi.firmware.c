@@ -8,7 +8,7 @@
 #ifndef  FAL_MACRONIX_FLASH_PORT_H
 #define  FAL_MACRONIX_FLASH_PORT_H
 
-#define FDB_MACRONIX_BLOCK_SIZE (4000)//Sector size?
+#define FDB_MACRONIX_BLOCK_SIZE (4096)//Sector size?
 #define FDB_MACRONIX_FLASH_BASE_FILE_ID (0xfdb0)//??????????
 #define FDB_MACRONIX_BLOCK_COUNT (2046) //Sector count??
 

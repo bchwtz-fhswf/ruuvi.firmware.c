@@ -76,6 +76,7 @@ static rd_status_t reserve_page(const uint16_t fileId) {
 
 static int read(long offset, uint8_t *buf, size_t size)
 {
+    LOGDf("Read Page %x, size %d\r\n", offset, size);
     rd_status_t err_code = RD_SUCCESS;
     err_code = mx_read(offset, buf, size);
     if(err_code==RD_SUCCESS) {
@@ -114,11 +115,15 @@ static int read(long offset, uint8_t *buf, size_t size)
 }
 
 static int write(long offset, const uint8_t *buf, size_t size) {
+    while( mx_busy() == RD_ERROR_BUSY){
+      ri_yield();
+    }
+    LOGDf("Write Page %x, size %d\r\n", offset, size);
     mx_write_enable();
     rd_status_t err_code = RD_SUCCESS;
     err_code=mx_program(offset, buf, size);
-    LOGDf("%x",err_code);
-    LOGDf("error code\r\n");
+    //LOGDf("%x",err_code);
+    //LOGDf("error code\r\n");
     if(err_code==RD_SUCCESS) {
       return size;
     } else {
@@ -172,6 +177,10 @@ static int write(long offset, const uint8_t *buf, size_t size) {
 static int erase(long offset, size_t size)
 {    
     //Berechnung wie viele Sektoren gelöscht werden ?
+    while( mx_busy() == RD_ERROR_BUSY){
+      ri_yield();
+    }
+    LOGDf("Erase Page %x, size %d\r\n", offset, size);
     mx_write_enable();
     rd_status_t err_code = RD_SUCCESS;
     err_code = mx_sector_erase(offset);

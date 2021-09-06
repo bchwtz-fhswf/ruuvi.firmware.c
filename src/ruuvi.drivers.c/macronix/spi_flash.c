@@ -405,3 +405,15 @@ rd_status_t ri_spi_xfer_blocking_macronix (const uint8_t * tx,
     err_code |= nrf_drv_spi_transfer (&spi_macronix, tx, tx_len, rx, rx_len);
     return ruuvi_nrf5_sdk15_to_ruuvi_error (err_code);
 }
+
+rd_status_t mx_busy (void)
+{
+  uint8_t status_register;
+     mx_read_status_register(&status_register);
+  if(status_register & (1 << REG_SR_BIT_WIP) ){
+    return RD_ERROR_BUSY;
+  }
+  else{
+    return RD_SUCCESS;
+  }
+}

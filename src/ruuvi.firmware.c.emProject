@@ -229,8 +229,8 @@
         path="ruuvi.drivers.c/ruuvi.dps310.c/src"
         recurse="Yes" />
       <folder Name="macronix">
-        <file file_name="ruuvi.drivers.c/macronix/spi_flash.c" />
-        <file file_name="ruuvi.drivers.c/macronix/spi_flash.h" />
+        <file file_name="ruuvi.drivers.c/macronix/macronix_flash.c" />
+        <file file_name="ruuvi.drivers.c/macronix/macronix_flash.h" />
       </folder>
     </folder>
     <folder

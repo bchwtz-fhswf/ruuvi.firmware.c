@@ -1,13 +1,10 @@
 #ifndef __SPI_FLASH_H
 #define __SPI_FLASH_H
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-
 #include "ruuvi_driver_error.h"
 
-//#define MX_PIN_CS                   19 //Neu 16
 #define CMD_PROGRAM                 0x02
 #define CMD_READ                    0x03
 #define CMD_RDSR                    0x05

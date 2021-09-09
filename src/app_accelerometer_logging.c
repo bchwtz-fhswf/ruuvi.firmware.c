@@ -98,6 +98,7 @@ volatile bool ram_db_transfer = false;
 
 /* KVDB object */
 static struct fdb_kvdb kvdb = { 0 };
+static int zaehler = 0;
 
 
 static void pack8(const uint16_t sizeData, const uint8_t* const data, uint8_t* const packeddata) {
@@ -279,6 +280,8 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
             pack(logged_data.config->resolution, RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT, logged_data.data_to_store, packeddata);
 
             // Collect Data in Flash page
+            memset(packeddata, zaehler, sizeOfPackedData);
+            zaehler++;
             err_code |= rt_flash_ringbuffer_write(sizeOfPackedData, packeddata);
 
             // reset counter
@@ -449,7 +452,7 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db) {
         fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
 
         // initialize Ringbuffer with flash device
-        err_code |= rt_flash_ringbuffer_create("fdb_tsdb1", fdb_timestamp_get);
+        err_code |= rt_flash_ringbuffer_create("fdb_tsdb2", fdb_timestamp_get);
     } else {
         // initialize Ringbuffer with ram device
         err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get);

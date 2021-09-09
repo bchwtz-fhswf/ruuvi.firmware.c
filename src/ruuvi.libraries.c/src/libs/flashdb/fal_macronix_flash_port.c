@@ -67,11 +67,22 @@ static int read(long offset, uint8_t *buf, size_t size)
 }
 
 static int write(long offset, const uint8_t *buf, size_t size) {
+
+    while( mx_busy() == RD_ERROR_BUSY){
+      ri_yield();
+    }
+
+    mx_write_enable();
+    while( mx_check_write_enable() == RD_ERROR_BUSY){
+      ri_yield();
+      LOGD("mx_write resend write_enable\r\n");
+      mx_write_enable();
+    }
+
     while( mx_busy() == RD_ERROR_BUSY){
       ri_yield();
     }
     LOGDf("Write Page %x, size %d\r\n", offset, size);
-    mx_write_enable();
     rd_status_t err_code = RD_SUCCESS;
     err_code = mx_program(offset, buf, size);
 
@@ -84,12 +95,22 @@ static int write(long offset, const uint8_t *buf, size_t size) {
 
 static int erase(long offset, size_t size)
 {    
+    while( mx_busy() == RD_ERROR_BUSY){
+      ri_yield();
+    }
+
+    mx_write_enable();
+    while( mx_check_write_enable() == RD_ERROR_BUSY){
+      ri_yield();
+      LOGD("mx_erase resend write_enable\r\n");
+      mx_write_enable();
+    }
+
     //TODO Check if erase is called per sector or if size can exceed sector size -> implement erasing of multiple sectors
     while( mx_busy() == RD_ERROR_BUSY){
       ri_yield();
     }
     LOGDf("Erase Page %x, size %d\r\n", offset, size);
-    mx_write_enable();
     rd_status_t err_code = RD_SUCCESS;
     err_code = mx_sector_erase(offset);
     if(err_code == RD_SUCCESS) {

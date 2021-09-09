@@ -54,88 +54,6 @@ static void test_mx_read(uint32_t address) {
   LOGDf("\r\n");
 }
 
-static uint32_t flash_state = 0;
-//Function to simulate different flash operations with logs to verify SPI Bus
-void access_flash(void) {
-  rd_status_t status = mx_init();
-  uint8_t man_id, dev_id, status_register, config_register;
-  uint8_t data_buf[READ_WRITE_LENGTH];
-  uint32_t address;
-
-  LOGDf("Flash test Case %d\r\n", flash_state);
-
-  switch (flash_state++) {
-  case 0:
-    mx_read_rems(&man_id, &dev_id);
-    LOGDf("Reading REMS. Man id: %.2x, Dev id: %.2x\r\n", (int)man_id, (int)dev_id);
-    break;
-
-  case 1:
-    mx_read_status_register(&status_register);
-    LOGDf("Status: %i\r\n", (int)status_register);
-    break;
-
-  case 2:
-    mx_read_config_register(&config_register);
-    LOGDf("Config: %i\r\n", (int)config_register);
-    break;
-
-  case 3:
-    test_mx_read(0x9000);
-    break;
-
-  case 4:
-    printf("Running write enable\r\n");
-    mx_write_enable();
-    break;
-
-  case 5:
-    printf("Running sector erase at address 0x9000\r\n");
-    mx_sector_erase(0x9000);
-    break;
-
-  case 6:
-    mx_read_status_register(&status_register);
-    LOGDf("Status: %i\r\n", (int)status_register);
-
-    // If the WIP bit is set, don't advance to the next state
-    if (status_register & (1 << REG_SR_BIT_WIP))
-      flash_state--;
-    break;
-
-  case 7:
-    test_mx_read(0x9000);
-    break;
-
-  case 8:
-    LOGDf("Running write enable\r\n");
-    mx_write_enable();
-    break;
-
-  case 9:
-    address = 0x9000;
-    for (int i = 0; i < READ_WRITE_LENGTH; i++)
-      data_buf[i] = 1;
-    mx_program(address, data_buf, READ_WRITE_LENGTH);
-    LOGDf("Programming data at address %.8X\r\n", address);
-    break;
-
-  case 10:
-    mx_read_status_register(&status_register);
-    LOGDf("Status: %i\r\n", (int)status_register);
-
-    // If the WIP bit is set, don't advance to the next state
-    if (status_register & (1 << REG_SR_BIT_WIP))
-      flash_state--;
-    break;
-
-  case 11:
-    test_mx_read(0x9000);
-    flash_state = 0;
-    break;
-  }
-}
-
 rd_status_t mx_init(void) {
   //Return error if SPI is already init
   if (m_spi_init_done) {
@@ -149,7 +67,7 @@ rd_status_t mx_init(void) {
   spi_config_macronix.sck_pin = SCK_SPI_MACRONIX;
   spi_config_macronix.irq_priority = SPI_DEFAULT_CONFIG_IRQ_PRIORITY;
   spi_config_macronix.orc = 0xFF;
-  spi_config_macronix.frequency = NRF_DRV_SPI_FREQ_125K;
+  spi_config_macronix.frequency = NRF_DRV_SPI_FREQ_8M;
   spi_config_macronix.mode = NRF_DRV_SPI_MODE_0;
   spi_config_macronix.bit_order = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST;
 
@@ -157,7 +75,6 @@ rd_status_t mx_init(void) {
   ret_code_t err_code = NRF_SUCCESS;
   err_code = nrf_drv_spi_init(&spi_macronix, &spi_config_macronix, NULL, NULL);
 
-  //TODO Check if this works as expected
   //Initialize all SS Pins from SPI_SS_LIST_MACRONIX as output pins and set them high
   ri_gpio_id_t ss_pins[SPI_SS_NUMBER_MACRONIX] = SPI_SS_LIST_MACRONIX;
   for (size_t ii = 0; ii < SPI_SS_NUMBER_MACRONIX; ii++) {
@@ -207,9 +124,9 @@ rd_status_t mx_read_status_register(uint8_t *status) {
 
   *status = spi_rx_rsp[1];
 
-  LOGD("mx_read_status_register: ");
-  ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_rsp, sizeof(spi_rx_rsp));
-  LOGD("\r\n");
+  //LOGD("mx_read_status_register: ");
+  //ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_rsp, sizeof(spi_rx_rsp));
+  //LOGD("\r\n");
 
   return err_code;
 }
@@ -268,7 +185,14 @@ rd_status_t mx_write_enable(void) {
   return err_code;
 }
 
-rd_status_t mx_program(uint32_t address, uint8_t *data_ptr, uint32_t data_length) {
+rd_status_t mx_program(uint32_t address, const uint8_t *data_ptr, uint32_t data_length) {
+
+  //LOGD("mx_program: ");
+  //for(int ii=0; ii<data_length; ii++) {
+  //  ri_log_hex(RI_LOG_LEVEL_DEBUG, data_ptr+ii, 1);
+  //}
+  //LOGD("\r\n");
+
   uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
 
   rd_status_t err_code = RD_SUCCESS;
@@ -337,5 +261,15 @@ rd_status_t mx_busy(void) {
     return RD_ERROR_BUSY;
   } else {
     return RD_SUCCESS;
+  }
+}
+
+rd_status_t mx_check_write_enable(void) {
+  uint8_t status_register;
+  mx_read_status_register(&status_register);
+  if (status_register & (1 << REG_SR_BIT_WEL)) {
+    return RD_SUCCESS;
+  } else {
+    return RD_ERROR_BUSY;
   }
 }

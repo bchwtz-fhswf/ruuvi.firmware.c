@@ -16,6 +16,7 @@
 #include "fds.h"
 #include <string.h>
 
+
 #if RI_LOG_ENABLED
 #include <stdio.h>
 #include <stdarg.h>
@@ -45,6 +46,7 @@ static inline void LOGDf (const char * const msg, ...)
 #define LOGDf(...)
 #define snprintf(...)
 #endif
+
 
 /* TSDB object */
 static struct fdb_tsdb tsdb;

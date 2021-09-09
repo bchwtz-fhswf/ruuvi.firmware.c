@@ -6,12 +6,13 @@
  */
 
 #include <string.h>
-#include "fal.h"
-
+//#include "fal.h"
+#include "fal_def.h"
 #include "ruuvi_interface_yield.h"
 #include "ruuvi_task_flash.h"
 #include "ruuvi_driver_error.h"
 #include "fal_ruuvi_flash_port.h"
+
 
 #if RI_LOG_ENABLED
 #include <stdio.h>

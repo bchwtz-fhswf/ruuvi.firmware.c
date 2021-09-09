@@ -91,9 +91,9 @@
 #define RB_BUTTON_ENABLE_CONFIG      RB_BUTTON_1
 
 // SPI definitions for RuuviTag B
-#define RB_SPI_SCLK_PIN              RB_PORT_PIN_MAP(0, 29) // SPI clock GPIO pin number.
-#define RB_SPI_MOSI_PIN              RB_PORT_PIN_MAP(0, 25) // SPI Master Out Slave In GPIO pin number.
-#define RB_SPI_MISO_PIN              RB_PORT_PIN_MAP(0, 28) // SPI Master In Slave Out GPIO pin number.
+#define RB_SPI_SCLK_PIN              RB_PORT_PIN_MAP(0, 29) // SPI clock GPIO pin number. Original:29, Neu 20
+#define RB_SPI_MOSI_PIN              RB_PORT_PIN_MAP(0, 25) // SPI Master Out Slave In GPIO pin number. Original:25 Neu 30
+#define RB_SPI_MISO_PIN              RB_PORT_PIN_MAP(0, 28) // SPI Master In Slave Out GPIO pin number. Original:28 Neu 31
 #define RB_SPI_SS_ACCELEROMETER_PIN  RB_PORT_PIN_MAP(0,  8)  // SPI Slave Select (accelerometer)
 #define RB_SPI_SS_ENVIRONMENTAL_PIN  RB_PORT_PIN_MAP(0,  3)  // SPI Slave Select (BME280)
 #define RB_SPI_SS_LIST               {RB_SPI_SS_ACCELEROMETER_PIN, RB_SPI_SS_ENVIRONMENTAL_PIN}

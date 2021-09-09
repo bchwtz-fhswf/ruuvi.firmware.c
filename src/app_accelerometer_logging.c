@@ -33,6 +33,7 @@
 #if RI_LOG_ENABLED
 #include <stdio.h>
 #include <stdarg.h>
+
 static inline void LOG (const char * const msg)
 {
     ri_log (RI_LOG_LEVEL_INFO, msg);
@@ -634,7 +635,7 @@ rd_status_t app_acc_logging_init(void) {
    * &default_kv: The default KV nodes. It will auto add to KVDB when first initialize successfully.
    *        NULL: The user data if you need, now is empty.
    */
-  fdb_err_t result = fdb_kvdb_init(&kvdb, "env", "fdb_kvdb1", &default_kv, NULL);
+  fdb_err_t result = fdb_kvdb_init(&kvdb, "env", "fdb_kvdb2", &default_kv, NULL);
 
   if(result==FDB_NO_ERR) {
     

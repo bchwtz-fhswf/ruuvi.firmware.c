@@ -25,8 +25,10 @@
 #include "ruuvi_task_gatt.h"
 #include "ruuvi_task_nfc.h"
 
+
 #include <stdio.h>
 #include <stdarg.h>
+
 
 #define U8_MASK (0xFFU)
 
@@ -117,6 +119,7 @@ static
 #endif
 void heartbeat (void * p_event, uint16_t event_size)
 {
+    //access_flash();
     ri_comm_message_t msg = {0};
     rd_status_t err_code = RD_SUCCESS;
     bool heartbeat_ok = false;
@@ -184,6 +187,7 @@ void heartbeat (void * p_event, uint16_t event_size)
     err_code = app_log_process (&data);
     app_led_activity_indicate (false);
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
+    //access_flash();
 }
 
 /**

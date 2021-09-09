@@ -19,6 +19,7 @@
 #include "ruuvi_task_gpio.h"
 #include "ruuvi_task_flash.h"
 #include "ruuvi_task_flash_ringbuffer.h"
+#include "ruuvi_task_gatt.h"
 #include "app_sensor.h"
 #include "app_comms.h"
 #include "crc16.h"
@@ -69,6 +70,8 @@ typedef struct logged_data_t
     uint8_t data[RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT];
     /** @brief memory for storing data from fifo */
     uint8_t data_to_store[RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT];
+    /** @brief timestamp of this data */
+    int64_t timestamp;
     /** @brief number of elements with data from fifo */
     uint8_t num_elements;
     /** @brief position of next element to read */
@@ -87,9 +90,11 @@ static logged_data_t logged_data;
 // store original data_get function pointer
 static rd_sensor_data_fp nologging_data_get = NULL;
 
-// Function pointer for sending acceleration data
-// used when streaming is active
-static ri_comm_xfer_fp_t stream_reply_fp;
+// Use Database in RAM
+static bool ram_db;
+
+// Function for transfer of RAM DB is already scheduled
+volatile bool ram_db_transfer = false;
 
 /* KVDB object */
 static struct fdb_kvdb kvdb = { 0 };
@@ -171,44 +176,73 @@ static void pack(const uint8_t resolution, const uint16_t sizeData, const uint8_
   }
 }
 
-static void fifo_streaming_handler (void * p_event_data, uint16_t event_size) {
+static int64_t fdb_timestamp_get(void) {
+  return logged_data.timestamp;
+}
 
-    LOGD("FIFO full streaming handler started\r\n");
+static bool callback_send_data_block(fdb_tsl_t tsl, void *arg) {
+
+  if(tsl->status!=FDB_TSL_DELETED) {
+    void** args = arg;
+    fdb_tsdb_t db = args[0];
+    ri_comm_xfer_fp_t reply_fp = args[1];
+    uint16_t *crc = args[2];
+
+    struct fdb_blob blob;
+    uint8_t data[144];
+
+    uint8_t data_size = fdb_blob_read((fdb_db_t) db, fdb_tsl_to_blob(tsl, fdb_blob_make(&blob, &data, sizeof(data))));
 
     rd_status_t err_code = RD_SUCCESS;
-
-    memset (logged_data.data, 0, RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT);
-
+    uint32_t pos = 0;
     ri_comm_message_t msg;
+    msg.data_length = 1+sizeof(fdb_time_t);
+    msg.data[0] = RE_STANDARD_LOG_VALUE_READ;
     msg.repeat_count = 1;
-    msg.data_length = ceil(RE_STANDARD_OPERATION_INDEX + 1 + sizeof(uint64_t) + logged_data.config->resolution * 6.0/8.0);
 
-    msg.data[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_ACCELERATION; 
-    msg.data[RE_STANDARD_SOURCE_INDEX     ] = RE_STANDARD_DESTINATION_ACCELERATION; 
-    msg.data[RE_STANDARD_OPERATION_INDEX  ] = RE_STANDARD_LOG_VALUE_READ;
+    // send timestamp
+    memcpy(msg.data+1, &tsl->time, sizeof(fdb_time_t));
+    if(data_size<20-1-sizeof(fdb_time_t)) {
+      // concatenate timestamp with data and send it using only one message
+      memcpy(msg.data+1+sizeof(fdb_time_t), blob.buf, data_size);
+      msg.data_length = 1+sizeof(fdb_time_t)+data_size;
+      data_size = 0;
+    }
+    err_code |= app_comms_blocking_send(reply_fp, &msg);
+    *crc = crc16_compute(msg.data+1, msg.data_length-1, crc);
+    msg.data_length = 20;
 
-    // retrieve timestamp
-    uint64_t timestamp = rd_sensor_timestamp_get();
-    uint32_t periodduration_ms = 1000000L / logged_data.config->samplerate;
+    while(pos<data_size && err_code==RD_SUCCESS) {
+        LOGD("send block\r\n");
+        if(pos+msg.data_length > data_size) {
+            msg.data_length = 1 + data_size - pos;
+        }
 
-    for( size_t ii=0 ; ii<RI_LIS2DH12_FIFO_SIZE && err_code==RD_SUCCESS ; ii++) {
-        // retrieve Data from sensor
-        err_code |= ri_lis2dh12_acceleration_raw_get( logged_data.data + SIZE_ELEMENT*ii );
+        memcpy(msg.data+1, blob.buf+pos, msg.data_length-1);
+        err_code |= app_comms_blocking_send(rt_gatt_send_asynchronous, &msg);
+        pos += msg.data_length-1;
+
+        // update crc
+        *crc = crc16_compute(msg.data+1, msg.data_length-1, crc);
     }
 
-    for( size_t ii=0 ; ii<RI_LIS2DH12_FIFO_SIZE && err_code==RD_SUCCESS ; ii+=2) {
-
-        memcpy(msg.data+RE_STANDARD_OPERATION_INDEX+1, &timestamp, sizeof(uint64_t));
-
-        // compacting the data
-        pack(logged_data.config->resolution, 12, logged_data.data + ii*SIZE_ELEMENT, msg.data + RE_STANDARD_OPERATION_INDEX + 1 + sizeof(uint64_t));
-
-        // send data
-        err_code |= app_comms_blocking_send(stream_reply_fp, &msg);
-
-        // timestamp of next sample
-        timestamp += 2*periodduration_ms;
+    if(ram_db) {
+      fdb_tsl_set_status(db, tsl, FDB_TSL_DELETED);
     }
+  }
+
+  // iteration will be interupted if returning true
+  return false;
+}
+
+static void app_acc_log_transfer_ram_db (void * p_event_data, uint16_t event_size) {
+
+    uint16_t crc = 0xffff;
+      
+    // send data from ringbuffer
+    rt_flash_ringbuffer_read(callback_send_data_block, rt_gatt_send_asynchronous, &crc);
+
+    ram_db_transfer = false;
 }
 
 static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
@@ -266,8 +300,43 @@ static void on_fifo_full (const ri_gpio_evt_t evt) {
 
     LOGD("FIFO full interrupt occured\r\n");
 
-    rd_status_t err_code = ri_scheduler_event_put (&evt, sizeof (ri_gpio_evt_t),
-                           stream_reply_fp==NULL ? fifo_full_handler : fifo_streaming_handler);
+    rd_status_t err_code = RD_SUCCESS;
+
+    logged_data.timestamp = rd_sensor_timestamp_get();
+
+    if(!ram_db) {
+        // Schedule Event to read FIFO and store data persistent
+        err_code = ri_scheduler_event_put (&evt, sizeof (ri_gpio_evt_t), fifo_full_handler);
+    } else {
+
+        uint8_t sizeOfPackedData = ceil(logged_data.config->resolution * 6.0/8.0);
+        uint8_t packedData[12];
+
+        // Read Data and store in RAM
+        for( size_t ii=0 ; ii<RI_LIS2DH12_FIFO_SIZE && err_code==RD_SUCCESS ; ii++) {
+            // retrieve Data from sensor
+            err_code |= ri_lis2dh12_acceleration_raw_get( logged_data.data + SIZE_ELEMENT*ii );
+        }
+
+        for( size_t ii=0 ; ii<RI_LIS2DH12_FIFO_SIZE && err_code==RD_SUCCESS ; ii+=2) {
+
+            // compacting the data
+            pack(logged_data.config->resolution, 2 * SIZE_ELEMENT, logged_data.data + ii*SIZE_ELEMENT, packedData);
+
+            // Collect Data in Flash page
+            err_code |= rt_flash_ringbuffer_write(sizeOfPackedData, packedData);
+
+            // There are two samples in one data block
+            // So adjust timestamp
+            logged_data.timestamp += 2 * 1000L/logged_data.config->samplerate;
+        }
+
+        // Schedule function for transfering content from RAM DB
+        if(!ram_db_transfer && rt_gatt_nus_is_connected()) {
+          ram_db_transfer = true;
+          err_code = ri_scheduler_event_put (NULL, 0, app_acc_log_transfer_ram_db);
+        }
+    }
 
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
@@ -317,7 +386,7 @@ rd_status_t lis2dh12_logged_data_get (rd_sensor_data_t * const data)
 rd_status_t app_disable_sensor_logging(void) {
 
     // is it curently active ?
-    if(nologging_data_get==NULL && stream_reply_fp==NULL) {
+    if(nologging_data_get==NULL && !ram_db) {
         return RD_ERROR_INVALID_STATE;
     }
 
@@ -340,10 +409,10 @@ rd_status_t app_disable_sensor_logging(void) {
     // save nologging data_get function in sensor context
     lis2dh12->sensor.data_get = nologging_data_get;
     nologging_data_get = NULL;
-    stream_reply_fp = NULL;
+    ram_db = false;
 
     // drop ringbuffer
-    err_code = rt_flash_ringbuffer_clear();
+    err_code = rt_flash_ringbuffer_drop();
 
     struct fdb_blob blob;
     int acceleration_logging_enabled = 0;
@@ -352,10 +421,10 @@ rd_status_t app_disable_sensor_logging(void) {
     return err_code;
 }
 
-rd_status_t app_enable_sensor_logging(const ri_comm_xfer_fp_t reply_fp) {
+rd_status_t app_enable_sensor_logging(const bool use_ram_db) {
 
     // is it already active ?
-    if(nologging_data_get!=NULL || stream_reply_fp!=NULL) {
+    if(nologging_data_get!=NULL || ram_db) {
         return RD_ERROR_INVALID_STATE;
     }
 
@@ -372,15 +441,18 @@ rd_status_t app_enable_sensor_logging(const ri_comm_xfer_fp_t reply_fp) {
 
     rd_status_t err_code = RD_SUCCESS;
 
-    if(reply_fp==NULL) {
+    if(!use_ram_db) {
         // Ringbuffer is only needed when streaming is not active
 
         struct fdb_blob blob;
         int acceleration_logging_enabled = 1;
         fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
 
-        // initialize Ringbuffer
-        err_code |= rt_flash_ringbuffer_create();
+        // initialize Ringbuffer with flash device
+        err_code |= rt_flash_ringbuffer_create("fdb_tsdb1", fdb_timestamp_get);
+    } else {
+        // initialize Ringbuffer with ram device
+        err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get);
     }
 
     if(err_code==RD_SUCCESS) {
@@ -410,9 +482,7 @@ rd_status_t app_enable_sensor_logging(const ri_comm_xfer_fp_t reply_fp) {
       logged_data.sample_counter = 0;
       logged_data.num_elements = 0;
       logged_data.element_pos = 0xff;
-
-      // store reply function pointer
-      stream_reply_fp = reply_fp;
+      ram_db = use_ram_db;
 
       LOGD("Successfully initialized FIFO logging\r\n");
     } else {
@@ -422,54 +492,6 @@ rd_status_t app_enable_sensor_logging(const ri_comm_xfer_fp_t reply_fp) {
     return err_code;
 }
 
-bool callback_send_data_block(fdb_tsl_t tsl, void *arg) {
-
-  LOGDf("callback_send_data_block: Tuple of timestamp %x has status %d \r\n", tsl->time, tsl->status);
-
-  if(tsl->status!=FDB_TSL_DELETED) {
-    void** args = arg;
-    fdb_tsdb_t db = args[0];
-    ri_comm_xfer_fp_t reply_fp = args[1];
-    uint16_t *crc = args[2];
-
-    struct fdb_blob blob;
-    uint8_t data[144];
-
-    uint8_t data_size = fdb_blob_read((fdb_db_t) db, fdb_tsl_to_blob(tsl, fdb_blob_make(&blob, &data, sizeof(data))));
-
-    rd_status_t err_code = RD_SUCCESS;
-    uint32_t pos = 0;
-    ri_comm_message_t msg;
-    msg.data_length = 1+sizeof(fdb_time_t);
-    msg.data[0] = RE_STANDARD_LOG_VALUE_READ;
-    msg.repeat_count = 1;
-
-    // send timestamp
-    memcpy(msg.data+1, &tsl->time, sizeof(fdb_time_t));
-    err_code |= app_comms_blocking_send(reply_fp, &msg);
-    *crc = crc16_compute(msg.data+1, msg.data_length-1, crc);
-    msg.data_length = 20;
-
-    while(pos<data_size && err_code==RD_SUCCESS) {
-        LOGD("send block\r\n");
-        if(pos+msg.data_length > data_size) {
-            msg.data_length = 1 + data_size - pos;
-        }
-
-        memcpy(msg.data+1, blob.buf+pos, msg.data_length-1);
-        err_code |= app_comms_blocking_send(reply_fp, &msg);
-        pos += msg.data_length-1;
-
-        // update crc
-        *crc = crc16_compute(msg.data+1, msg.data_length-1, crc);
-    }
-
-    //fdb_tsl_set_status(db, tsl, FDB_TSL_DELETED);
-  }
-
-  // iteration will be interupted if returning true
-  return false;
-}
 
 rd_status_t app_acc_logging_send_eof_v2(const ri_comm_xfer_fp_t reply_fp, const rd_status_t status_code, const uint16_t crc) {
 
@@ -502,63 +524,6 @@ rd_status_t app_acc_logging_send_eof_v2(const ri_comm_xfer_fp_t reply_fp, const 
     return err_code;
 }
 
-rd_status_t send_data_block(const ri_comm_xfer_fp_t reply_fp, uint32_t size_of_data, uint8_t *data, uint16_t *crc) {
-
-    rd_status_t err_code = RD_SUCCESS;
-    uint32_t pos = 0;
-    ri_comm_message_t msg;
-    msg.data_length = 20;
-    msg.repeat_count = 1;
-
-    while(pos<size_of_data && err_code==RD_SUCCESS) {
-        LOGD("send block\r\n");
-        if(pos+msg.data_length > size_of_data) {
-            msg.data_length = 1 + size_of_data - pos;
-        }
-
-        msg.data[0] = RE_STANDARD_LOG_VALUE_READ;
-        memcpy(msg.data+1, data+pos, msg.data_length-1);
-        err_code |= app_comms_blocking_send(reply_fp, &msg);
-        pos += msg.data_length-1;
-
-        // update crc
-        *crc = crc16_compute(msg.data+1, msg.data_length-1, crc);
-    }
-
-    return err_code;
-}
-
-rd_status_t app_acc_logging_send_last_sample(const ri_comm_xfer_fp_t reply_fp) {
-
-    // when logging is not active return error
-    if(nologging_data_get==NULL) {
-        return RD_ERROR_INVALID_STATE;
-    }
-
-    rd_status_t err_code = RD_SUCCESS;
-
-    // pack the bits
-    uint8_t sizeOfPackedData = sizeof(uint64_t) + (RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT * logged_data.config->resolution)/16; // how many bytes
-    uint8_t packeddata[sizeof(uint64_t) + (RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT)];
-
-    // copy timestamp
-    uint64_t timestamp = rd_sensor_timestamp_get();
-    memcpy(packeddata, &timestamp, sizeof(uint64_t));
-
-    // copy compacted sensor data
-    pack(logged_data.config->resolution, RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT, logged_data.data, packeddata + sizeof(uint64_t));
-
-    uint16_t crc = 0xffff;
-
-    // send data
-    err_code |= send_data_block(reply_fp, sizeOfPackedData, packeddata, &crc);
-
-    // send EOF
-    err_code |= app_acc_logging_send_eof_v2(reply_fp, err_code, crc);
-
-    return err_code;
-}
-
 rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp) {
 
     // when logging is not active return error
@@ -581,7 +546,7 @@ rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp) {
 rd_status_t app_acc_logging_state(void) {
 
     // when logging is not active return error
-    if(nologging_data_get!=NULL && stream_reply_fp==NULL) {
+    if(nologging_data_get!=NULL && !ram_db) {
         return RD_SUCCESS;
     } else {
         return RD_ERROR_NOT_INITIALIZED;
@@ -600,23 +565,23 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
       is_new_configuration = true;
       sensor->configuration.samplerate = new_config->samplerate;
     }
-    if(new_config->resolution!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.resolution) {
+    if(new_config->resolution!=RD_SENSOR_CFG_NO_CHANGE && new_config->resolution!=sensor->configuration.resolution) {
       is_new_configuration = true;
       sensor->configuration.resolution = new_config->resolution;
     }
-    if(new_config->scale!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.scale) {
+    if(new_config->scale!=RD_SENSOR_CFG_NO_CHANGE && new_config->scale!=sensor->configuration.scale) {
       is_new_configuration = true;
       sensor->configuration.scale = new_config->scale;
     }
-    if(new_config->dsp_function!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.dsp_function) {
+    if(new_config->dsp_function!=RD_SENSOR_CFG_NO_CHANGE && new_config->dsp_function!=sensor->configuration.dsp_function) {
       is_new_configuration = true;
       sensor->configuration.dsp_function = new_config->dsp_function;
     }
-    if(new_config->dsp_parameter!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.dsp_parameter) {
+    if(new_config->dsp_parameter!=RD_SENSOR_CFG_NO_CHANGE && new_config->dsp_parameter!=sensor->configuration.dsp_parameter) {
       is_new_configuration = true;
       sensor->configuration.dsp_parameter = new_config->dsp_parameter;
     }
-    if(new_config->mode!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.mode) {
+    if(new_config->mode!=RD_SENSOR_CFG_NO_CHANGE && new_config->mode!=sensor->configuration.mode) {
       is_new_configuration = true;
       sensor->configuration.mode = new_config->mode;
     }

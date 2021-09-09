@@ -96,8 +96,8 @@
 #define RB_SPI_MISO_PIN              RB_PORT_PIN_MAP(0, 28) // SPI Master In Slave Out GPIO pin number. Original:28 Neu 31
 #define RB_SPI_SS_ACCELEROMETER_PIN  RB_PORT_PIN_MAP(0,  8)  // SPI Slave Select (accelerometer)
 #define RB_SPI_SS_ENVIRONMENTAL_PIN  RB_PORT_PIN_MAP(0,  3)  // SPI Slave Select (BME280)
-#define RB_SPI_SS_LIST               {RB_SPI_SS_ACCELEROMETER_PIN, RB_SPI_SS_ENVIRONMENTAL_PIN, RB_PORT_PIN_MAP(0, 30)}
-#define RB_SPI_SS_NUMBER             3
+#define RB_SPI_SS_LIST               {RB_SPI_SS_ACCELEROMETER_PIN, RB_SPI_SS_ENVIRONMENTAL_PIN}
+#define RB_SPI_SS_NUMBER             2
 #define RB_SPI_FREQUENCY_1M          0
 #define RB_SPI_FREQUENCY_2M          1
 #define RB_SPI_FREQUENCY_4M          2

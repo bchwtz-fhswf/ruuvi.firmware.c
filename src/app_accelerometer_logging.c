@@ -280,8 +280,10 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
             pack(logged_data.config->resolution, RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT, logged_data.data_to_store, packeddata);
 
             // Collect Data in Flash page
+            /*
             memset(packeddata, zaehler, sizeOfPackedData);
             zaehler++;
+            */
             err_code |= rt_flash_ringbuffer_write(sizeOfPackedData, packeddata);
 
             // reset counter

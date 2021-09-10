@@ -66,5 +66,5 @@ rd_status_t ri_spi_xfer_blocking_macronix (const uint8_t * tx,
                               
 rd_status_t mx_busy (void);
 rd_status_t mx_check_write_enable(void);
-
+rd_status_t mx_spi_ready_for_transfer (void);
 #endif

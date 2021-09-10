@@ -187,11 +187,11 @@ rd_status_t mx_write_enable(void) {
 
 rd_status_t mx_program(uint32_t address, const uint8_t *data_ptr, uint32_t data_length) {
 
-  //LOGD("mx_program: ");
-  //for(int ii=0; ii<data_length; ii++) {
-  //  ri_log_hex(RI_LOG_LEVEL_DEBUG, data_ptr+ii, 1);
-  //}
-  //LOGD("\r\n");
+  LOGD("mx_program: ");
+  for(int ii=0; ii<data_length; ii++) {
+    ri_log_hex(RI_LOG_LEVEL_DEBUG, data_ptr+ii, 1);
+  }
+  LOGD("\r\n");
 
   uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
 

@@ -424,7 +424,7 @@ rd_status_t app_disable_sensor_logging(void) {
     return err_code;
 }
 
-rd_status_t app_enable_sensor_logging(const bool use_ram_db) {
+rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db) {
 
     // is it already active ?
     if(nologging_data_get!=NULL || ram_db) {
@@ -452,10 +452,10 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db) {
         fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
 
         // initialize Ringbuffer with flash device
-        err_code |= rt_flash_ringbuffer_create("fdb_tsdb2", fdb_timestamp_get);
+        err_code |= rt_flash_ringbuffer_create("fdb_tsdb2", fdb_timestamp_get, format_db);
     } else {
         // initialize Ringbuffer with ram device
-        err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get);
+        err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get, false);
     }
 
     if(err_code==RD_SUCCESS) {
@@ -646,7 +646,7 @@ rd_status_t app_acc_logging_init(void) {
 
     if(blob.saved.len > 0 && acceleration_logging_enabled) {
       // activate logging
-      return app_enable_sensor_logging(NULL);
+      return app_enable_sensor_logging(NULL, false);
 
     } else {
       // do not activate logging

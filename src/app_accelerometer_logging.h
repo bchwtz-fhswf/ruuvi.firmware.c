@@ -26,7 +26,7 @@ rd_status_t app_disable_sensor_logging (void);
  *
  * @return RD_SUCCESS on success, error code from stack otherwise.
  */
-rd_status_t app_enable_sensor_logging(const bool use_ram_db);
+rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db);
 
 /**
  * @brief Send logged data from ringbuffer using GATT

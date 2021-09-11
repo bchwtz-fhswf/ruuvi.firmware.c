@@ -224,12 +224,6 @@ uint32_t end_page, end_address, end_page_data_length;
 uint32_t end_address_copy, address_copy;
 
 rd_status_t mx_program(uint32_t address, const uint8_t *data_ptr, uint32_t data_length) {
-LOGDf("%x \n", address);
-//LOGD("mx_program: ");
-//for(int ii=0; ii<data_length; ii++) {
-// ri_log_hex(RI_LOG_LEVEL_DEBUG, data_ptr+ii, 1);
-//}
-//LOGD("\r\n");
 
   address_copy= address;
 
@@ -245,11 +239,7 @@ LOGDf("%x \n", address);
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
   uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
 
-  LOGDf("%x\n", start_page);
-  LOGDf("%x\n", end_page);
-
   if (start_page != end_page) {
-    LOGDf("falsch!!!");
     start_page_end = start_page | 0x0000FF;
     start_page_data_length = start_page_end - address;
     if (start_page_data_length>data_length){
@@ -271,7 +261,7 @@ LOGDf("%x \n", address);
       uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (end_page >> 16) & 0xFF, (end_page >> 8) & 0xFF, (end_page >> 0) & 0xFF};
       mx_spi_ready_for_transfer();
 
-
+      err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
       err_code |= ri_spi_xfer_blocking_macronix(data_ptr, 255, 0, 0);
       err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
       data_ptr += 255;
@@ -282,7 +272,7 @@ LOGDf("%x \n", address);
     uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (end_page >> 16) & 0xFF, (end_page >> 8) & 0xFF, (end_page >> 0) & 0xFF};
     mx_spi_ready_for_transfer();
     
-
+    err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
     err_code |= ri_spi_xfer_blocking_macronix(data_ptr, end_page_data_length, 0, 0);
     err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
   }

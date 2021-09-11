@@ -98,7 +98,7 @@ volatile bool ram_db_transfer = false;
 
 /* KVDB object */
 static struct fdb_kvdb kvdb = { 0 };
-static int zaehler = 0;
+// static int zaehler = 0;
 
 
 static void pack8(const uint16_t sizeData, const uint8_t* const data, uint8_t* const packeddata) {
@@ -427,6 +427,7 @@ rd_status_t app_disable_sensor_logging(void) {
 }
 
 rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db) {
+    bool high_power;
 
     // is it already active ?
     if(nologging_data_get!=NULL || ram_db) {
@@ -439,6 +440,8 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
     if(lis2dh12==NULL) { return RD_ERROR_NOT_FOUND; }
 
     LOG("Start initializing sensor FIFO logging\r\n");
+    uint64_t start, end;
+    start=rd_sensor_timestamp_get();
 
     if(!rt_gpio_is_init()) {
         return RD_ERROR_NOT_INITIALIZED;
@@ -454,7 +457,11 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
         fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
 
         // initialize Ringbuffer with flash device
+        //uint64_t start, end;
+        //start=rd_sensor_timestamp_get();
         err_code |= rt_flash_ringbuffer_create("fdb_tsdb2", fdb_timestamp_get, format_db);
+        end=rd_sensor_timestamp_get()-start;
+        LOGDf("CPU time used %d\r\n", end);
     } else {
         // initialize Ringbuffer with ram device
         err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get, false);
@@ -488,7 +495,6 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
       logged_data.num_elements = 0;
       logged_data.element_pos = 0xff;
       ram_db = use_ram_db;
-
       LOGD("Successfully initialized FIFO logging\r\n");
     } else {
       LOGD("Error initializing FIFO logging\r\n");

@@ -10,5 +10,7 @@
 
 #define FDB_MACRONIX_BLOCK_SIZE (4096)//Sector size
 #define FDB_MACRONIX_BLOCK_COUNT (2047) //Sector count
+#define MACRONIX_PAGE_MASK (0xFFFF00)
+#define MACRONIX_END_ADRESS_MASK (0x0000FF)
 
 #endif

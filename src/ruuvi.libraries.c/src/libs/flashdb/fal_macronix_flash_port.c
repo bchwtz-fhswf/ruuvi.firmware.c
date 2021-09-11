@@ -66,28 +66,48 @@ static int read(long offset, uint8_t *buf, size_t size)
     }
 }
 
+
+
 static int write(long offset, const uint8_t *buf, size_t size) {
+  uint32_t start_page, start_page_end;
+  uint32_t end_page, end_address;
+  uint32_t end_address_copy, offset_copy;
+  uint32_t start_page_data_length, data_length, rest_data_length;
+  size_t initial_size;
 
-    while( mx_busy() == RD_ERROR_BUSY){
-      ri_yield();
-    }
+  initial_size=size;
 
-    mx_write_enable();
-    while( mx_check_write_enable() == RD_ERROR_BUSY){
-      ri_yield();
-      LOGD("mx_write resend write_enable\r\n");
-      mx_write_enable();
-    }
-
-    while( mx_busy() == RD_ERROR_BUSY){
-      ri_yield();
-    }
     LOGDf("Write Page %x, size %d\r\n", offset, size);
     rd_status_t err_code = RD_SUCCESS;
-    err_code = mx_program(offset, buf, size);
+
+    while (size>0){
+      mx_spi_ready_for_transfer();   
+
+      end_address = offset + size;
+      end_address_copy = end_address;
+      offset_copy=offset;
+      start_page = offset_copy & MACRONIX_PAGE_MASK;
+      end_page = end_address_copy & MACRONIX_PAGE_MASK;
+      // If start and end adress are in different pages, the data is devided to multiple write commands
+      if (start_page != end_page) {
+        start_page_end = start_page | MACRONIX_END_ADRESS_MASK;
+        start_page_data_length = start_page_end - offset+1;
+        rest_data_length = size - start_page_data_length;
+        mx_program(offset, buf, start_page_data_length);
+        buf+=start_page_data_length;
+        size = rest_data_length;
+        offset += start_page_data_length;
+
+      }
+      else{
+        mx_program(offset, buf, size);
+        buf+=size;
+        size = 0;
+      }
+    }
 
     if(err_code == RD_SUCCESS) {
-      return size;
+      return initial_size;
     } else {
       return -1;
     }
@@ -95,21 +115,7 @@ static int write(long offset, const uint8_t *buf, size_t size) {
 
 static int erase(long offset, size_t size)
 {    
-    while( mx_busy() == RD_ERROR_BUSY){
-      ri_yield();
-    }
-
-    mx_write_enable();
-    while( mx_check_write_enable() == RD_ERROR_BUSY){
-      ri_yield();
-      LOGD("mx_erase resend write_enable\r\n");
-      mx_write_enable();
-    }
-
-    //TODO Check if erase is called per sector or if size can exceed sector size -> implement erasing of multiple sectors
-    while( mx_busy() == RD_ERROR_BUSY){
-      ri_yield();
-    }
+    mx_spi_ready_for_transfer();
     LOGDf("Erase Page %x, size %d\r\n", offset, size);
     rd_status_t err_code = RD_SUCCESS;
     err_code = mx_sector_erase(offset);

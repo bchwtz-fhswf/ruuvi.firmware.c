@@ -39,7 +39,7 @@ extern const struct fal_flash_dev ram0;
     {FAL_PART_MAGIC_WORD, "fdb_kvdb1",  RUUVI_FLASH_DEV_NAME,                      0,                        2*FDB_RUUVI_BLOCK_SIZE, 0},  \
     {FAL_PART_MAGIC_WORD, "fdb_tsdb1",  RUUVI_FLASH_DEV_NAME, 2*FDB_RUUVI_BLOCK_SIZE, (FDB_RUUVI_BLOCK_COUNT-2)*FDB_RUUVI_BLOCK_SIZE, 0},  \
     {FAL_PART_MAGIC_WORD, "fdb_kvdb2",  MACRONIX_FLASH_DEV_NAME,                   0,                        2*FDB_MACRONIX_BLOCK_SIZE, 0},  \
-    {FAL_PART_MAGIC_WORD, "fdb_tsdb2",  MACRONIX_FLASH_DEV_NAME, 2*FDB_MACRONIX_BLOCK_SIZE, (200)*FDB_MACRONIX_BLOCK_SIZE, 0},  \
+    {FAL_PART_MAGIC_WORD, "fdb_tsdb2",  MACRONIX_FLASH_DEV_NAME, 2*FDB_MACRONIX_BLOCK_SIZE, (FDB_MACRONIX_BLOCK_COUNT-2)*FDB_MACRONIX_BLOCK_SIZE, 0},  \
     {FAL_PART_MAGIC_WORD, "ram0",  "ram0", 0, 8 * 1024, 0},  \
 }
 #endif /* FAL_PART_HAS_TABLE_CFG */

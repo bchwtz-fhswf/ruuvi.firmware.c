@@ -82,7 +82,6 @@ rd_status_t mx_init(void) {
         RI_GPIO_MODE_OUTPUT_STANDARD);
     ri_gpio_write(ss_pins[ii], RI_GPIO_HIGH);
   }
-
   m_spi_init_done = true;
   return (err_code);
 }
@@ -217,12 +216,24 @@ return err_code;
 }
 */
 
+rd_status_t mx_program(uint32_t address, const uint8_t *data_ptr, uint32_t data_length) {
+
+  rd_status_t err_code = RD_SUCCESS;
+
+  ri_gpio_id_t chipSelect = RB_PORT_PIN_MAP(0, SS_SPI_MACRONIX);
+  err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
+  uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
+
+  err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
+  err_code |= ri_spi_xfer_blocking_macronix(data_ptr, data_length, 0, 0);
+  err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
+  return err_code;
+}
 
 
-uint32_t start_page, start_page_data_length, start_page_end;
-uint32_t end_page, end_address, end_page_data_length;
-uint32_t end_address_copy, address_copy;
 
+
+/*
 rd_status_t mx_program(uint32_t address, const uint8_t *data_ptr, uint32_t data_length) {
 LOGDf("%x \n", address);
 //LOGD("mx_program: ");
@@ -245,11 +256,7 @@ LOGDf("%x \n", address);
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
   uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
 
-  LOGDf("%x\n", start_page);
-  LOGDf("%x\n", end_page);
-
   if (start_page != end_page) {
-    LOGDf("falsch!!!");
     start_page_end = start_page | 0x0000FF;
     start_page_data_length = start_page_end - address;
     if (start_page_data_length>data_length){
@@ -271,7 +278,7 @@ LOGDf("%x \n", address);
       uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (end_page >> 16) & 0xFF, (end_page >> 8) & 0xFF, (end_page >> 0) & 0xFF};
       mx_spi_ready_for_transfer();
 
-
+      err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
       err_code |= ri_spi_xfer_blocking_macronix(data_ptr, 255, 0, 0);
       err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
       data_ptr += 255;
@@ -282,7 +289,7 @@ LOGDf("%x \n", address);
     uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (end_page >> 16) & 0xFF, (end_page >> 8) & 0xFF, (end_page >> 0) & 0xFF};
     mx_spi_ready_for_transfer();
     
-
+    err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
     err_code |= ri_spi_xfer_blocking_macronix(data_ptr, end_page_data_length, 0, 0);
     err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
   }
@@ -295,7 +302,7 @@ LOGDf("%x \n", address);
 
   return err_code;
 }
-
+*/
 
 rd_status_t mx_sector_erase(uint32_t address) {
   uint8_t spi_tx_cmd[] = {CMD_SECTOR_ERASE, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
@@ -359,8 +366,8 @@ rd_status_t mx_check_write_enable(void) {
   }
 }
 
-
-rd_status_t mx_spi_ready_for_transfer (void){
+// TODO Schön machen!!!
+void mx_spi_ready_for_transfer (void){
     while( mx_busy() == RD_ERROR_BUSY){
       ri_yield();
     }
@@ -375,6 +382,38 @@ rd_status_t mx_spi_ready_for_transfer (void){
     while( mx_busy() == RD_ERROR_BUSY){
       ri_yield();
     }
+}
 
-    return ri_gpio_write(SS_SPI_MACRONIX, RI_GPIO_LOW);
+
+rd_status_t mx_wrsr (bool high_power){
+  rd_status_t err_code;
+  uint8_t config;
+   /* 
+  err_code|=mx_read_config_register(&config);
+  err_code|=mx_read_status_register(&status);
+  current_status[0]=status;
+  current_status[1]=config[0];
+  current_status[2]=config[1];
+  LOGDf("current_status: %x %x %x \n",current_status[0],current_status[1],current_status[2]);
+
+*/
+  err_code|=mx_read_config_register(&config);
+  LOGDf("current config: %x\n",config);
+  uint8_t command;
+
+  if (high_power==true){
+  command = 0x02;
+  }
+  else{
+  command = 0x00;
+  }
+  uint8_t spi_tx_cmd [] = {CMD_WRSR, 0x00, 0x00, command};
+  err_code = RD_SUCCESS;
+  mx_spi_ready_for_transfer();
+  ri_gpio_id_t chipSelect = RB_PORT_PIN_MAP(0, SS_SPI_MACRONIX);
+  err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
+  err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
+  err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
+  err_code|=mx_read_config_register(&config);
+  LOGDf("current config: %x\n",config);
 }

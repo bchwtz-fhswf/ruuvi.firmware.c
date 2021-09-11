@@ -83,4 +83,6 @@ rd_status_t app_acc_logging_statistic (
   uint8_t* const statistik
 );
 
+rd_status_t mx_wrsr (bool high_power);
+
 #endif

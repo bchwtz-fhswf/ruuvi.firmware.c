@@ -360,7 +360,7 @@ rd_status_t mx_check_write_enable(void) {
   }
 }
 
-// TODO Schön machen!!!
+
 void mx_spi_ready_for_transfer (void){
     while( mx_busy() == RD_ERROR_BUSY){
       ri_yield();

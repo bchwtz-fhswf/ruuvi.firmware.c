@@ -14,6 +14,7 @@
 #include "ruuvi_task_flash_ringbuffer.h"
 #include "ruuvi_task_flashdb.h"
 #include "fds.h"
+#include "macronix_flash.h"
 #include <string.h>
 
 
@@ -53,6 +54,9 @@ static struct fdb_tsdb tsdb;
 
 rd_status_t rt_flash_ringbuffer_create (const char *partition, fdb_get_time get_time, const bool format_db)
 {
+  // change to high performance mode during flashDB initialization for quicker setup
+  bool high_power =1;
+  mx_high_performance_switch (high_power);
 
   /* Time Series database initialization
    */
@@ -65,11 +69,16 @@ rd_status_t rt_flash_ringbuffer_create (const char *partition, fdb_get_time get_
   } else {
       LOGDf("Ringbuffer initialization error 0x%02X \r\n", result);
   }
+  
 
   // Format DB in case of enabling logging and DB was not empty
   if(format_db && tsdb.last_time!=0) {
     rt_flash_ringbuffer_clear();
   }
+  
+  // setting back to low power mode for saving power during regular use//
+  high_power =0;
+  mx_high_performance_switch (high_power);
 
   return rt_flashdb_to_ruuvi_error(result);
 }

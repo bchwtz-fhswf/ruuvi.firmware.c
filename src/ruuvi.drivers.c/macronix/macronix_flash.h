@@ -66,8 +66,11 @@ rd_status_t ri_spi_xfer_blocking_macronix (const uint8_t * tx,
                                   const size_t tx_len, uint8_t * rx, const size_t rx_len);
                               
 rd_status_t mx_busy (void);
+
 rd_status_t mx_check_write_enable(void);
+
 void mx_spi_ready_for_transfer (void);
-rd_status_t mx_wrsr (bool high_power);
-//uint32_t devide_data_to_pages(uint32_t offset, uint32_t size, uint32_t *start_page_data_length, uint32_t *end_page_data_length);
+
+rd_status_t mx_high_performance_switch (bool high_power);
+
 #endif

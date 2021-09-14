@@ -12,8 +12,7 @@
 #include "ruuvi_task_flash.h"
 #include "ruuvi_driver_error.h"
 #include "fal_macronix_flash_port.h"
-//TODO Check why here a path is necessary..
-#include "..\ruuvi.drivers.c\macronix\macronix_flash.h"
+#include "macronix_flash.h"
 
 
 #if RI_LOG_ENABLED

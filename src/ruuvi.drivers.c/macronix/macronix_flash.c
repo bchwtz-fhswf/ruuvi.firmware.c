@@ -186,35 +186,6 @@ rd_status_t mx_write_enable(void) {
   return err_code;
 }
 
-/*
-
-rd_status_t mx_program(uint32_t address, const uint8_t *data_ptr, uint32_t data_length) {
-
-LOGD("mx_program: ");
-for(int ii=0; ii<data_length; ii++) {
-ri_log_hex(RI_LOG_LEVEL_DEBUG, data_ptr+ii, 1);
-}
-LOGD("\r\n");
-
-uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
-
-rd_status_t err_code = RD_SUCCESS;
-
-ri_gpio_id_t chipSelect = RB_PORT_PIN_MAP(0, SS_SPI_MACRONIX);
-err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
-
-err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
-while (data_length > 255) {
-err_code |= ri_spi_xfer_blocking_macronix(data_ptr, 255, 0, 0);
-data_ptr += 255;
-data_length -= 255;
-}
-err_code |= ri_spi_xfer_blocking_macronix(data_ptr, data_length, 0, 0);
-err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
-
-return err_code;
-}
-*/
 
 rd_status_t mx_program(uint32_t address, const uint8_t *data_ptr, uint32_t data_length) {
 
@@ -229,74 +200,6 @@ rd_status_t mx_program(uint32_t address, const uint8_t *data_ptr, uint32_t data_
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
   return err_code;
 }
-
-
-
-
-/*
-rd_status_t mx_program(uint32_t address, const uint8_t *data_ptr, uint32_t data_length) {
-
-  address_copy= address;
-
-  end_address = address + data_length;
-  end_address_copy =end_address;
-
-  start_page = address_copy & 0xFFFF00;
-  end_page = end_address_copy & 0xFFFF00;
-
-  rd_status_t err_code = RD_SUCCESS;
-
-  ri_gpio_id_t chipSelect = RB_PORT_PIN_MAP(0, SS_SPI_MACRONIX);
-  err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
-  uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
-
-  if (start_page != end_page) {
-    start_page_end = start_page | 0x0000FF;
-    start_page_data_length = start_page_end - address;
-    if (start_page_data_length>data_length){
-      start_page_data_length=data_length;
-    }
-    end_page_data_length = data_length - start_page_data_length;
- 
-    err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
-    err_code |= ri_spi_xfer_blocking_macronix(data_ptr, start_page_data_length, 0, 0);
-    err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
-    data_ptr+=start_page_data_length;
-
-//TODO CHECK IF WE NEED TO SEND A NEW CMD_PROGRAM!!
-    
-
-    while (end_page_data_length > 255) {
-      
-
-      uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (end_page >> 16) & 0xFF, (end_page >> 8) & 0xFF, (end_page >> 0) & 0xFF};
-      mx_spi_ready_for_transfer();
-
-      err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
-      err_code |= ri_spi_xfer_blocking_macronix(data_ptr, 255, 0, 0);
-      err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
-      data_ptr += 255;
-      end_page_data_length -= 255;
-      end_page += 255;
-    }
-
-    uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (end_page >> 16) & 0xFF, (end_page >> 8) & 0xFF, (end_page >> 0) & 0xFF};
-    mx_spi_ready_for_transfer();
-    
-    err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
-    err_code |= ri_spi_xfer_blocking_macronix(data_ptr, end_page_data_length, 0, 0);
-    err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
-  }
-
-  else{
-    err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
-    err_code |= ri_spi_xfer_blocking_macronix(data_ptr, data_length, 0, 0);
-    err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
-  }
-
-  return err_code;
-}
-*/
 
 rd_status_t mx_sector_erase(uint32_t address) {
   uint8_t spi_tx_cmd[] = {CMD_SECTOR_ERASE, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
@@ -378,19 +281,10 @@ void mx_spi_ready_for_transfer (void){
     }
 }
 
-
-rd_status_t mx_wrsr (bool high_power){
+// TODO read register and only change desired bits
+rd_status_t mx_high_performance_switch (bool high_power){
   rd_status_t err_code;
   uint8_t config;
-   /* 
-  err_code|=mx_read_config_register(&config);
-  err_code|=mx_read_status_register(&status);
-  current_status[0]=status;
-  current_status[1]=config[0];
-  current_status[2]=config[1];
-  LOGDf("current_status: %x %x %x \n",current_status[0],current_status[1],current_status[2]);
-
-*/
   err_code|=mx_read_config_register(&config);
   LOGDf("current config: %x\n",config);
   uint8_t command;

@@ -64,6 +64,9 @@ rd_status_t rt_flash_ringbuffer_drop (void);
 rd_status_t rt_flash_ringbuffer_statistic (
   uint8_t* const statistik
 );
+
+rd_status_t rt_flash_ringbuffer_ext_flash_exists(void);
+
 #endif // RUUVI_TASK_FLASH_RINGBUFFER_H
 
 #endif

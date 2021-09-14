@@ -456,10 +456,18 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
         int acceleration_logging_enabled = 1;
         fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
 
+        char *partition;
+
+        if(rt_flash_ringbuffer_ext_flash_exists()==RD_SUCCESS) {
+          partition="fdb_tsdb2";
+        } else {
+          partition="fdb_tsdb1";
+        }
+
         // initialize Ringbuffer with flash device
         //uint64_t start, end;
         //start=rd_sensor_timestamp_get();
-        err_code |= rt_flash_ringbuffer_create("fdb_tsdb2", fdb_timestamp_get, format_db);
+        err_code |= rt_flash_ringbuffer_create(partition, fdb_timestamp_get, format_db);
         end=rd_sensor_timestamp_get()-start;
         LOGDf("CPU time used %d\r\n", end);
     } else {
@@ -637,16 +645,24 @@ rd_status_t app_acc_logging_init(void) {
   default_kv.kvs = default_kv_table;
   default_kv.num = sizeof(default_kv_table) / sizeof(default_kv_table[0]);
 
+  char *partition;
+
+  if(rt_flash_ringbuffer_ext_flash_exists()==RD_SUCCESS) {
+    partition="fdb_kvdb2";
+  } else {
+    partition="fdb_kvdb1";
+  }
+
   /* Key-Value database initialization
    *
    *       &kvdb: database object
    *       "env": database name
-   * "fdb_kvdb1": The flash partition name base on FAL. Please make sure it's in FAL partition table.
+   * partition: The flash partition name base on FAL. Please make sure it's in FAL partition table.
    *              Please change to YOUR partition name.
    * &default_kv: The default KV nodes. It will auto add to KVDB when first initialize successfully.
    *        NULL: The user data if you need, now is empty.
    */
-  fdb_err_t result = fdb_kvdb_init(&kvdb, "env", "fdb_kvdb2", &default_kv, NULL);
+  fdb_err_t result = fdb_kvdb_init(&kvdb, "env", partition, &default_kv, NULL);
 
   if(result==FDB_NO_ERR) {
     

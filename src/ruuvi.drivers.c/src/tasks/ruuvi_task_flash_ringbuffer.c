@@ -166,4 +166,19 @@ void rt_print_flash_statistic(void) {
   
 }
 
+rd_status_t rt_flash_ringbuffer_ext_flash_exists(void) {
+  uint8_t manufacturer_id;
+  uint8_t device_id;
+
+  mx_read_rems(&manufacturer_id, &device_id);
+
+  LOGDf("manufacturer_id %x, device_id %x\r\n", manufacturer_id, device_id);
+
+  if(false && manufacturer_id!=0xff && device_id!=0xff) {
+    return RD_SUCCESS;
+  } else {
+    return RD_ERROR_NOT_FOUND;
+  }
+}
+
 #endif

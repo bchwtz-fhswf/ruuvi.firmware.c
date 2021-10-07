@@ -24,7 +24,6 @@
 #include "app_comms.h"
 #include "crc16.h"
 #include "flashdb.h"
-#include "fal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -99,7 +98,6 @@ volatile bool ram_db_transfer = false;
 
 /* KVDB object */
 static struct fdb_kvdb kvdb = { 0 };
-// static int zaehler = 0;
 
 
 static void pack8(const uint16_t sizeData, const uint8_t* const data, uint8_t* const packeddata) {
@@ -281,10 +279,6 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
             pack(logged_data.config->resolution, RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT, logged_data.data_to_store, packeddata);
 
             // Collect Data in Flash page
-            /*
-            memset(packeddata, zaehler, sizeOfPackedData);
-            zaehler++;
-            */
             err_code |= rt_flash_ringbuffer_write(sizeOfPackedData, packeddata);
 
             // reset counter
@@ -441,8 +435,6 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
     if(lis2dh12==NULL) { return RD_ERROR_NOT_FOUND; }
 
     LOG("Start initializing sensor FIFO logging\r\n");
-    uint64_t start, end;
-    start=rd_sensor_timestamp_get();
 
     if(!rt_gpio_is_init()) {
         return RD_ERROR_NOT_INITIALIZED;
@@ -451,8 +443,6 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
     rd_status_t err_code = RD_SUCCESS;
 
     if(!use_ram_db) {
-        // Ringbuffer is only needed when streaming is not active
-
         struct fdb_blob blob;
         int acceleration_logging_enabled = 1;
         fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
@@ -466,11 +456,7 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
         }
 
         // initialize Ringbuffer with flash device
-        //uint64_t start, end;
-        //start=rd_sensor_timestamp_get();
         err_code |= rt_flash_ringbuffer_create(partition, fdb_timestamp_get, format_db);
-        end=rd_sensor_timestamp_get()-start;
-        LOGDf("CPU time used %d\r\n", end);
     } else {
         // initialize Ringbuffer with ram device
         err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get, false);
@@ -646,7 +632,7 @@ rd_status_t app_acc_logging_init(void) {
   default_kv.kvs = default_kv_table;
   default_kv.num = sizeof(default_kv_table) / sizeof(default_kv_table[0]);
 
-  char *partition;
+  char *partition; 
   fal_flash_init();
   if(rt_flash_ringbuffer_ext_flash_exists()==RD_SUCCESS) {
     partition="fdb_kvdb2";
@@ -658,8 +644,7 @@ rd_status_t app_acc_logging_init(void) {
    *
    *       &kvdb: database object
    *       "env": database name
-   * partition: The flash partition name base on FAL. Please make sure it's in FAL partition table.
-   *              Please change to YOUR partition name.
+   *   partition: The flash partition name base on FAL. Please make sure it's in FAL partition table.
    * &default_kv: The default KV nodes. It will auto add to KVDB when first initialize successfully.
    *        NULL: The user data if you need, now is empty.
    */
@@ -688,11 +673,22 @@ rd_status_t app_acc_logging_uninit(void) {
   return ~RD_ERROR_INVALID_STATE & app_disable_sensor_logging();
 }
 
+uint8_t ruuvi_error_code_to_uint8(rd_status_t err_code) {
+  if(err_code) {
+    for(int i=0; i<32; i++) {
+      if(err_code & (1<<i)) {
+        return i;
+      }
+    }
+  }
+  return 0;
+}
+
 rd_status_t app_acc_logging_statistic (uint8_t* const statistik) {
 
     rd_status_t err_code = RD_SUCCESS;
 
-    statistik[0] = logged_data.last_status;
+    statistik[0] = ruuvi_error_code_to_uint8(logged_data.last_status);
 
     err_code |= rt_flash_ringbuffer_statistic(statistik+1);
 

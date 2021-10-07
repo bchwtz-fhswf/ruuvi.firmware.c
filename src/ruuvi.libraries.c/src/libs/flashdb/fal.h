@@ -14,6 +14,8 @@
 #include <fal_cfg.h>
 #include "fal_def.h"
 
+int fal_flash_init(void);
+
 /**
  * FAL (Flash Abstraction Layer) initialization.
  * It will initialize all flash device and all flash partition.

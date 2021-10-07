@@ -83,4 +83,13 @@ rd_status_t app_acc_logging_statistic (
   uint8_t* const statistik
 );
 
+/*
+ *  Convert Ruuvi error code to one byte value.
+ *  This functions returns the first error it finds. It cannot return a set of multiple errors.
+ *
+ *  @param[in] err_code Ruuvi error code
+ *  @return index of first bit which is set
+ */
+uint8_t ruuvi_error_code_to_uint8(rd_status_t err_code);
+
 #endif

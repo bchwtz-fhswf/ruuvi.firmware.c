@@ -59,7 +59,6 @@ rd_status_t mx_init(void) {
   if (m_spi_init_done) {
     return NRF_ERROR_INVALID_STATE;
   }
-
   nrf_drv_spi_config_t spi_config_macronix = NRF_DRV_SPI_DEFAULT_CONFIG;
   spi_config_macronix.ss_pin = NRF_DRV_SPI_PIN_NOT_USED;
   spi_config_macronix.miso_pin = MISO_SPI_MACRONIX;
@@ -102,9 +101,9 @@ rd_status_t mx_read_rems(uint8_t *manufacturer_id, uint8_t *device_id) {
   *manufacturer_id = spi_rx_response[0];
   *device_id = spi_rx_response[1];
 
-  LOGD("mx_read_rems: ");
-  ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_response, sizeof(spi_rx_response));
-  LOGD("\r\n");
+  //LOGD("mx_read_rems: ");
+  //ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_response, sizeof(spi_rx_response));
+  //LOGD("\r\n");
 
   return err_code;
 }

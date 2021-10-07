@@ -171,10 +171,11 @@ rd_status_t rt_flash_ringbuffer_ext_flash_exists(void) {
   uint8_t device_id;
 
   mx_read_rems(&manufacturer_id, &device_id);
+  LOGDf("Checking external flash existence\r\n");
 
   LOGDf("manufacturer_id %x, device_id %x\r\n", manufacturer_id, device_id);
 
-  if(false && manufacturer_id!=0xff && device_id!=0xff) {
+  if(manufacturer_id==0xc2 && device_id==0x17) {
     return RD_SUCCESS;
   } else {
     return RD_ERROR_NOT_FOUND;

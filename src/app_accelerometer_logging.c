@@ -24,6 +24,7 @@
 #include "app_comms.h"
 #include "crc16.h"
 #include "flashdb.h"
+#include "fal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -455,9 +456,9 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
         struct fdb_blob blob;
         int acceleration_logging_enabled = 1;
         fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
-
+        
         char *partition;
-
+        
         if(rt_flash_ringbuffer_ext_flash_exists()==RD_SUCCESS) {
           partition="fdb_tsdb2";
         } else {
@@ -646,7 +647,7 @@ rd_status_t app_acc_logging_init(void) {
   default_kv.num = sizeof(default_kv_table) / sizeof(default_kv_table[0]);
 
   char *partition;
-
+  fal_flash_init();
   if(rt_flash_ringbuffer_ext_flash_exists()==RD_SUCCESS) {
     partition="fdb_kvdb2";
   } else {

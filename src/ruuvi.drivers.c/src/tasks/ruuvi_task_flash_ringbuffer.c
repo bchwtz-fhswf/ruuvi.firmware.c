@@ -51,6 +51,7 @@ static inline void LOGDf (const char * const msg, ...)
 
 /* TSDB object */
 static struct fdb_tsdb tsdb;
+static rd_status_t is_macronix_present = RD_ERROR_NOT_INITIALIZED;
 
 rd_status_t rt_flash_ringbuffer_create (const char *partition, fdb_get_time get_time, const bool format_db)
 {
@@ -190,19 +191,26 @@ void rt_print_flash_statistic(void) {
 }
 
 rd_status_t rt_flash_ringbuffer_ext_flash_exists(void) {
-  uint8_t manufacturer_id;
-  uint8_t device_id;
 
-  mx_read_rems(&manufacturer_id, &device_id);
-  LOGDf("Checking external flash existence\r\n");
+  if(is_macronix_present == RD_ERROR_NOT_INITIALIZED) {
+    uint8_t manufacturer_id;
+    uint8_t device_id;
 
-  LOGDf("manufacturer_id %x, device_id %x\r\n", manufacturer_id, device_id);
+    LOGD("Checking external flash existence\r\n");
 
-  if(manufacturer_id==0xc2 && device_id==0x17) {
-    return RD_SUCCESS;
-  } else {
-    return RD_ERROR_NOT_FOUND;
+    rd_status_t err_code = mx_read_rems(&manufacturer_id, &device_id);
+
+    if(err_code==RD_SUCCESS) {
+      LOGDf("manufacturer_id %x, device_id %x\r\n", manufacturer_id, device_id);
+
+      if(manufacturer_id==0xc2 && device_id==0x17) {      
+        is_macronix_present = RD_SUCCESS;
+      } else {
+        is_macronix_present = RD_ERROR_NOT_FOUND;
+      }
+    }
   }
+  return is_macronix_present;
 }
 
 #endif

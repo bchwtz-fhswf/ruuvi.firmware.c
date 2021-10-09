@@ -677,7 +677,7 @@ uint8_t ruuvi_error_code_to_uint8(rd_status_t err_code) {
   if(err_code) {
     for(int i=0; i<32; i++) {
       if(err_code & (1<<i)) {
-        return i;
+        return i+1;
       }
     }
   }

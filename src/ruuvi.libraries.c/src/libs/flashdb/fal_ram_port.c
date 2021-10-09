@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include "fal.h"
 
-#define RAM_BLOCK_COUNT (8)
+#define RAM_BLOCK_COUNT (6)
 #define RAM_BLOCK_SIZE (1024)
 static uint8_t* ram_page[RAM_BLOCK_COUNT];
 

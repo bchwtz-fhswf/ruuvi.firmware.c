@@ -201,7 +201,7 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
     }
 
     // send response
-    msg.data[2] = err_code;
+    msg.data[2] = ruuvi_error_code_to_uint8(err_code);
     err_code |= app_comms_blocking_send(reply_fp, &msg);
 
     return err_code;
@@ -295,7 +295,7 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
     }
 
     // send response
-    msg.data[3] = err_code;
+    msg.data[3] = ruuvi_error_code_to_uint8(err_code);
     err_code |= app_comms_blocking_send(reply_fp, &msg);
 
     return err_code;
@@ -343,7 +343,7 @@ static rd_status_t handle_rtc_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const 
     }
 
     // send response
-    msg.data[3] = err_code;
+    msg.data[3] = ruuvi_error_code_to_uint8(err_code);
     err_code |= app_comms_blocking_send(reply_fp, &msg);
 
     return err_code;

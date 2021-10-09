@@ -649,7 +649,7 @@ rd_status_t app_acc_logging_init(void) {
    *        NULL: The user data if you need, now is empty.
    */
   fdb_err_t result = fdb_kvdb_init(&kvdb, "env", partition, &default_kv, NULL);
-
+  mx_high_performance_switch(false); //resetting high-power mode in case of factory reset
   if(result==FDB_NO_ERR) {
     
     fdb_kv_get_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));

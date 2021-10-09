@@ -67,6 +67,8 @@ rd_status_t rt_flash_ringbuffer_statistic (
 
 rd_status_t rt_flash_ringbuffer_ext_flash_exists(void);
 
+rd_status_t rt_reset_macronix_flash(void);
+
 #endif // RUUVI_TASK_FLASH_RINGBUFFER_H
 
 #endif

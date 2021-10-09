@@ -198,6 +198,10 @@ rd_status_t rt_flash_ringbuffer_ext_flash_exists(void) {
 
     LOGD("Checking external flash existence\r\n");
 
+    while(mx_busy() == RD_ERROR_BUSY){
+      ri_yield();
+    }
+
     rd_status_t err_code = mx_read_rems(&manufacturer_id, &device_id);
 
     if(err_code==RD_SUCCESS) {
@@ -213,4 +217,17 @@ rd_status_t rt_flash_ringbuffer_ext_flash_exists(void) {
   return is_macronix_present;
 }
 
+rd_status_t rt_reset_macronix_flash(void) {
+  rd_status_t err_code;
+  err_code = RD_SUCCESS;
+  if(rt_flash_ringbuffer_ext_flash_exists()==RD_SUCCESS) {
+    LOGDf("Triggering Macronix flash chip erase\r\n");
+    err_code |= mx_high_performance_switch(true);
+    mx_spi_ready_for_transfer();
+    err_code |= mx_chip_erase();
+  }
+  return err_code;
+}
+
 #endif
+

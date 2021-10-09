@@ -143,9 +143,9 @@ rd_status_t mx_read_config_register(uint8_t *config) {
 
   *config = spi_rx_rsp[1];
 
-  LOGD("mx_read_config_register: ");
-  ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_rsp, sizeof(spi_rx_rsp));
-  LOGD("\r\n");
+  //LOGD("mx_read_config_register: ");
+  //ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_rsp, sizeof(spi_rx_rsp));
+  //LOGD("\r\n");
 
   return err_code;
 }
@@ -215,14 +215,12 @@ rd_status_t mx_sector_erase(uint32_t address) {
 
 rd_status_t mx_chip_erase(void) {
   static uint8_t spi_tx_cmd[] = {CMD_CHIP_ERASE};
-
   rd_status_t err_code = RD_SUCCESS;
 
   ri_gpio_id_t chipSelect = RB_PORT_PIN_MAP(0, SS_SPI_MACRONIX);
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
   err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
-
   return err_code;
 }
 
@@ -301,6 +299,6 @@ rd_status_t mx_high_performance_switch (bool high_power){
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
   err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
-  err_code|=mx_read_config_register(&config);
+  err_code |= mx_read_config_register(&config);
   LOGDf("current config: %x\n",config);
 }

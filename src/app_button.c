@@ -13,7 +13,7 @@
 #include "ruuvi_interface_scheduler.h"
 #include "ruuvi_interface_timer.h"
 #include "ruuvi_task_button.h"
-#include "ruuvi_task_flash_ringbuffer.h"
+#include "ruuvi_task_flashdb.h"
 
 /**
  * @addtogroup app_button

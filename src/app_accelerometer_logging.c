@@ -20,6 +20,7 @@
 #include "ruuvi_task_flash.h"
 #include "ruuvi_task_flash_ringbuffer.h"
 #include "ruuvi_task_gatt.h"
+#include "ruuvi_task_flashdb.h"
 #include "app_sensor.h"
 #include "app_comms.h"
 #include "crc16.h"
@@ -449,7 +450,7 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
         
         char *partition;
         
-        if(rt_flash_ringbuffer_ext_flash_exists()==RD_SUCCESS) {
+        if(rt_macronix_flash_exists()==RD_SUCCESS) {
           partition="fdb_tsdb2";
         } else {
           partition="fdb_tsdb1";
@@ -634,7 +635,7 @@ rd_status_t app_acc_logging_init(void) {
 
   char *partition; 
   fal_flash_init();
-  if(rt_flash_ringbuffer_ext_flash_exists()==RD_SUCCESS) {
+  if(rt_macronix_flash_exists()==RD_SUCCESS) {
     partition="fdb_kvdb2";
   } else {
     partition="fdb_kvdb1";
@@ -649,7 +650,7 @@ rd_status_t app_acc_logging_init(void) {
    *        NULL: The user data if you need, now is empty.
    */
   fdb_err_t result = fdb_kvdb_init(&kvdb, "env", partition, &default_kv, NULL);
-  mx_high_performance_switch(false); //resetting high-power mode in case of factory reset
+  rt_macronix_high_performance_switch(false); //resetting high-power mode in case of factory reset
   if(result==FDB_NO_ERR) {
     
     fdb_kv_get_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));

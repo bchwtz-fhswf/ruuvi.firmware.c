@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include "ruuvi_driver_error.h"
 
+#define CMD_WRSR                    0x01
 #define CMD_PROGRAM                 0x02
 #define CMD_READ                    0x03
 #define CMD_RDSR                    0x05
@@ -55,7 +56,7 @@ rd_status_t mx_read(uint32_t address, uint8_t * data_ptr, uint32_t data_length);
 
 rd_status_t mx_write_enable(void);
 
-rd_status_t mx_program(uint32_t address, uint8_t * data_ptr, uint32_t data_length);
+rd_status_t mx_program(uint32_t address, const uint8_t * data_ptr, uint32_t data_length);
 
 rd_status_t mx_sector_erase(uint32_t address);
 
@@ -65,5 +66,11 @@ rd_status_t ri_spi_xfer_blocking_macronix (const uint8_t * tx,
                                   const size_t tx_len, uint8_t * rx, const size_t rx_len);
                               
 rd_status_t mx_busy (void);
+
+rd_status_t mx_check_write_enable(void);
+
+void mx_spi_ready_for_transfer (void);
+
+rd_status_t mx_high_performance_switch (bool high_power);
 
 #endif

@@ -20,6 +20,7 @@
 #include "ruuvi_task_flash.h"
 #include "ruuvi_task_flash_ringbuffer.h"
 #include "ruuvi_task_gatt.h"
+#include "ruuvi_task_flashdb.h"
 #include "app_sensor.h"
 #include "app_comms.h"
 #include "crc16.h"
@@ -421,7 +422,8 @@ rd_status_t app_disable_sensor_logging(void) {
     return err_code;
 }
 
-rd_status_t app_enable_sensor_logging(const bool use_ram_db) {
+rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db) {
+    bool high_power;
 
     // is it already active ?
     if(nologging_data_get!=NULL || ram_db) {
@@ -442,17 +444,23 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db) {
     rd_status_t err_code = RD_SUCCESS;
 
     if(!use_ram_db) {
-        // Ringbuffer is only needed when streaming is not active
-
         struct fdb_blob blob;
         int acceleration_logging_enabled = 1;
         fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
+        
+        char *partition;
+        
+        if(rt_macronix_flash_exists()==RD_SUCCESS) {
+          partition="fdb_tsdb2";
+        } else {
+          partition="fdb_tsdb1";
+        }
 
         // initialize Ringbuffer with flash device
-        err_code |= rt_flash_ringbuffer_create("fdb_tsdb1", fdb_timestamp_get);
+        err_code |= rt_flash_ringbuffer_create(partition, fdb_timestamp_get, format_db);
     } else {
         // initialize Ringbuffer with ram device
-        err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get);
+        err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get, false);
     }
 
     if(err_code==RD_SUCCESS) {
@@ -483,7 +491,6 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db) {
       logged_data.num_elements = 0;
       logged_data.element_pos = 0xff;
       ram_db = use_ram_db;
-
       LOGD("Successfully initialized FIFO logging\r\n");
     } else {
       LOGD("Error initializing FIFO logging\r\n");
@@ -626,24 +633,31 @@ rd_status_t app_acc_logging_init(void) {
   default_kv.kvs = default_kv_table;
   default_kv.num = sizeof(default_kv_table) / sizeof(default_kv_table[0]);
 
+  char *partition; 
+  fal_flash_init();
+  if(rt_macronix_flash_exists()==RD_SUCCESS) {
+    partition="fdb_kvdb2";
+  } else {
+    partition="fdb_kvdb1";
+  }
+
   /* Key-Value database initialization
    *
    *       &kvdb: database object
    *       "env": database name
-   * "fdb_kvdb1": The flash partition name base on FAL. Please make sure it's in FAL partition table.
-   *              Please change to YOUR partition name.
+   *   partition: The flash partition name base on FAL. Please make sure it's in FAL partition table.
    * &default_kv: The default KV nodes. It will auto add to KVDB when first initialize successfully.
    *        NULL: The user data if you need, now is empty.
    */
-  fdb_err_t result = fdb_kvdb_init(&kvdb, "env", "fdb_kvdb2", &default_kv, NULL);
-
+  fdb_err_t result = fdb_kvdb_init(&kvdb, "env", partition, &default_kv, NULL);
+  rt_macronix_high_performance_switch(false); //resetting high-power mode in case of factory reset
   if(result==FDB_NO_ERR) {
     
     fdb_kv_get_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
 
     if(blob.saved.len > 0 && acceleration_logging_enabled) {
       // activate logging
-      return app_enable_sensor_logging(NULL);
+      return app_enable_sensor_logging(NULL, false);
 
     } else {
       // do not activate logging
@@ -660,11 +674,22 @@ rd_status_t app_acc_logging_uninit(void) {
   return ~RD_ERROR_INVALID_STATE & app_disable_sensor_logging();
 }
 
+uint8_t ruuvi_error_code_to_uint8(rd_status_t err_code) {
+  if(err_code) {
+    for(int i=0; i<32; i++) {
+      if(err_code & (1<<i)) {
+        return i+1;
+      }
+    }
+  }
+  return 0;
+}
+
 rd_status_t app_acc_logging_statistic (uint8_t* const statistik) {
 
     rd_status_t err_code = RD_SUCCESS;
 
-    statistik[0] = logged_data.last_status;
+    statistik[0] = ruuvi_error_code_to_uint8(logged_data.last_status);
 
     err_code |= rt_flash_ringbuffer_statistic(statistik+1);
 

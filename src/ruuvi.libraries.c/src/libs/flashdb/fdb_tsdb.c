@@ -441,6 +441,11 @@ void fdb_tsl_iter(fdb_tsdb_t db, fdb_tsl_cb cb, void *arg)
                     return;
                 }
             } while ((tsl.addr.index = get_next_tsl_addr(&sector, &tsl)) != FAILED_ADDR);
+            // Format sector after reading it
+            format_sector(db, sector.addr);
+            if(db->cur_sec.addr==sector.addr) {
+              read_sector_info(db, sector.addr, &db->cur_sec, false);
+            }
         }
     } while ((sec_addr = get_next_sector_addr(db, &sector, traversed_len)) != FAILED_ADDR);
 }

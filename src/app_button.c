@@ -13,6 +13,7 @@
 #include "ruuvi_interface_scheduler.h"
 #include "ruuvi_interface_timer.h"
 #include "ruuvi_task_button.h"
+#include "ruuvi_task_flashdb.h"
 
 /**
  * @addtogroup app_button
@@ -53,6 +54,7 @@ static
 #endif
 void factory_reset (void * p_event_data, uint16_t event_size)
 {
+    rt_reset_macronix_flash();
     app_heartbeat_stop();
     app_log_purge_flash();
     // Execution stops here normally

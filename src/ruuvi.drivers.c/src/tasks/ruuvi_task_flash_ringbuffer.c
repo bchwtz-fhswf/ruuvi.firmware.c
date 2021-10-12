@@ -51,8 +51,10 @@ static inline void LOGDf (const char * const msg, ...)
 /* TSDB object */
 static struct fdb_tsdb tsdb;
 
-rd_status_t rt_flash_ringbuffer_create (const char *partition, fdb_get_time get_time)
+rd_status_t rt_flash_ringbuffer_create (const char *partition, fdb_get_time get_time, const bool format_db)
 {
+  // change to high performance mode during flashDB initialization for quicker setup
+  rt_macronix_high_performance_switch(true);
 
   /* Time Series database initialization
    */
@@ -66,6 +68,15 @@ rd_status_t rt_flash_ringbuffer_create (const char *partition, fdb_get_time get_
       LOGDf("Ringbuffer initialization error 0x%02X \r\n", result);
   }
   
+
+  // Format DB in case of enabling logging and DB was not empty
+  if(format_db && tsdb.last_time!=0) {
+    rt_flash_ringbuffer_clear();
+  }
+  
+  // change to low power mode after flashDB initialization for quicker setup
+  rt_macronix_high_performance_switch(false);
+
   return rt_flashdb_to_ruuvi_error(result);
 }
 
@@ -91,9 +102,15 @@ void rt_flash_ringbuffer_read (const fdb_tsl_cb callback, const ri_comm_xfer_fp_
 }
 
 rd_status_t rt_flash_ringbuffer_clear (void) {
-  
+
+  // change to high performance mode during flashDB initialization for quicker setup
+  rt_macronix_high_performance_switch(true);
+
   fdb_tsl_clean(&tsdb);
   LOGD("Ringbuffer cleared\r\n");
+
+  // change to low power mode after flashDB initialization for quicker setup
+  rt_macronix_high_performance_switch(false);
 
   return RD_SUCCESS;
 }
@@ -133,26 +150,6 @@ rd_status_t rt_flash_ringbuffer_statistic (uint8_t* const statistik) {
   pos+=2;
   
   return err_code;
-}
-
-void rt_print_flash_statistic(void) {
-
-  rd_status_t err_code = RD_SUCCESS;
-      
-  // gather flash statistics
-  fds_stat_t stat;
-  fds_stat(&stat);
-
-  LOGDf("Open records %d \r\n", stat.open_records);
-  LOGDf("Valid records %d \r\n", stat.valid_records);
-  LOGDf("Dirty records %d \r\n", stat.dirty_records);
-  LOGDf("Words reserved %d \r\n", stat.words_reserved);
-  LOGDf("Words used %d \r\n", stat.words_used);
-  LOGDf("Words available %d \r\n", stat.pages_available * FDS_VIRTUAL_PAGE_SIZE);
-  LOGDf("Largest contig %d \r\n", stat.largest_contig);
-  LOGDf("Freeable words %d \r\n", stat.freeable_words);
-  LOGDf("Filesystem corruption %d \r\n", stat.corruption);
-  
 }
 
 #endif

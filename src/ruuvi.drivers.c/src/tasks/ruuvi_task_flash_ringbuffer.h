@@ -21,7 +21,7 @@
  * @param[in] partition Name of the partition
  * @param[in] get_time Function pointer to function to retrieve timestamp
  */
-rd_status_t rt_flash_ringbuffer_create (const char* partition, fdb_get_time get_time);
+rd_status_t rt_flash_ringbuffer_create (const char* partition, fdb_get_time get_time, const bool format_db);
 
 /*
  *  Write data to ringbuffer
@@ -64,6 +64,7 @@ rd_status_t rt_flash_ringbuffer_drop (void);
 rd_status_t rt_flash_ringbuffer_statistic (
   uint8_t* const statistik
 );
+
 #endif // RUUVI_TASK_FLASH_RINGBUFFER_H
 
 #endif

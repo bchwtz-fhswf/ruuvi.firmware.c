@@ -6,35 +6,58 @@
  */
 
 #include <string.h>
+#include <stdlib.h>
 #include "fal.h"
 
-#define RAM_BLOCK_COUNT (8)
+#define RAM_BLOCK_COUNT (6)
 #define RAM_BLOCK_SIZE (1024)
-static uint8_t ram[RAM_BLOCK_COUNT * RAM_BLOCK_SIZE];
+static uint8_t* ram_page[RAM_BLOCK_COUNT];
 
 static int fal_ram_init(void)
 {
+    memset(ram_page, 0, sizeof(uint8_t*)*RAM_BLOCK_COUNT);
     return 1;
 }
 
 static int fal_ram_read(long offset, uint8_t *buf, size_t size)
 {
-    memcpy(buf, ram+offset, size);
+    uint32_t page = offset  >> 10;
+    uint16_t page_offset = offset & (RAM_BLOCK_SIZE-1);
+
+    if(ram_page[page]) {
+      memcpy(buf, ram_page[page]+page_offset, size);
+    } else {
+      memset(buf, 0xff, size);
+    }
     return size;
 }
 
 static int fal_ram_write(long offset, const uint8_t *buf, size_t size) 
 {
-    memcpy(ram+offset, buf, size);
+    uint32_t page = offset  >> 10;
+    uint16_t page_offset = offset & (RAM_BLOCK_SIZE-1);
+
+    if(!ram_page[page]) {
+      ram_page[page] = malloc(RAM_BLOCK_SIZE);
+      if(ram_page[page]) {
+        memset(ram_page[page], 0xff, RAM_BLOCK_SIZE);
+      } else {
+        return 0;
+      }
+    }
+    memcpy(ram_page[page]+page_offset, buf, size);
     return size;
 }
 
 static int fal_ram_erase(long offset, size_t size)
 {    
-    uint8_t content[RAM_BLOCK_SIZE];
-    memset(content, 0xff, RAM_BLOCK_SIZE);
+    uint32_t page = offset >> 10;
 
-    return fal_ram_write(offset, content, size);
+    if(ram_page[page]) {
+      memset(ram_page[page], 0xff, RAM_BLOCK_SIZE);
+    }
+
+    return size;
 }
 
 const struct fal_flash_dev ram0 =

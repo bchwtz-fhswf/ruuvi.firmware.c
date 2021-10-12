@@ -162,14 +162,6 @@ rd_status_t rt_flash_gc_run (void);
  */
 bool rt_flash_busy (void);
 
-rd_status_t rt_flash_write_reserved (const fds_reserve_token_t* const reserve_token, 
-    const uint32_t record_id, const size_t data_size, const void * const data);
-
-rd_status_t rt_flash_reserve (fds_reserve_token_t* const reserve_token, const uint16_t size);
-
-rd_status_t rt_flash_reserve_cancel (fds_reserve_token_t* const reserve_token);
-
-
 #ifdef CEEDLING
 // Give Ceedling access to internal functions.
 void print_error_cause (void);

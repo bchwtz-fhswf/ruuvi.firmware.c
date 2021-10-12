@@ -54,94 +54,11 @@ static void test_mx_read(uint32_t address) {
   LOGDf("\r\n");
 }
 
-static uint32_t flash_state = 0;
-//Function to simulate different flash operations with logs to verify SPI Bus
-void access_flash(void) {
-  rd_status_t status = mx_init();
-  uint8_t man_id, dev_id, status_register, config_register;
-  uint8_t data_buf[READ_WRITE_LENGTH];
-  uint32_t address;
-
-  LOGDf("Flash test Case %d\r\n", flash_state);
-
-  switch (flash_state++) {
-  case 0:
-    mx_read_rems(&man_id, &dev_id);
-    LOGDf("Reading REMS. Man id: %.2x, Dev id: %.2x\r\n", (int)man_id, (int)dev_id);
-    break;
-
-  case 1:
-    mx_read_status_register(&status_register);
-    LOGDf("Status: %i\r\n", (int)status_register);
-    break;
-
-  case 2:
-    mx_read_config_register(&config_register);
-    LOGDf("Config: %i\r\n", (int)config_register);
-    break;
-
-  case 3:
-    test_mx_read(0x9000);
-    break;
-
-  case 4:
-    printf("Running write enable\r\n");
-    mx_write_enable();
-    break;
-
-  case 5:
-    printf("Running sector erase at address 0x9000\r\n");
-    mx_sector_erase(0x9000);
-    break;
-
-  case 6:
-    mx_read_status_register(&status_register);
-    LOGDf("Status: %i\r\n", (int)status_register);
-
-    // If the WIP bit is set, don't advance to the next state
-    if (status_register & (1 << REG_SR_BIT_WIP))
-      flash_state--;
-    break;
-
-  case 7:
-    test_mx_read(0x9000);
-    break;
-
-  case 8:
-    LOGDf("Running write enable\r\n");
-    mx_write_enable();
-    break;
-
-  case 9:
-    address = 0x9000;
-    for (int i = 0; i < READ_WRITE_LENGTH; i++)
-      data_buf[i] = 1;
-    mx_program(address, data_buf, READ_WRITE_LENGTH);
-    LOGDf("Programming data at address %.8X\r\n", address);
-    break;
-
-  case 10:
-    mx_read_status_register(&status_register);
-    LOGDf("Status: %i\r\n", (int)status_register);
-
-    // If the WIP bit is set, don't advance to the next state
-    if (status_register & (1 << REG_SR_BIT_WIP))
-      flash_state--;
-    break;
-
-  case 11:
-    test_mx_read(0x9000);
-    flash_state = 0;
-    break;
-  }
-}
-
 rd_status_t mx_init(void) {
   //Return error if SPI is already init
   if (m_spi_init_done) {
     return NRF_ERROR_INVALID_STATE;
   }
-
   nrf_drv_spi_config_t spi_config_macronix = NRF_DRV_SPI_DEFAULT_CONFIG;
   spi_config_macronix.ss_pin = NRF_DRV_SPI_PIN_NOT_USED;
   spi_config_macronix.miso_pin = MISO_SPI_MACRONIX;
@@ -149,7 +66,7 @@ rd_status_t mx_init(void) {
   spi_config_macronix.sck_pin = SCK_SPI_MACRONIX;
   spi_config_macronix.irq_priority = SPI_DEFAULT_CONFIG_IRQ_PRIORITY;
   spi_config_macronix.orc = 0xFF;
-  spi_config_macronix.frequency = NRF_DRV_SPI_FREQ_125K;
+  spi_config_macronix.frequency = NRF_DRV_SPI_FREQ_8M;
   spi_config_macronix.mode = NRF_DRV_SPI_MODE_0;
   spi_config_macronix.bit_order = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST;
 
@@ -157,7 +74,6 @@ rd_status_t mx_init(void) {
   ret_code_t err_code = NRF_SUCCESS;
   err_code = nrf_drv_spi_init(&spi_macronix, &spi_config_macronix, NULL, NULL);
 
-  //TODO Check if this works as expected
   //Initialize all SS Pins from SPI_SS_LIST_MACRONIX as output pins and set them high
   ri_gpio_id_t ss_pins[SPI_SS_NUMBER_MACRONIX] = SPI_SS_LIST_MACRONIX;
   for (size_t ii = 0; ii < SPI_SS_NUMBER_MACRONIX; ii++) {
@@ -165,7 +81,6 @@ rd_status_t mx_init(void) {
         RI_GPIO_MODE_OUTPUT_STANDARD);
     ri_gpio_write(ss_pins[ii], RI_GPIO_HIGH);
   }
-
   m_spi_init_done = true;
   return (err_code);
 }
@@ -186,9 +101,9 @@ rd_status_t mx_read_rems(uint8_t *manufacturer_id, uint8_t *device_id) {
   *manufacturer_id = spi_rx_response[0];
   *device_id = spi_rx_response[1];
 
-  LOGD("mx_read_rems: ");
-  ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_response, sizeof(spi_rx_response));
-  LOGD("\r\n");
+  //LOGD("mx_read_rems: ");
+  //ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_response, sizeof(spi_rx_response));
+  //LOGD("\r\n");
 
   return err_code;
 }
@@ -207,9 +122,9 @@ rd_status_t mx_read_status_register(uint8_t *status) {
 
   *status = spi_rx_rsp[1];
 
-  LOGD("mx_read_status_register: ");
-  ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_rsp, sizeof(spi_rx_rsp));
-  LOGD("\r\n");
+  //LOGD("mx_read_status_register: ");
+  //ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_rsp, sizeof(spi_rx_rsp));
+  //LOGD("\r\n");
 
   return err_code;
 }
@@ -228,9 +143,9 @@ rd_status_t mx_read_config_register(uint8_t *config) {
 
   *config = spi_rx_rsp[1];
 
-  LOGD("mx_read_config_register: ");
-  ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_rsp, sizeof(spi_rx_rsp));
-  LOGD("\r\n");
+  //LOGD("mx_read_config_register: ");
+  //ri_log_hex(RI_LOG_LEVEL_DEBUG, spi_rx_rsp, sizeof(spi_rx_rsp));
+  //LOGD("\r\n");
 
   return err_code;
 }
@@ -255,6 +170,8 @@ rd_status_t mx_read(uint32_t address, uint8_t *data_ptr, uint32_t data_length) {
   return err_code;
 }
 
+
+
 rd_status_t mx_write_enable(void) {
   static uint8_t spi_tx_cmd[] = {CMD_WREN};
 
@@ -268,23 +185,18 @@ rd_status_t mx_write_enable(void) {
   return err_code;
 }
 
-rd_status_t mx_program(uint32_t address, uint8_t *data_ptr, uint32_t data_length) {
-  uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
+
+rd_status_t mx_program(uint32_t address, const uint8_t *data_ptr, uint32_t data_length) {
 
   rd_status_t err_code = RD_SUCCESS;
 
   ri_gpio_id_t chipSelect = RB_PORT_PIN_MAP(0, SS_SPI_MACRONIX);
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
+  uint8_t spi_tx_cmd[] = {CMD_PROGRAM, (address >> 16) & 0xFF, (address >> 8) & 0xFF, (address >> 0) & 0xFF};
 
   err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
-  while (data_length > 255) {
-    err_code |= ri_spi_xfer_blocking_macronix(data_ptr, 255, 0, 0);
-    data_ptr += 255;
-    data_length -= 255;
-  }
   err_code |= ri_spi_xfer_blocking_macronix(data_ptr, data_length, 0, 0);
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
-
   return err_code;
 }
 
@@ -303,14 +215,12 @@ rd_status_t mx_sector_erase(uint32_t address) {
 
 rd_status_t mx_chip_erase(void) {
   static uint8_t spi_tx_cmd[] = {CMD_CHIP_ERASE};
-
   rd_status_t err_code = RD_SUCCESS;
 
   ri_gpio_id_t chipSelect = RB_PORT_PIN_MAP(0, SS_SPI_MACRONIX);
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
   err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
-
   return err_code;
 }
 
@@ -338,4 +248,57 @@ rd_status_t mx_busy(void) {
   } else {
     return RD_SUCCESS;
   }
+}
+
+rd_status_t mx_check_write_enable(void) {
+  uint8_t status_register;
+  mx_read_status_register(&status_register);
+  if (status_register & (1 << REG_SR_BIT_WEL)) {
+    return RD_SUCCESS;
+  } else {
+    return RD_ERROR_BUSY;
+  }
+}
+
+
+void mx_spi_ready_for_transfer (void){
+    while( mx_busy() == RD_ERROR_BUSY){
+      ri_yield();
+    }
+
+    mx_write_enable();
+    while( mx_check_write_enable() == RD_ERROR_BUSY){
+      ri_yield();
+      LOGD("mx_write resend write_enable\r\n");
+      mx_write_enable();
+    }
+
+    while( mx_busy() == RD_ERROR_BUSY){
+      ri_yield();
+    }
+}
+
+// TODO read register and only change desired bits
+rd_status_t mx_high_performance_switch (bool high_power){
+  rd_status_t err_code;
+  uint8_t config;
+  err_code|=mx_read_config_register(&config);
+  LOGDf("current config: %x\n",config);
+  uint8_t command;
+
+  if (high_power==true){
+  command = 0x02;
+  }
+  else{
+  command = 0x00;
+  }
+  uint8_t spi_tx_cmd [] = {CMD_WRSR, 0x00, 0x00, command};
+  err_code = RD_SUCCESS;
+  mx_spi_ready_for_transfer();
+  ri_gpio_id_t chipSelect = RB_PORT_PIN_MAP(0, SS_SPI_MACRONIX);
+  err_code |= ri_gpio_write(chipSelect, RI_GPIO_LOW);
+  err_code |= ri_spi_xfer_blocking_macronix(spi_tx_cmd, sizeof(spi_tx_cmd), 0, 0);
+  err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
+  err_code |= mx_read_config_register(&config);
+  LOGDf("current config: %x\n",config);
 }

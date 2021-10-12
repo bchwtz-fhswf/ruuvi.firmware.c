@@ -182,22 +182,6 @@ bool rt_flash_busy (void)
     return ri_flash_is_busy();
 }
 
-rd_status_t rt_flash_write_reserved (const fds_reserve_token_t* const reserve_token, 
-    const uint32_t record_id, const size_t data_size, const void * const data) {
-
-    return ri_flash_write_reserved(reserve_token, record_id, data_size, data);
-}
-
-rd_status_t rt_flash_reserve (fds_reserve_token_t* const reserve_token, const uint16_t size) {
-
-    return ri_flash_reserve(reserve_token, size);
-}
-
-rd_status_t rt_flash_reserve_cancel (fds_reserve_token_t* const reserve_token) {
-
-    return ri_flash_reserve_cancel(reserve_token);
-}
-
 
 #else
 

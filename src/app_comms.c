@@ -211,10 +211,10 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
                           const size_t data_len)
 {
     // Parse message type
-    uint8_t type = raw_message[2];
+    // uint8_t type = raw_message[2];
 
     // Parse desired operation.
-    re_op_t op = (re_op_t) raw_message[RE_STANDARD_OPERATION_INDEX];
+    uint8_t op = (uint8_t) raw_message[RE_STANDARD_OPERATION_INDEX];
 
     // find LIS2DH12
     rt_sensor_ctx_t *lis2dh12 = app_sensor_find("LIS2DH12");
@@ -314,7 +314,7 @@ static rd_status_t handle_rtc_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const 
     msg.data[RE_STANDARD_SOURCE_INDEX     ] = RE_STANDARD_DESTINATION_RTC;
 
     // Parse desired operation.
-    re_op_t op = (re_op_t) raw_message[RE_STANDARD_OPERATION_INDEX];
+    uint8_t op = (uint8_t) raw_message[RE_STANDARD_OPERATION_INDEX];
     msg.data[RE_STANDARD_OPERATION_INDEX] = op;
 
     // If target and op are valid, execute.
@@ -368,7 +368,7 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
         err_code |= app_heartbeat_stop();
         // Parse message type
         const uint8_t * const raw_message = (uint8_t *) p_data;
-        re_type_t type = raw_message[RE_STANDARD_DESTINATION_INDEX];
+        uint8_t type = raw_message[RE_STANDARD_DESTINATION_INDEX];
 
         // Route message to proper handler
         switch (type)

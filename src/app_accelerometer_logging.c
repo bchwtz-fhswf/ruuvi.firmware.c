@@ -423,7 +423,7 @@ rd_status_t app_disable_sensor_logging(void) {
 }
 
 rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db) {
-    bool high_power;
+    // bool high_power = false;
 
     // is it already active ?
     if(nologging_data_get!=NULL || ram_db) {
@@ -665,6 +665,7 @@ rd_status_t app_acc_logging_init(void) {
       return RD_SUCCESS;
     }
   }
+  return RD_ERROR_FATAL;
 }
 
 rd_status_t app_acc_logging_uninit(void) {

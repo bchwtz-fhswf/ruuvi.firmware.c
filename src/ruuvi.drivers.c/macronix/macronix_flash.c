@@ -9,15 +9,16 @@
 #include "ruuvi_nrf5_sdk15_error.h"
 #include <stddef.h>
 
-#if RI_LOG_ENABLED
-#include <stdarg.h>
-#include <stdio.h>
-
+static bool m_spi_init_done = false;
 //New SPI Instance "2" as 0 and 1 are occupied by ruuvi internal SPI
 static const nrf_drv_spi_t spi_macronix = NRF_DRV_SPI_INSTANCE(
     SPI_INSTANCE_MACRONIX); /**< SPI instance. */
 
-static bool m_spi_init_done = false;
+#if RI_LOG_ENABLED
+#include <stdarg.h>
+#include <stdio.h>
+
+
 
 static inline void LOG(const char *const msg) {
   ri_log(RI_LOG_LEVEL_INFO, msg);
@@ -280,9 +281,9 @@ void mx_spi_ready_for_transfer (void){
 
 // TODO read register and only change desired bits
 rd_status_t mx_high_performance_switch (bool high_power){
-  rd_status_t err_code;
+  rd_status_t err_code = RD_SUCCESS;
   uint8_t config;
-  err_code|=mx_read_config_register(&config);
+  err_code |= mx_read_config_register(&config);
   LOGDf("current config: %x\n",config);
   uint8_t command;
 
@@ -301,4 +302,5 @@ rd_status_t mx_high_performance_switch (bool high_power){
   err_code |= ri_gpio_write(chipSelect, RI_GPIO_HIGH);
   err_code |= mx_read_config_register(&config);
   LOGDf("current config: %x\n",config);
+  return err_code;
 }

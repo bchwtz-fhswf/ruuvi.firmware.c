@@ -102,3 +102,9 @@ nRF5_SDK_15.3.0_59ac345
 doxygen/
 doxygen.error
 /src/buildnum.h
+
+FlashDB
+rt-thread
+rt-thread-prife
+fal
+.vscode

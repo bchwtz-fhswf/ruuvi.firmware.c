@@ -1,5 +1,5 @@
 /**
- * @file fal_dummy_flash_port.c
+ * @file ruuvi_task_flashdb.c
  * @author Thomas Hoof <thomas.hoof@gmx.de>
  * @date 2021-07-14
  * @copyright Ruuvi Innovations Ltd, License BSD-3-Clause.
@@ -48,7 +48,7 @@ void fdb_log (const char * const msg, ...)
 #define LOGD(...)
 #define LOGDf(...)
 #define snprintf(...)
-#define fdb_log(...) 
+void fdb_log(const char * const msg, ...) {}
 #endif
 
 static rd_status_t is_macronix_present = RD_ERROR_NOT_INITIALIZED;

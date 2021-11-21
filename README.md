@@ -94,3 +94,14 @@ Ruuvi code is BSD-3 licensed. Submodules and external dependencies have their ow
 Document is generated with Doxygen. Run `make doxygen` to generate the docs locally, or
 browse to [Travis built docs](https://ruuvi.github.io/ruuvi.firmware.c)
 
+# Unix Builds via gcc and Makefile
+## Prerequisites:
+You need the following tools:  
+* build-essentials (either via brew or your favorite linux package manager)
+* gcc-arm-none-eabi-7 ([Get this here](https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2018q2/gcc-arm-none-eabi-7-2018-q2-update-linux.tar.bz2?revision=bc2c96c0-14b5-4bb4-9f18-bceb4050fee7?product=GNU%20Arm%20Embedded%20Toolchain%20Downloads,64-bit,,Linux,7-2018-q2-update))
+
+## Building natively:
+* `cd src`
+* `make ruuvitag_b`
+  
+The binaries may be found in src/targets/ruuvitag_b/armgcc as hex-files.

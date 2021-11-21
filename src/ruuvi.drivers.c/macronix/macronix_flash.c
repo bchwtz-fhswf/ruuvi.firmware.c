@@ -14,6 +14,7 @@ static bool m_spi_init_done = false;
 static const nrf_drv_spi_t spi_macronix = NRF_DRV_SPI_INSTANCE(
     SPI_INSTANCE_MACRONIX); /**< SPI instance. */
 
+
 #if RI_LOG_ENABLED
 #include <stdarg.h>
 #include <stdio.h>
@@ -42,12 +43,6 @@ static inline void LOGDf(const char *const msg, ...) {
 #define LOGDf(...)
 #define snprintf(...)
 #endif
-
-//New SPI Instance "2" as 0 and 1 are occupied by ruuvi internal SPI
-static const nrf_drv_spi_t spi_macronix = NRF_DRV_SPI_INSTANCE(
-    SPI_INSTANCE_MACRONIX); /**< SPI instance. */
-
-static bool m_spi_init_done = false;
 
 #define READ_WRITE_LENGTH 256
 

@@ -109,3 +109,14 @@ The binaries may be found in src/targets/ruuvitag_b/armgcc as hex-files.
 # Memory error at build
 In case you get in Segger this error message section .uicr_bootloader_start_address VMA [0000000000000ff8,0000000000000ffb] overlaps section .reserved_flash_sd VMA [0000000000000000,0000000000025fff] by trying to build under windows. You can define the memory space on your own. Search for the flash placement files under ses, e.g. ruuvi.firmware.c\nRF5_SDK_15.3.0_59ac345\config\nrf52811\ses and change the 4th line to this: ProgramSection load="no" name=".reserved_flash" start="$(FLASH_PH_START)+0x1000" size="$(FLASH_START)-$(FLASH_PH_START)-0x1000" 
 
+# docker build
+## Prerequisites
+* Install docker onto your system (either package or Docker Desktop)
+
+## Build
+To build this project using docker, just execute the docker_build.bat file on windows or if you are using Linux or MacOS you just use the docker_build.sh file. Make shure you have bash installed on your MacOS or Linux system.
+You will then find a zip-file which contains all of the binaries.
+
+## Flash
+You may either use Segger-Studio or nrfjprog to flash your new firmware to your device. The corresponding command is:
+`nrfjprog `

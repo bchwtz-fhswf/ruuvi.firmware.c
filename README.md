@@ -112,11 +112,12 @@ In case you get in Segger this error message section .uicr_bootloader_start_addr
 # docker build
 ## Prerequisites
 * Install docker onto your system (either package or Docker Desktop)
-
+* Tag the latest commit by using `git tag 1.0.0` - note: 1.0.0 is just a placeholder
 ## Build
 To build this project using docker, just execute the docker_build.bat file on windows or if you are using Linux or MacOS you just use the docker_build.sh file. Make shure you have bash installed on your MacOS or Linux system.
 You will then find a zip-file which contains all of the binaries.
 
 ## Flash
 You may either use Segger-Studio or nrfjprog to flash your new firmware to your device. The corresponding command is:
-`nrfjprog `
+`nrfjprog -f NRF52 --eraseall`
+`nrfjprog -f NRF52 --program src/targets/ruuvitag_b/armgcc/ruuvitag_b_armgcc_ruuvifw_default_<whateveryourtagis>_full.hex`

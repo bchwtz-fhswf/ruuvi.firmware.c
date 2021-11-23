@@ -8,6 +8,9 @@ PROJ_DIR := ../../..
 $(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
   LINKER_SCRIPT  := ruuvitag_b.ld
 
+PROJ_LIBS_DIR := ${PROJ_DIR}/ruuvi.libraries.c/src/libs
+PROJ_INTEGRATION_TESTS_DIR := ${PROJ_LIBS_DIR}/../integration_tests
+
 include ${PROJ_DIR}/gcc_sources.make
 
 # Source files common to all targets
@@ -54,9 +57,11 @@ CFLAGS += -DuECC_SQUARE_FUNC=0
 CFLAGS += -DuECC_SUPPORT_COMPRESSED_POINT=0
 CFLAGS += -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1
 CFLAGS += -DSWI_DISABLE0
+CFLAGS += -DRI_LOG_ENABLED=1
+CFLAGS += -DAPP_LOG_LEVEL=4
 CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb -mabi=aapcs
-CFLAGS += -Wall -Werror
+CFLAGS += -Wall
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in a separate section, this allows linker to discard unused ones
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing -fstack-usage

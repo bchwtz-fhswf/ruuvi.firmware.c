@@ -33,6 +33,6 @@ rd_status_t rt_reset_macronix_flash(void);
  *
  *  @param[in] err_code Error code of FlashDB.
  */
-rd_status_t rt_macronix_high_performance_switch(const bool enable);
+void rt_macronix_high_performance_switch(const bool enable);
 
 #endif

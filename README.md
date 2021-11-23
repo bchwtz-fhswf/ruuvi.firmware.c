@@ -94,6 +94,30 @@ Ruuvi code is BSD-3 licensed. Submodules and external dependencies have their ow
 Document is generated with Doxygen. Run `make doxygen` to generate the docs locally, or
 browse to [Travis built docs](https://ruuvi.github.io/ruuvi.firmware.c)
 
+# Unix Builds via gcc and Makefile
+## Prerequisites:
+You need the following tools:  
+* build-essentials (either via brew or your favorite linux package manager)
+* gcc-arm-none-eabi-7 ([Get this here](https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2018q2/gcc-arm-none-eabi-7-2018-q2-update-linux.tar.bz2?revision=bc2c96c0-14b5-4bb4-9f18-bceb4050fee7?product=GNU%20Arm%20Embedded%20Toolchain%20Downloads,64-bit,,Linux,7-2018-q2-update))
+
+## Building natively:
+* `cd src`
+* `make ruuvitag_b`
+  
+The binaries may be found in src/targets/ruuvitag_b/armgcc as hex-files.
+
 # Memory error at build
 In case you get in Segger this error message section .uicr_bootloader_start_address VMA [0000000000000ff8,0000000000000ffb] overlaps section .reserved_flash_sd VMA [0000000000000000,0000000000025fff] by trying to build under windows. You can define the memory space on your own. Search for the flash placement files under ses, e.g. ruuvi.firmware.c\nRF5_SDK_15.3.0_59ac345\config\nrf52811\ses and change the 4th line to this: ProgramSection load="no" name=".reserved_flash" start="$(FLASH_PH_START)+0x1000" size="$(FLASH_START)-$(FLASH_PH_START)-0x1000" 
 
+# docker build
+## Prerequisites
+* Install docker onto your system (either package or Docker Desktop)
+* Tag the latest commit by using `git tag 1.0.0` - note: 1.0.0 is just a placeholder
+## Build
+To build this project using docker, just execute the docker_build.bat file on windows or if you are using Linux or MacOS you just use the docker_build.sh file. Make shure you have bash installed on your MacOS or Linux system.
+You will then find a zip-file which contains all of the binaries.
+
+## Flash
+You may either use Segger-Studio or nrfjprog to flash your new firmware to your device. The corresponding command is:
+`nrfjprog -f NRF52 --eraseall`
+`nrfjprog -f NRF52 --program src/targets/ruuvitag_b/armgcc/ruuvitag_b_armgcc_ruuvifw_default_<whateveryourtagis>_full.hex`

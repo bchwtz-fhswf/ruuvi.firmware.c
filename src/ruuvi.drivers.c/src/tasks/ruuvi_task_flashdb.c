@@ -75,6 +75,7 @@ rd_status_t rt_flashdb_to_ruuvi_error(fdb_err_t fdb_err) {
     case FDB_INIT_FAILED:
       return RD_ERROR_NOT_INITIALIZED;
   }
+  return RD_ERROR_NOT_INITIALIZED;
 }
 
 rd_status_t rt_macronix_flash_exists(void) {
@@ -104,7 +105,7 @@ rd_status_t rt_macronix_flash_exists(void) {
   return is_macronix_present;
 }
 
-rd_status_t rt_macronix_high_performance_switch(const bool enable) {
+void rt_macronix_high_performance_switch(const bool enable) {
   if(rt_macronix_flash_exists()==RD_SUCCESS) {
     mx_high_performance_switch(enable);
   }

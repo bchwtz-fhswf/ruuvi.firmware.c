@@ -199,7 +199,21 @@ RUUVI_LIB_SOURCES= \
   $(PROJ_DIR)/ruuvi.libraries.c/src/integration_tests/ruuvi_library_compress_test.c \
   $(PROJ_DIR)/ruuvi.libraries.c/src/integration_tests/ruuvi_library_test.c \
   $(PROJ_DIR)/ruuvi.libraries.c/src/integration_tests/ruuvi_library_test_analysis.c \
-  $(PROJ_DIR)/ruuvi.libraries.c/src/integration_tests/ruuvi_library_ringbuffer_test.c
+  $(PROJ_DIR)/ruuvi.libraries.c/src/integration_tests/ruuvi_library_ringbuffer_test.c \
+  $(PROJ_DIR)/ruuvi.drivers.c/src/tasks/ruuvi_task_flashdb.c \
+  $(PROJ_DIR)/ruuvi.drivers.c/src/tasks/ruuvi_task_flash_ringbuffer.c \
+  $(PROJ_DIR)/ruuvi.libraries.c/src/libs/flashdb/fdb_utils.c \
+  $(PROJ_DIR)/ruuvi.libraries.c/src/libs/flashdb/fdb_tsdb.c \
+  $(PROJ_DIR)/ruuvi.drivers.c/macronix/macronix_flash.c \
+  $(PROJ_DIR)/ruuvi.libraries.c/src/libs/flashdb/fdb.c \
+  $(PROJ_DIR)/ruuvi.libraries.c/src/libs/flashdb/fal.c \
+  $(PROJ_DIR)/ruuvi.libraries.c/src/libs/flashdb/fal_flash.c \
+  $(PROJ_DIR)/ruuvi.libraries.c/src/libs/flashdb/fal_ruuvi_flash_port.c \
+  $(PROJ_DIR)/ruuvi.libraries.c/src/libs/flashdb/fal_macronix_flash_port.c \
+  $(PROJ_DIR)/ruuvi.libraries.c/src/libs/flashdb/fal_ram_port.c \
+  $(PROJ_DIR)/ruuvi.libraries.c/src/libs/flashdb/fdb_kvdb.c \
+  $(PROJ_DIR)/ruuvi.libraries.c/src/libs/flashdb/fal_partition.c
+
   
 RUUVI_PRJ_SOURCES= \
   $(PROJ_DIR)/main.c \
@@ -210,7 +224,8 @@ RUUVI_PRJ_SOURCES= \
   $(PROJ_DIR)/app_led.c \
   $(PROJ_DIR)/app_log.c \
   $(PROJ_DIR)/app_power.c \
-  $(PROJ_DIR)/app_sensor.c
+  $(PROJ_DIR)/app_sensor.c \
+  $(PROJ_DIR)/app_accelerometer_logging.c
 
 COMMON_SOURCES= \
   $(RUUVI_LIB_SOURCES) \
@@ -333,7 +348,9 @@ COMMON_INCLUDES= \
   $(PROJ_DIR)/ruuvi.libraries.c/src/libs/include \
   $(PROJ_DIR)/ruuvi.libraries.c/src/libs/compress \
   $(PROJ_DIR)/ruuvi.libraries.c/src/libs/compress/liblzf-3.6 \
-  $(PROJ_DIR)/ruuvi.libraries.c/src/integration_tests 
+  $(PROJ_DIR)/ruuvi.libraries.c/src/integration_tests \
+  ${PROJ_DIR}/ruuvi.drivers.c/macronix \
+  ${PROJ_DIR}/ruuvi.libraries.c/src/libs/flashdb
 
 COMMON_DEFINES= \
   -DAPPLICATION_DRIVER_CONFIGURED

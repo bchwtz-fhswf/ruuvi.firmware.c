@@ -123,8 +123,8 @@ bool ri_timer_is_init (void);
  * @return RD_ERROR_INVALID_STATE if timers have not been initialized
  * @return error code from stack on other error
  */
-rd_status_t ri_timer_create (ri_timer_id_t *
-                             p_timer_id, ri_timer_mode_t mode,
+rd_status_t ri_timer_create (ri_timer_id_t * p_timer_id,
+                             ri_timer_mode_t mode,
                              ruuvi_timer_timeout_handler_t timeout_handler);
 
 /**
@@ -133,7 +133,7 @@ rd_status_t ri_timer_create (ri_timer_id_t *
  * This operation is ignored if timer is already running.
  *
  * @param[in] timer_id id of timer to control
- * @param[in] timeout (or interval) of timer in milliseconds.
+ * @param[in] ms timeout (or interval) of timer in milliseconds.
  * @param[in] context Pointer passed to timer handler.
  *
  * Return RD_SUCCESS on success, error code on start.

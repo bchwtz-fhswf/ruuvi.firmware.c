@@ -1110,7 +1110,8 @@ rd_status_t ri_lis2dh12_fifo_read (size_t * num_elements,
 
     for (size_t ii = 0; ii < elements; ii++)
     {
-        err_code |= err_code |= ri_lis2dh12_acceleration_raw_get(raw_acceleration.u8bit);
+        lis_ret_code = lis2dh12_acceleration_raw_get (& (dev.ctx), raw_acceleration.u8bit);
+        err_code |= (LIS_SUCCESS == lis_ret_code) ? RD_SUCCESS : RD_ERROR_INTERNAL;
         // Compensate data with resolution, scale
         err_code |= rawToMg (&raw_acceleration, acceleration);
         rd_sensor_data_t d_acceleration;

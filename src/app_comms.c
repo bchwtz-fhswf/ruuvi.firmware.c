@@ -9,6 +9,7 @@
 #include "ruuvi_endpoints.h"
 #include "ruuvi_interface_communication.h"
 #include "ruuvi_interface_communication_ble_advertising.h"
+#include "ruuvi_interface_communication_ble_gatt.h"
 #include "ruuvi_interface_communication_radio.h"
 #include "ruuvi_interface_rtc.h"
 #include "ruuvi_interface_scheduler.h"
@@ -58,6 +59,7 @@ static inline void LOGHEX (const uint8_t * const msg, const size_t len)
 
 /** @brief Set to long enough to handle existing queue, then as short as possible. */
 #define BLOCKING_COMM_TIMEOUT_MS (4000U)
+#define CONN_PARAM_UPDATE_DELAY_MS (30U * 1000U) //!< Delay before switching to faster conn params in long ops.
 
 #if APP_COMMS_BIDIR_ENABLED
 #ifndef CEEDLING
@@ -108,7 +110,9 @@ static rd_status_t timed_switch_to_normal_mode (void)
     rd_status_t err_code = RD_SUCCESS;
     m_mode_ops.switch_to_normal = 1;
     err_code |= ri_timer_stop (m_comm_timer);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
     err_code |= ri_timer_start (m_comm_timer, APP_FAST_ADV_TIME_MS, &m_mode_ops);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
     return err_code;
 }
 
@@ -366,11 +370,13 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
     {
         // Stop heartbeat processing.
         err_code |= app_heartbeat_stop();
-        // Parse message type
+        // Switch GATT to faster params.
+        err_code |= ri_gatt_params_request (RI_GATT_TURBO, CONN_PARAM_UPDATE_DELAY_MS);
+        // Parse message type.
         const uint8_t * const raw_message = (uint8_t *) p_data;
         re_type_t type = raw_message[RE_STANDARD_DESTINATION_INDEX];
 
-        // Route message to proper handler
+        // Route message to proper handler.
         switch (type)
         {
             case RE_ACC_XYZ:
@@ -405,6 +411,8 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
                 break;
         }
 
+        // Switch GATT to slower params.
+        err_code |= ri_gatt_params_request (RI_GATT_LOW_POWER, 0);
         // Resume heartbeat processing.
         err_code |= app_heartbeat_start();
     }
@@ -430,11 +438,11 @@ static rd_status_t enable_config_on_next_conn (const bool enable)
 
     if (enable)
     {
-        err_code |= app_led_activity_set (RB_LED_CONFIG_ENABLED);
+        app_led_configuration_signal (true);
     }
     else
     {
-        err_code |= app_led_activity_set (RB_LED_ACTIVITY);
+        app_led_configuration_signal (false);
     }
 
     return err_code;
@@ -484,8 +492,9 @@ void handle_gatt_connected (void * p_data, uint16_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     // Disables advertising for GATT, does not kick current connetion out.
-    rt_gatt_adv_disable ();
-    app_comms_ble_adv_init ();
+    err_code |= rt_gatt_adv_disable ();
+    RD_ERROR_CHECK (err_code, RD_SUCCESS);
+    err_code |= app_comms_ble_adv_init ();
     config_setup_on_this_conn ();
     RD_ERROR_CHECK (err_code, RD_SUCCESS);
 }
@@ -738,10 +747,13 @@ static rd_status_t adv_init (void)
     adv_settings.channels = channels;
     adv_settings.manufacturer_id = RB_BLE_MANUFACTURER_ID;
     err_code |= rt_adv_init (&adv_settings);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
     err_code |= ri_adv_type_set (NONCONNECTABLE_NONSCANNABLE);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
     app_comms_bleadv_send_count_set (initial_adv_send_count());
     m_mode_ops.switch_to_normal = 1;
-    prepare_mode_change (&m_mode_ops);
+    err_code |= prepare_mode_change (&m_mode_ops);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 #endif
     return err_code;
 }
@@ -800,8 +812,11 @@ rd_status_t app_comms_ble_init (const bool secure)
     rd_status_t err_code = RD_SUCCESS;
     ri_comm_dis_init_t dis = {0};
     err_code |= dis_init (&dis, secure);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
     err_code |= adv_init();
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
     err_code |= gatt_init (&dis, secure);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
     ri_radio_activity_callback_set (&app_sensor_vdd_measure_isr);
     return err_code;
 }
@@ -809,8 +824,9 @@ rd_status_t app_comms_ble_init (const bool secure)
 rd_status_t app_comms_ble_adv_init (void)
 {
     rd_status_t err_code = RD_SUCCESS;
+    err_code |= rt_adv_uninit();
     err_code |= adv_init();
-    ri_radio_activity_callback_set (&app_sensor_vdd_measure_isr);
+    RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
     return err_code;
 }
 

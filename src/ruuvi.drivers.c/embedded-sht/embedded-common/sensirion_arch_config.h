@@ -33,14 +33,22 @@
 #define SENSIRION_ARCH_CONFIG_H
 
 /**
+ * If your platform does not provide the library stdlib.h you have to remove the
+ * include and define NULL yourself (see below).
+ */
+#include <stdlib.h>
+
+/**
+ * #ifndef NULL
+ * #define NULL ((void *)0)
+ * #endif
+ */
+
+/**
  * If your platform does not provide the library stdint.h you have to
  * define the integral types yourself (see below).
  */
 #include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * Typedef section for types commonly defined in <stdint.h>
@@ -56,34 +64,25 @@ extern "C" {
  * typedef char int8_t;
  * typedef unsigned char uint8_t; */
 
-/* Types not typically provided by <stdint.h> */
-typedef float float32_t;
+#ifndef __cplusplus
 
 /**
- * Define the endianness of your architecture:
- * 0: little endian, 1: big endian
- * Use the following code to determine if unsure:
- * ```c
- * #include <stdio.h>
- *
- * int is_big_endian(void) {
- *     union {
- *         unsigned int u;
- *         char c[sizeof(unsigned int)];
- *     } e = { 0 };
- *     e.c[0] = 1;
- *
- *     return (e.i != 1);
- * }
- *
- * int main(void) {
- *     printf("Use #define SENSIRION_BIG_ENDIAN %d\n", is_big_endian());
- *
- *     return 0;
- * }
- * ```
+ * If your platform doesn't define the bool type we define it as int. Depending
+ * on your system update the definition below.
  */
-#define SENSIRION_BIG_ENDIAN 0
+#if __STDC_VERSION__ >= 199901L
+#include <stdbool.h>
+#else
+
+#ifndef bool
+#define bool int
+#define true 1
+#define false 0
+#endif /* bool */
+
+#endif /* __STDC_VERSION__ */
+
+#endif /* __cplusplus */
 
 /**
  * The clock period of the i2c bus in microseconds. Increase this, if your GPIO
@@ -93,9 +92,5 @@ typedef float float32_t;
  * pulse length is half the clock period, the number should thus be even.
  */
 #define SENSIRION_I2C_CLOCK_PERIOD_USEC 10
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* SENSIRION_ARCH_CONFIG_H */

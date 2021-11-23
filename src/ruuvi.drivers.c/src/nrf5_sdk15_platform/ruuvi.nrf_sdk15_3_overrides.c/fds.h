@@ -311,7 +311,8 @@ ret_code_t fds_init(void);
  * same record key in a file.
  *
  * Some modules need exclusive use of certain file IDs and record keys.
- * See @ref lib_fds_functionality_keys for details.
+ * See <a href="https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk5.v15.3.0%2Flib_fds_functionality.html&anchor=lib_fds_functionality_keys">Restrictions on keys and IDs</a>
+ *  for details.
  *
  * Record data can consist of multiple chunks. The data must be aligned to a 4 byte boundary, and
  * because it is not buffered internally, it must be kept in memory until the callback for the

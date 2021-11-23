@@ -26,9 +26,9 @@
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  *
  * Interface for SHTCX basic usage. The underlying platform must provide
- * functions for I2C access, @ref ruuvi_interface_i2c_shtxc.h.
+ * functions for I2C access.
  *
- * Testing the interface with @ref test_sensor.h
+ * Testing the interface with @ref ruuvi_driver_sensor_test.h
  *
  * @code{.c}
  *  RD_ERROR_CHECK(err_code, RD_ERROR_SELFTEST);
@@ -44,6 +44,9 @@
  *  RD_ERROR_CHECK(err_code, RD_ERROR_SELFTEST);
  * @endcode
  */
+
+#define RI_SHTCX_WAKEUP_US (240U) //!< Time from wakeup cmd to rdy.
+
 /** @brief @ref rd_sensor_init_fp */
 rd_status_t ri_shtcx_init (rd_sensor_t *
                            environmental_sensor, rd_bus_t bus, uint8_t handle);

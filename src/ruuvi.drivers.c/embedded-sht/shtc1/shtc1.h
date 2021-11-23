@@ -53,8 +53,7 @@ extern "C" {
 #define STATUS_ERR_BAD_DATA (-1)
 #define STATUS_CRC_FAIL (-2)
 #define STATUS_UNKNOWN_DEVICE (-3)
-#define STATUS_WAKEUP_FAILED (-4)
-#define STATUS_SLEEP_FAILED (-5)
+#define SHTC1_MEASUREMENT_DURATION_USEC 14400
 
 /**
  * Detects if a sensor is connected by reading out the ID register.
@@ -78,7 +77,7 @@ int16_t shtc1_probe(void);
  * measurement
  * @return              0 if the command was successful, else an error code.
  */
-int16_t shtc1_measure_blocking_read(int32_t *temperature, int32_t *humidity);
+int16_t shtc1_measure_blocking_read(int32_t* temperature, int32_t* humidity);
 
 /**
  * Starts a measurement in high precision mode. Use shtc1_read() to read out the
@@ -102,18 +101,61 @@ int16_t shtc1_measure(void);
  * measurement
  * @return              0 if the command was successful, else an error code.
  */
-int16_t shtc1_read(int32_t *temperature, int32_t *humidity);
+int16_t shtc1_read(int32_t* temperature, int32_t* humidity);
 
 /**
- * Enable or disable the SHT's sleep mode between measurements, if supported.
- * Sleep mode is enabled by default when supported.
+ * Send the sensor to sleep, if supported.
  *
- * @param disable_sleep 1 (or anything other than 0) to disable sleeping between
- *                      measurements, 0 to enable sleeping.
- * @return              0 if the command was successful,
- *                      1 if an error occured or if sleep mode is not supported
+ * Note: DESPITE THE NAME, THIS COMMAND IS ONLY AVAILABLE FOR THE SHTC3
+ *
+ * Usage:
+ * ```
+ * int16_t ret;
+ * int32_t temperature, humidity;
+ * ret = shtc1_wake_up();
+ * if (ret) {
+ *     // error waking up
+ * }
+ * ret = shtc1_measure_blocking_read(&temperature, &humidity);
+ * if (ret) {
+ *     // error measuring
+ * }
+ * ret = shtc1_sleep();
+ * if (ret) {
+ *     // error sending sensor to sleep
+ * }
+ * ```
+ *
+ * @return  0 if the command was successful, else an error code.
  */
-int16_t shtc1_disable_sleep(uint8_t disable_sleep);
+int16_t shtc1_sleep(void);
+
+/**
+ * Wake the sensor from sleep
+ *
+ * Note: DESPITE THE NAME, THIS COMMAND IS ONLY AVAILABLE FOR THE SHTC3
+ *
+ * Usage:
+ * ```
+ * int16_t ret;
+ * int32_t temperature, humidity;
+ * ret = shtc1_wake_up();
+ * if (ret) {
+ *     // error waking up
+ * }
+ * ret = shtc1_measure_blocking_read(&temperature, &humidity);
+ * if (ret) {
+ *     // error measuring
+ * }
+ * ret = shtc1_sleep();
+ * if (ret) {
+ *     // error sending sensor to sleep
+ * }
+ * ```
+ *
+ * @return  0 if the command was successful, else an error code.
+ */
+int16_t shtc1_wake_up(void);
 
 /**
  * Enable or disable the SHT's low power mode
@@ -123,16 +165,24 @@ int16_t shtc1_disable_sleep(uint8_t disable_sleep);
 void shtc1_enable_low_power_mode(uint8_t enable_low_power_mode);
 
 /**
+ * Read out the serial number
+ *
+ * @param serial    the address for the result of the serial number
+ * @return          0 if the command was successful, else an error code.
+ */
+int16_t shtc1_read_serial(uint32_t* serial);
+
+/**
  * Return the driver version
  *
  * @return Driver version string
  */
-const char *shtc1_get_driver_version(void);
+const char* shtc1_get_driver_version(void);
 
 /**
- * Returns the configured SHT3x address.
+ * Returns the configured SHT address.
  *
- * @return SHT3x_ADDRESS
+ * @return The configured i2c address
  */
 uint8_t shtc1_get_configured_address(void);
 

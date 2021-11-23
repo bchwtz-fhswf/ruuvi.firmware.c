@@ -111,30 +111,46 @@ rd_status_t ri_radio_uninit (void)
     return RD_SUCCESS;
 }
 
+/**
+ * https://devzone.nordicsemi.com/f/nordic-q-a/19614/changing-mac-address-in-nrf52
+ * m_central_addr.addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC;
+ * m_central_addr.addr[0]   = (uint8_t)NRF_FICR->DEVICEADDR[0];
+ * m_central_addr.addr[1]   = (uint8_t)(NRF_FICR->DEVICEADDR[0] >> 8);
+ * m_central_addr.addr[2]   = (uint8_t)(NRF_FICR->DEVICEADDR[0] >> 16);
+ * m_central_addr.addr[3]   = (uint8_t)(NRF_FICR->DEVICEADDR[0] >> 24);
+ * m_central_addr.addr[4]   = (uint8_t)NRF_FICR->DEVICEADDR[1];
+ * m_central_addr.addr[5]   = (uint8_t)((NRF_FICR->DEVICEADDR[1] >> 8) | 0xC0); // 2MSB
+ */
 rd_status_t ri_radio_address_get (uint64_t * const address)
 {
     uint32_t status = NRF_SUCCESS;
     rd_status_t err_code = RD_SUCCESS;
+    uint64_t mac = 0;
 
     if (!ri_radio_is_init())
     {
-        err_code |= RD_ERROR_INVALID_STATE;
+        // Random static BLE address has 2 top bits set
+        mac |= (uint64_t) ( (NRF_FICR->DEVICEADDR[0] >> 0)  & 0xFF) << 0;
+        mac |= (uint64_t) ( (NRF_FICR->DEVICEADDR[0] >> 8)  & 0xFF) << 8;
+        mac |= (uint64_t) ( (NRF_FICR->DEVICEADDR[0] >> 16) & 0xFF) << 16;
+        mac |= (uint64_t) ( (NRF_FICR->DEVICEADDR[0] >> 24) & 0xFF) << 24;
+        mac |= (uint64_t) ( (NRF_FICR->DEVICEADDR[1] >> 0)  & 0xFF) << 32;
+        mac |= (uint64_t) ( (NRF_FICR->DEVICEADDR[1] >> 8 | 0xC0) & 0xFF) << 40;
     }
     else
     {
-        uint64_t mac = 0;
         ble_gap_addr_t addr;
         addr.addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC;
         status |= sd_ble_gap_addr_get (&addr);
-        mac |= (uint64_t) (addr.addr[5]) << 40;
-        mac |= (uint64_t) (addr.addr[4]) << 32;
-        mac |= (uint64_t) (addr.addr[3]) << 24;
-        mac |= (uint64_t) (addr.addr[2]) << 16;
-        mac |= (uint64_t) (addr.addr[1]) << 8;
         mac |= (uint64_t) (addr.addr[0]) << 0;
-        *address = mac;
+        mac |= (uint64_t) (addr.addr[1]) << 8;
+        mac |= (uint64_t) (addr.addr[2]) << 16;
+        mac |= (uint64_t) (addr.addr[3]) << 24;
+        mac |= (uint64_t) (addr.addr[4]) << 32;
+        mac |= (uint64_t) (addr.addr[5]) << 40;
     }
 
+    *address = mac;
     return ruuvi_nrf5_sdk15_to_ruuvi_error (status) | err_code;
 }
 
@@ -154,8 +170,6 @@ rd_status_t ri_radio_address_set (const uint64_t address)
 
 void ri_radio_activity_callback_set (const ri_radio_activity_interrupt_fp_t handler)
 {
-  // not relevant if current callback handler and new pointer are the same
-  if(on_radio_activity_callback != handler) {
     // Warn user if CB is not NULL and non-null pointer is set, do not overwrite previous pointer.
     if (NULL != handler && NULL != on_radio_activity_callback)
     {
@@ -165,7 +179,6 @@ void ri_radio_activity_callback_set (const ri_radio_activity_interrupt_fp_t hand
     {
         on_radio_activity_callback = handler;
     }
-  }
 }
 
 bool ri_radio_is_init (void)

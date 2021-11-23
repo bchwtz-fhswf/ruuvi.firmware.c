@@ -91,9 +91,9 @@
 #define RB_BUTTON_ENABLE_CONFIG      RB_BUTTON_1
 
 // SPI definitions for RuuviTag B
-#define RB_SPI_SCLK_PIN              RB_PORT_PIN_MAP(0, 29) // SPI clock GPIO pin number. Original:29, Neu 20
-#define RB_SPI_MOSI_PIN              RB_PORT_PIN_MAP(0, 25) // SPI Master Out Slave In GPIO pin number. Original:25 Neu 30
-#define RB_SPI_MISO_PIN              RB_PORT_PIN_MAP(0, 28) // SPI Master In Slave Out GPIO pin number. Original:28 Neu 31
+#define RB_SPI_SCLK_PIN              RB_PORT_PIN_MAP(0, 29) // SPI clock GPIO pin number.
+#define RB_SPI_MOSI_PIN              RB_PORT_PIN_MAP(0, 25) // SPI Master Out Slave In GPIO pin number.
+#define RB_SPI_MISO_PIN              RB_PORT_PIN_MAP(0, 28) // SPI Master In Slave Out GPIO pin number.
 #define RB_SPI_SS_ACCELEROMETER_PIN  RB_PORT_PIN_MAP(0,  8)  // SPI Slave Select (accelerometer)
 #define RB_SPI_SS_ENVIRONMENTAL_PIN  RB_PORT_PIN_MAP(0,  3)  // SPI Slave Select (BME280)
 #define RB_SPI_SS_LIST               {RB_SPI_SS_ACCELEROMETER_PIN, RB_SPI_SS_ENVIRONMENTAL_PIN}
@@ -102,7 +102,7 @@
 #define RB_SPI_FREQUENCY_2M          1
 #define RB_SPI_FREQUENCY_4M          2
 #define RB_SPI_FREQUENCY_8M          3
-#define RB_SPI_FREQ                  RB_SPI_FREQUENCY_1M
+#define RB_SPI_FREQ                  RB_SPI_FREQUENCY_8M
 
 // I2C definitions for RuuviTag B
 #define RB_I2C_SDA_PIN               RB_PORT_PIN_MAP(0, 4)
@@ -110,7 +110,7 @@
 #define RB_I2C_FREQUENCY_100k        0
 #define RB_I2C_FREQUENCY_250k        1
 #define RB_I2C_FREQUENCY_400k        2
-#define RB_I2C_FREQ                  RB_I2C_FREQUENCY_100k
+#define RB_I2C_FREQ                  RB_I2C_FREQUENCY_400k
 
 // UART definitions for RuuviTag B
 #define RB_UART_TX_PIN               RB_PORT_PIN_MAP(0, 4)
@@ -173,4 +173,3 @@
 #endif
 
 #endif
-                                    

@@ -76,7 +76,7 @@ void setup (void)
     err_code |= ri_yield_low_power_enable (true);
     err_code |= rt_flash_init();
     err_code |= app_led_init();
-    err_code |= app_led_activate (RB_LED_STATUS_ERROR);
+    app_led_error_signal (true);
     err_code |= app_button_init();
     err_code |= app_dc_dc_init();
     err_code |= app_sensor_init();
@@ -87,7 +87,6 @@ void setup (void)
     err_code |= app_sensor_vdd_sample();
     err_code |= app_heartbeat_init();
     err_code |= app_heartbeat_start();
-    err_code |= app_led_deactivate (RB_LED_STATUS_ERROR);
 
 #if APP_SENSOR_LOGGING
     err_code |= app_acc_logging_init();
@@ -95,12 +94,12 @@ void setup (void)
 
     if (RD_SUCCESS == err_code)
     {
-        err_code |= app_led_activate (RB_LED_STATUS_OK);
+        app_led_error_signal (false);
+        app_led_activity_signal (true);
         err_code |= ri_delay_ms (APP_SELFTEST_OK_DELAY_MS);
-        err_code |= app_led_deactivate (RB_LED_STATUS_OK);
+        app_led_activity_signal (false);
     }
 
-    err_code |= app_led_activity_set (RB_LED_ACTIVITY);
     rd_error_cb_set (&app_on_error);
     RD_ERROR_CHECK (err_code, RD_SUCCESS);
 }

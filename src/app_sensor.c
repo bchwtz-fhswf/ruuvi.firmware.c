@@ -10,6 +10,7 @@
 #include "ruuvi_interface_adc_ntc.h"
 #include "ruuvi_interface_adc_photo.h"
 #include "ruuvi_interface_bme280.h"
+#include "ruuvi_interface_communication_ble_gatt.h"
 #include "ruuvi_interface_communication_radio.h"
 #include "ruuvi_interface_dps310.h"
 #include "ruuvi_interface_gpio.h"
@@ -26,6 +27,8 @@
 
 #include <stdio.h>
 #include <string.h>
+
+#define POWERUP_DELAY_MS (10U)
 
 static inline void LOG (const char * const msg)
 {
@@ -282,6 +285,10 @@ static rd_status_t app_sensor_buses_init (void)
     {
         err_code |= ri_spi_init (&spi_config);
         err_code |= ri_i2c_init (&i2c_config);
+        err_code |= ri_gpio_configure (RB_I2C_SDA_PIN,
+                                       RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE);
+        err_code |= ri_gpio_configure (RB_I2C_SCL_PIN,
+                                       RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE);
     }
 
     return err_code;
@@ -317,6 +324,8 @@ rd_status_t app_sensor_init (void)
     if (RD_SUCCESS == err_code)
     {
         app_sensor_rtc_init();
+        // Wait for the power lines to settle after bus powerup.
+        ri_delay_ms (POWERUP_DELAY_MS);
 
         for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
         {
@@ -329,6 +338,7 @@ rd_status_t app_sensor_init (void)
                 (void) ri_gpio_configure (m_sensors[ii]->pwr_pin,
                                           RI_GPIO_MODE_OUTPUT_HIGHDRIVE);
                 (void) ri_gpio_write (m_sensors[ii]->pwr_pin, m_sensors[ii]->pwr_on);
+                ri_delay_ms (POWERUP_DELAY_MS);
             }
 
             // Some sensors, such as accelerometer may fail on user moving the board. Retry.
@@ -812,22 +822,22 @@ static rd_status_t app_sensor_log_read (const ri_comm_xfer_fp_t reply_fp,
     float data[rd_sensor_data_fieldcount (&sample)];
     sample.data = data;
     // Parse start, end times.
-    uint32_t current_time_s = re_std_log_current_time (raw_message);
-    uint32_t start_s = re_std_log_start_time (raw_message);
+    int64_t current_time_s = (int64_t) re_std_log_current_time (raw_message);
+    int64_t start_s = (int64_t) re_std_log_start_time (raw_message);
     uint32_t sent_elements = 0;
-    const uint64_t system_time_ms = ri_rtc_millis();
+    // overflow in 292 277 266 years
+    const int64_t system_time_ms = (int64_t) ri_rtc_millis();
 
     // Cannot have start_s >= current_time_s
     if (current_time_s > start_s)
     {
-        // Parse offset to system clock - flows over in 68 years.
+        // Parse offset to system clock
         LOG ("Sending logged data\r\n");
-        int32_t system_time_s = (int32_t) (system_time_ms / 1000U);
-        int64_t offset_ms = ( (int64_t) current_time_s - (int64_t) system_time_s) *
-                            (int64_t) 1000;
-        int64_t time_diff_ms = (current_time_s - start_s) * 1000U;
+        int64_t system_time_s = (system_time_ms / 1000LL);
+        int64_t offset_ms = (current_time_s - system_time_s)  * 1000LL;
+        int64_t time_diff_ms = (current_time_s - start_s) * 1000LL;
         // First sample to send in real time
-        sample.timestamp_ms = (start_s * 1000U);
+        sample.timestamp_ms = (start_s * 1000LL);
 
         // Offset sample time to system clock.
         if (time_diff_ms > system_time_ms)

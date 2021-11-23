@@ -1,6 +1,24 @@
 # Changelog
-## 3.8.0 (in progress)
+
+## 3.9.2
+ - Fix GATT timer-related errors
+
+## 3.9.1
+ - Add configurable delay and retries to gatt param changes
+
+## 3.9.0
+ - Put SHTCX to sleep after reads
+ - Poll data ready before reading TMP117 in single-shot mode
+ - Add delay to TMP117 after soft reset
+ - Add sink-only GPIO CFG options for I2C
+ - Add RD_WARNING_DEPRECATED error code
+ - Add AES-ECB-128 encryption function
+ - Add GATT parameter renegotiation
+
+## 3.8.0
  - Store boot counter in flash
+ - Update SHTC driver to  5.3.0
+ - Align memory access to 4-byte boundary in flash test
 
 ## 3.7.0 
  - Add TMP117 temperature sensor support

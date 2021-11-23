@@ -77,11 +77,11 @@ static int scl_val_fd;
 static int sda_dir_fd;
 static int sda_val_fd;
 
-static int open_or_exit(const char *path, mode_t mode) {
-    int fd = open(path, mode);
+static int open_or_exit(const char* path, int flags) {
+    int fd = open(path, flags);
     if (fd < 0) {
         perror(NULL);
-        fprintf(stderr, "Error opening %s (mode %d)\n", path, mode);
+        fprintf(stderr, "Error opening %s (mode %d)\n", path, flags);
         exit(-1);
     }
     return fd;
@@ -94,16 +94,20 @@ static void rev_or_exit(int fd) {
     }
 }
 
-static void write_or_exit(int fd, const char *buf) {
+static void write_or_exit(int fd, const char* buf) {
     size_t len = strlen(buf);
 
-    if (write(fd, buf, len) != len) {
+    ssize_t w = write(fd, buf, len);
+
+    // Adapted from stackoverflow answer by Stephen Canon
+    // See: https://www.stackoverflow.com/a/16086724
+    if (w < 0 || (size_t)w != len) {
         perror("Error writing");
         exit(-1);
     }
 }
 
-static void gpio_export(const char *path, const char *export_pin) {
+static void gpio_export(const char* path, const char* export_pin) {
     int fd;
 
     if (access(path, F_OK) == -1) {
@@ -121,12 +125,12 @@ static void gpio_set_value(int fd, int value) {
     write_or_exit(fd, buf);
 }
 
-static void gpio_set_direction(int fd, const char *dir) {
+static void gpio_set_direction(int fd, const char* dir) {
     rev_or_exit(fd);
     write_or_exit(fd, dir);
 }
 
-static char gpio_get_value(int fd) {
+static uint8_t gpio_get_value(int fd) {
     char c;
 
     rev_or_exit(fd);

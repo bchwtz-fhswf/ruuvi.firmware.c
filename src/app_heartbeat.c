@@ -119,7 +119,6 @@ static
 #endif
 void heartbeat (void * p_event, uint16_t event_size)
 {
-    //access_flash();
     ri_comm_message_t msg = {0};
     rd_status_t err_code = RD_SUCCESS;
     bool heartbeat_ok = false;
@@ -129,7 +128,7 @@ void heartbeat (void * p_event, uint16_t event_size)
     data.data = data_values;
     app_sensor_get (&data);
     // Sensor read takes a long while, indicate activity once data is read.
-    app_led_activity_indicate (true);
+    app_led_activity_signal (true);
     encode_to_5 (&data, &msg);
 
     float humidity_rh = rd_sensor_data_parse (&data, RD_SENSOR_HUMI_FIELD);
@@ -185,9 +184,8 @@ void heartbeat (void * p_event, uint16_t event_size)
     }
 
     err_code = app_log_process (&data);
-    app_led_activity_indicate (false);
+    app_led_activity_signal (false);
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
-    //access_flash();
 }
 
 /**

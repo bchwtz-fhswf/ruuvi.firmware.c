@@ -24,7 +24,6 @@
 
 #include "ruuvi_driver_enabled_modules.h"
 #include "ruuvi_driver_error.h"
-#include "fds.h"
 #include <stddef.h>
 
 /** @brief Enable implementation selected by application */
@@ -119,7 +118,7 @@ rd_status_t ri_flash_record_set (const uint32_t page_id,
  * @param[in] page_id: ID of a page. Can be random number.
  * @param[in] record_id: ID of a record. Can be a random number.
  * @param[in,out] data_size input: Maximum size of data to retrieve. Output: Number of bytes retrieved.
- * @param data[in] pointer to memory which will be filled with retrieved data
+ * @param[in] data pointer to memory which will be filled with retrieved data.
  * @retval RD_SUCCESS on success.
  * @retval RD_ERROR_NULL if data is null.
  * @retval RD_ERROR_INVALID_STATE if flash storage is not initialized.
@@ -176,5 +175,6 @@ void ri_flash_purge (void);
  */
 bool ri_flash_is_busy();
 
-/*@}*/
+/** @} */
+
 #endif

@@ -29,6 +29,8 @@
 #include "mock_ruuvi_interface_communication_radio.h"
 #include <string.h>
 
+#define POWERUP_DELAY_MS (10U)
+
 extern rt_sensor_ctx_t * m_sensors[];
 static uint32_t m_expect_sends = 0;
 
@@ -55,8 +57,15 @@ void test_app_sensor_init_ok (void)
     ri_gpio_interrupt_is_init_ExpectAndReturn (true);
     ri_spi_init_ExpectAnyArgsAndReturn (RD_SUCCESS);
     ri_i2c_init_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    ri_gpio_configure_ExpectAndReturn (RB_I2C_SDA_PIN,
+                                       RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE,
+                                       RD_SUCCESS);
+    ri_gpio_configure_ExpectAndReturn (RB_I2C_SCL_PIN,
+                                       RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE,
+                                       RD_SUCCESS);
     ri_rtc_init_ExpectAndReturn (RD_SUCCESS);
     rd_sensor_timestamp_function_set_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    ri_delay_ms_ExpectAndReturn (POWERUP_DELAY_MS, RD_SUCCESS);
 
     for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
     {
@@ -68,6 +77,7 @@ void test_app_sensor_init_ok (void)
             ri_gpio_write_ExpectAndReturn (m_sensors[ii]->pwr_pin,
                                            m_sensors[ii]->pwr_on,
                                            RD_SUCCESS);
+            ri_delay_ms_ExpectAndReturn (POWERUP_DELAY_MS, RD_SUCCESS);
         }
 
         rt_sensor_initialize_ExpectWithArrayAndReturn (m_sensors[ii], 1, RD_SUCCESS);
@@ -127,8 +137,15 @@ void test_app_sensor_init_first_time (void)
     ri_gpio_interrupt_is_init_ExpectAndReturn (true);
     ri_spi_init_ExpectAnyArgsAndReturn (RD_SUCCESS);
     ri_i2c_init_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    ri_gpio_configure_ExpectAndReturn (RB_I2C_SDA_PIN,
+                                       RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE,
+                                       RD_SUCCESS);
+    ri_gpio_configure_ExpectAndReturn (RB_I2C_SCL_PIN,
+                                       RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE,
+                                       RD_SUCCESS);
     ri_rtc_init_ExpectAndReturn (RD_SUCCESS);
     rd_sensor_timestamp_function_set_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    ri_delay_ms_ExpectAndReturn (POWERUP_DELAY_MS, RD_SUCCESS);
 
     for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
     {
@@ -140,6 +157,7 @@ void test_app_sensor_init_first_time (void)
             ri_gpio_write_ExpectAndReturn (m_sensors[ii]->pwr_pin,
                                            m_sensors[ii]->pwr_on,
                                            RD_SUCCESS);
+            ri_delay_ms_ExpectAndReturn (POWERUP_DELAY_MS, RD_SUCCESS);
         }
 
         rt_sensor_initialize_ExpectWithArrayAndReturn (m_sensors[ii], 1, RD_SUCCESS);
@@ -159,8 +177,15 @@ void test_app_sensor_init_not_found (void)
     ri_gpio_interrupt_is_init_ExpectAndReturn (true);
     ri_spi_init_ExpectAnyArgsAndReturn (RD_SUCCESS);
     ri_i2c_init_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    ri_gpio_configure_ExpectAndReturn (RB_I2C_SDA_PIN,
+                                       RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE,
+                                       RD_SUCCESS);
+    ri_gpio_configure_ExpectAndReturn (RB_I2C_SCL_PIN,
+                                       RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE,
+                                       RD_SUCCESS);
     ri_rtc_init_ExpectAndReturn (RD_SUCCESS);
     rd_sensor_timestamp_function_set_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    ri_delay_ms_ExpectAndReturn (POWERUP_DELAY_MS, RD_SUCCESS);
 
     for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
     {
@@ -172,6 +197,7 @@ void test_app_sensor_init_not_found (void)
             ri_gpio_write_ExpectAndReturn (m_sensors[ii]->pwr_pin,
                                            m_sensors[ii]->pwr_on,
                                            RD_SUCCESS);
+            ri_delay_ms_ExpectAndReturn (POWERUP_DELAY_MS, RD_SUCCESS);
         }
 
         rt_sensor_initialize_ExpectWithArrayAndReturn (m_sensors[ii], 1, RD_ERROR_NOT_FOUND);
@@ -188,8 +214,15 @@ void test_app_sensor_init_selftest_fail (void)
     ri_gpio_interrupt_is_init_ExpectAndReturn (true);
     ri_spi_init_ExpectAnyArgsAndReturn (RD_SUCCESS);
     ri_i2c_init_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    ri_gpio_configure_ExpectAndReturn (RB_I2C_SDA_PIN,
+                                       RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE,
+                                       RD_SUCCESS);
+    ri_gpio_configure_ExpectAndReturn (RB_I2C_SCL_PIN,
+                                       RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE,
+                                       RD_SUCCESS);
     ri_rtc_init_ExpectAndReturn (RD_SUCCESS);
     rd_sensor_timestamp_function_set_ExpectAnyArgsAndReturn (RD_SUCCESS);
+    ri_delay_ms_ExpectAndReturn (POWERUP_DELAY_MS, RD_SUCCESS);
 
     for (size_t ii = 0; ii < SENSOR_COUNT; ii++)
     {
@@ -203,6 +236,7 @@ void test_app_sensor_init_selftest_fail (void)
             ri_gpio_write_ExpectAndReturn (m_sensors[ii]->pwr_pin,
                                            m_sensors[ii]->pwr_on,
                                            RD_SUCCESS);
+            ri_delay_ms_ExpectAndReturn (POWERUP_DELAY_MS, RD_SUCCESS);
         }
 
         do

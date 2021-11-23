@@ -224,7 +224,7 @@ ret_code_t nfc_t2t_payload_raw_set(const uint8_t * p_payload, size_t payload_len
  * after the function returns.
  *
  * @note When modifying the internal bytes, remember that they must be consistent
- *       with the NFC hardware register settings (see @ref nfc_t2t_format_internal).
+ *       with the NFC hardware register settings (see <a href="https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk5.v15.3.0%2Fnfc_type2tag_format_dox.html&anchor=nfc_t2t_format_internal">Internal bytes</a>).
  *
  * @param[in] p_data         Pointer to the memory area containing the data.
  * @param[in] data_length    Size of the data in bytes.

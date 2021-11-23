@@ -57,6 +57,13 @@ typedef struct
     char deviceaddr[RI_COMM_DIS_STRLEN];   //!< Human readable device address, e.g. MAC.
 } ri_comm_dis_init_t;                      //!< Basic device information structure.
 
+typedef enum
+{
+    RI_GATT_TURBO,
+    RI_GATT_STANDARD,
+    RI_GATT_LOW_POWER
+} ri_gatt_params_t;
+
 typedef struct ri_comm_channel_t ri_comm_channel_t;
 
 /* @brief Callback handler for communication events */
@@ -86,7 +93,7 @@ typedef rd_status_t (*ri_comm_xfer_fp_t) (ri_comm_message_t * const
 typedef rd_status_t (*ri_comm_init_fp_t) (ri_comm_channel_t * const channel);
 
 /** @brief Application event handler for communication events.
- *  @param[in] evt Type of event, @ref ri_communication_evt_t.
+ *  @param[in] evt Type of event, @ref ri_comm_evt_t.
  *  @param[in] data Data associated with the event. May be NULL.
  *  @param[in] data_len Length of event data. Must be 0 if data is NULL.
  *                      Must be at maximum @ref RI_COMM_MESSAGE_MAX_LENGTH.

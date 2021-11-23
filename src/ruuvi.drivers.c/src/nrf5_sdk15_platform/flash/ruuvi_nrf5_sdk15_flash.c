@@ -555,5 +555,4 @@ bool ri_flash_is_busy()
     return m_fds_processing;
 }
 
-
 #endif

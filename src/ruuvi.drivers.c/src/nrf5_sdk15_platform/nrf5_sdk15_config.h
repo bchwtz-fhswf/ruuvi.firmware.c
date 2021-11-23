@@ -2,6 +2,7 @@
 #define NRF5_SDK5_CONFIG_H
 
 #include "ruuvi_driver_enabled_modules.h"
+#include "ruuvi_interface_aes.h"
 #include "ruuvi_interface_communication_ble_advertising.h"
 #include "ruuvi_interface_communication_ble_gatt.h"
 #include "ruuvi_interface_communication_nfc.h" //!< Check if NRF_NFC is required
@@ -23,6 +24,10 @@
 
 #if (!NRF5_SDK15_CONFIGURED)
 #        warning "NRF5 SDK15 is not configured, using defaults."
+#endif
+
+#if RUUVI_NRF5_SDK15_AES_ENABLED
+#   define NRF_CRYPTO_AES_ENABLED 1
 #endif
 
 #ifndef RUUVI_NRF5_SDK15_BLE4_STACK_CONN_TAG
@@ -225,6 +230,17 @@
 #       define NRFX_PRS_BOX_2_ENABLED 1
 #   endif
 #   if defined (NRF52832_XXAA)
+#       // Serial module requires UART + UARTE
+#       define NRFX_UARTE_ENABLED 1
+#       define NRFX_UARTE0_ENABLED 1
+#       define NRFX_UART_ENABLED 1
+#       define NRFX_UART0_ENABLED 1
+#       define UART0_CONFIG_USE_EASY_DMA 1
+#       // PRS module allows UART + UARTE co-existence.
+#       define NRFX_PRS_ENABLED 1
+#       define NRFX_PRS_BOX_4_ENABLED 1
+#   endif
+#   if defined (NRF52840_XXAA)
 #       // Serial module requires UART + UARTE
 #       define NRFX_UARTE_ENABLED 1
 #       define NRFX_UARTE0_ENABLED 1

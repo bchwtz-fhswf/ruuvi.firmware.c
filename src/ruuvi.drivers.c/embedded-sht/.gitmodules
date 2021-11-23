@@ -1,3 +1,0 @@
-[submodule "embedded-common"]
-	path = embedded-common
-	url = https://github.com/Sensirion/embedded-common

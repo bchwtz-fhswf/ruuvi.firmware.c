@@ -35,12 +35,16 @@
  */
 typedef enum
 {
-    RI_GPIO_MODE_HIGH_Z,          //!< High-impedance mode, electrically disconnected.
-    RI_GPIO_MODE_INPUT_NOPULL,    //!< Input, can be read. No pull resistors
-    RI_GPIO_MODE_INPUT_PULLUP,    //!< Input, can be read. Pulled up by internal resistor, value depends on IC.
-    RI_GPIO_MODE_INPUT_PULLDOWN,  //!< Input, can be read. Pulled dpwn by internal resistor, value depends on IC.
-    RI_GPIO_MODE_OUTPUT_STANDARD, //!< Push-pull output, can be written.
-    RI_GPIO_MODE_OUTPUT_HIGHDRIVE //!< Push-pull output, can be written. Higher current drive than standard.
+    RI_GPIO_MODE_HIGH_Z,           //!< High-impedance mode, electrically disconnected.
+    RI_GPIO_MODE_INPUT_NOPULL,     //!< Input, can be read. No pull resistors
+    RI_GPIO_MODE_INPUT_PULLUP,     //!< Input, can be read. Pulled up by internal resistor, value depends on IC.
+    RI_GPIO_MODE_INPUT_PULLDOWN,   //!< Input, can be read. Pulled dpwn by internal resistor, value depends on IC.
+    RI_GPIO_MODE_OUTPUT_STANDARD,  //!< Push-pull output, can be written.
+    RI_GPIO_MODE_OUTPUT_HIGHDRIVE, //!< Push-pull output, can be written. Higher current drive than standard.
+    RI_GPIO_MODE_SINK_PULLUP_STANDARD,  //!< Sink only, pull-up, standard drive. I2C without external resistors.
+    RI_GPIO_MODE_SINK_NOPULL_STANDARD,  //!< Sink only, nopull, standard drive. I2C with weak external resistors.
+    RI_GPIO_MODE_SINK_PULLUP_HIGHDRIVE, //!< Sink only, pull-up, high-drive. I2C with optional external resistors.
+    RI_GPIO_MODE_SINK_NOPULL_HIGHDRIVE  //!< Sink only, nopull,, high-drive. I2C with strong external resistors.
 } ri_gpio_mode_t;
 
 /**
@@ -88,8 +92,8 @@ bool ri_gpio_is_init (void);
  * @brief Configure a pin of a port into a mode.
  * If there are several ports the platform driver must implement a conversion function from port + pin to uint8_t.
  *
- * @param pin[in] Pin number.
- * @param mode[in] Mode to set the pin to. See @ref ri_gpio_mode_t for possible values.
+ * @param[in] pin Pin number.
+ * @param[in] mode Mode to set the pin to. See @ref ri_gpio_mode_t for possible values.
  *
  * @return @ref RD_SUCCESS on success, error code on failure.
  * @return @ref RD_ERROR_NOT_SUPPORTED if underlying platform does not support given mode.
@@ -101,7 +105,7 @@ rd_status_t ri_gpio_configure (const ri_gpio_id_t pin,
  * @brief Toggle the state of a pin of a port.
  * If there are several ports the platform driver must implement a conversion function from port + pin to uint8_t.
  *
- * @param pin[in] Pin number.
+ * @param[in] pin Pin number.
  *
  * @return RD_SUCCESS on success, error code on failure.
  * @return RD_ERROR_INVALID_STATE if pin was not set as an output (optional).
@@ -112,8 +116,8 @@ rd_status_t ri_gpio_toggle (const ri_gpio_id_t pin);
  * @brief Write a pin of a port into given state
  * If there are several ports the platform driver must implement a conversion function from port + pin to uint8_t.
  *
- * @param pin[in]   Pin number.
- * @param state[in] State to which the pin should be set to. See @ref ri_gpio_state_t for possible values
+ * @param[in] pin   Pin number.
+ * @param[in] state State to which the pin should be set to. See @ref ri_gpio_state_t for possible values
  *
  * @return RD_SUCCESS on success, error code on failure.
  * @return RD_ERROR_INVALID_STATE if pin was not set as an output (optional).
@@ -125,8 +129,8 @@ rd_status_t ri_gpio_write (const ri_gpio_id_t pin,
  * @brief Read state of a pin of a port into bool high
  * If there are several ports the platform driver must implement a conversion function from port + pin to uint8_t.
  *
- * @param pin[in]   Pin number.
- * @param p_state[out] Pointer to a ri_gpio_state_t which will be set to the state of the pin.
+ * @param[in] pin   Pin number.
+ * @param[out] p_state Pointer to a ri_gpio_state_t which will be set to the state of the pin.
  *
  * @return RD_SUCCESS on success, error code on failure.
  * @return RD_ERROR_NULL if *state is a null pointer.

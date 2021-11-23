@@ -13,11 +13,10 @@
 #include "ruuvi_board_gateway.h"
 
 // Bus to NRF52
-#define RB_GWBUS_1   GPIO_NUM_5
-#define RB_GWBUS_2   GPIO_NUM_17
-#define RB_GWBUS_3   GPIO_NUM_36
-#define RB_GWBUS_4   GPIO_NUM_37
-#define RB_GWBUS_5   GPIO_NUM_38
+#define RB_GWBUS_1   GPIO_NUM_5     //!< UART ESP -> NRF (ESP: GPIO5)
+#define RB_GWBUS_2   GPIO_NUM_36    //!< UART NRF -> ESP (ESP: SENSOR_VP, input only)
+#define RB_GWBUS_3   GPIO_NUM_37    //!< (ESP: SENSOR_CAPP, input only)
+#define RB_GWBUS_4   GPIO_NUM_38    //!< (ESP: SENSOR_CAPN, input only)
 #define RB_GWBUS_LNA GPIO_NUM_4
 
 // UART to nRF52
@@ -45,8 +44,15 @@
 #define NRF52_NVMC_REG_ERASEALL__NO_OP (0U)
 #define NRF52_NVMC_REG_ERASEALL__ERASE (1U)
 
-#define NRF52_GPIO_SWD_CLK GPIO_NUM_15
-#define NRF52_GPIO_SWD_IO  GPIO_NUM_16
-#define NRF52_GPIO_NRST    GPIO_NUM_17
+#define RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL (GPIO_NUM_14) /* ESP: MTMS */
+#define RB_ESP32_GPIO_SWITCH_PIN3           (GPIO_NUM_13) /* ESP: MTCK */
+#define RB_ESP32_GPIO_SWITCH_PIN4           (GPIO_NUM_15) /* ESP: MTDO */
+#define RB_ESP32_GPIO_SWITCH_PIN5           (GPIO_NUM_16) /* ESP: GPIO16 */
+#define RB_ESP32_GPIO_SWITCH_PIN6           (GPIO_NUM_17) /* ESP: GPIO17 */
+
+#define RB_ESP32_GPIO_MUX_LED               (RB_ESP32_GPIO_SWITCH_PIN3)
+#define RB_ESP32_GPIO_MUX_NRF52_SWD_CLK     (RB_ESP32_GPIO_SWITCH_PIN4)
+#define RB_ESP32_GPIO_MUX_NRF52_SWD_IO      (RB_ESP32_GPIO_SWITCH_PIN5)
+#define RB_ESP32_GPIO_MUX_NRF52_NRST        (RB_ESP32_GPIO_SWITCH_PIN6)
 
 #endif

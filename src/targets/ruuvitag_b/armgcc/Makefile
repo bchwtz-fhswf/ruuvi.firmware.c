@@ -5,8 +5,10 @@ OUTPUT_DIRECTORY := _build
 SDK_ROOT := ../../../../nRF5_SDK_15.3.0_59ac345
 PROJ_DIR := ../../..
 
+.PHONY: flash
+
 $(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
-  LINKER_SCRIPT  := ruuvitag_b.ld
+	LINKER_SCRIPT  := ruuvitag_b.ld
 
 PROJ_LIBS_DIR := ${PROJ_DIR}/ruuvi.libraries.c/src/libs
 PROJ_INTEGRATION_TESTS_DIR := ${PROJ_LIBS_DIR}/../integration_tests
@@ -15,8 +17,8 @@ include ${PROJ_DIR}/gcc_sources.make
 
 # Source files common to all targets
 SRC_FILES += ${COMMON_SOURCES} ${NFC_SOURCES} \
-   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
-   $(SDK_ROOT)/modules/nrfx/mdk/system_nrf52.c
+	 $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
+	 $(SDK_ROOT)/modules/nrfx/mdk/system_nrf52.c
 
 # Include folders common to all targets
 INC_FOLDERS += ${COMMON_INCLUDES}
@@ -129,6 +131,9 @@ default: nrf52832_xxaa
 help:
 	@echo following targets are available:
 	@echo		nrf52832_xxaa
+
+flash:
+	./flash.sh
 
 TEMPLATE_PATH := $(SDK_ROOT)/components/toolchain/gcc
 

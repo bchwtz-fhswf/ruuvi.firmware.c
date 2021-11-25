@@ -232,6 +232,7 @@ static ret_code_t conn_params_init (void)
     cp_init.disconnect_on_fail             = false;
     cp_init.evt_handler                    = on_conn_params_evt;
     cp_init.error_handler                  = conn_params_error_handler;
+    ble_conn_params_stop(); // added to solve issue 230
     err_code = ble_conn_params_init (&cp_init);
     return err_code;
 }

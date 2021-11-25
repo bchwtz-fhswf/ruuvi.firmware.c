@@ -317,10 +317,6 @@
 /** @brief Enable Ruuvi Flash interface. */
 #define RI_FLASH_ENABLED RT_FLASH_ENABLED
 
-// ***** Flash storage constants *****/
-
-#define APP_FLASH_LOG_DATA_RECORDS_NUM   (APP_FLASH_PAGES - 2U) //!< swap page + settings.
-
 // File constants can be any non-zero uint8.
 // Record constants can be any non-zero uint16
 // Two files and two records in same file can't have same ID.

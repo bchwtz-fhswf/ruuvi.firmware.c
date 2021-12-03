@@ -1,3 +1,6 @@
 [submodule "src/ruuvi.boards.c"]
 	path = src/ruuvi.boards.c
 	url = git@github.com:bchwtz-fhswf/ruuvi.boards.c.git
+[submodule "src/ruuvi.drivers.c"]
+	path = src/ruuvi.drivers.c
+	url = git@github.com:bchwtz-fhswf/ruuvi.drivers.c.git

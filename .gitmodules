@@ -7,3 +7,6 @@
 [submodule "src/ruuvi.endpoints.c"]
 	path = src/ruuvi.endpoints.c
 	url = git@github.com:bchwtz-fhswf/ruuvi.endpoints.c.git
+[submodule "src/ruuvi.libraries.c"]
+	path = src/ruuvi.libraries.c
+	url = git@github.com:bchwtz-fhswf/ruuvi.libraries.c.git

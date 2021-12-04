@@ -278,6 +278,9 @@ pull:
 	git submodule sync --recursive
 	git submodule update --recursive
 
+build:
+	$(MAKE) -C src ruuvitag_b
+
 build-and-run:
 	$(MAKE) -C src ruuvitag_b
 	$(MAKE) -C src flash

@@ -29,7 +29,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: 'recursive'
-          token: ${{ secrets.ACCESS_TOKEN }}
       
       - name: fetch and inflate external dependencies
         run: wget "https://www.nordicsemi.com/-/media/Software-and-other-downloads/SDKs/nRF5/Binaries/nRF5SDK153059ac345.zip" && unzip nRF5SDK153059ac345.zip && rm nRF5SDK153059ac345.zip

@@ -276,7 +276,7 @@ astyle:
 pull:
 	git pull
 	git submodule sync --recursive
-	git submodule update --recursive
+	git submodule update --init --recursive
 
 build:
 	$(MAKE) -C src ruuvitag_b

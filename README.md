@@ -2,8 +2,10 @@
 
 # Prerequisites
 ## SDK 15.3
+Skip this step if you are using the docker build scripts. Those will download the dependencies automatically.  
 Download [Nordic SDK15.3](https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/) and install it at the project root.
 If you're working on multiple nRF projects, you can (and should) use softlinking instead.
+
 ## Submodules
 You can just run `make pull`. If you do not have make installed you will need to proceed with these steps:  
 Run `git submodule update --init --recursive`. This will search for and install the other git repositories referenced by this project. If any of the submodules has a changed remote, you'll need to run `git submodule sync --recursive` and again `git submodule update --init --recursive` to update the modules from new remotes. 

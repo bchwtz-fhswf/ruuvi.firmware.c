@@ -27,9 +27,9 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-
+      
       - name: fetch and inflate external dependencies
-      run: wget https://www.nordicsemi.com/-/media/Software-and-other-downloads/SDKs/nRF5/Binaries/nRF5SDK153059ac345.zip && unzip nRF5SDK153059ac345.zip && rm nRF5SDK153059ac345.zip
+        run: wget "https://www.nordicsemi.com/-/media/Software-and-other-downloads/SDKs/nRF5/Binaries/nRF5SDK153059ac345.zip" && unzip nRF5SDK153059ac345.zip && rm nRF5SDK153059ac345.zip
 
       # Runs a single command using the runners shell
       - name: build sourcecode

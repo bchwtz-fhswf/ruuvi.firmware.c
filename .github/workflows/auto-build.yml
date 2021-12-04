@@ -30,8 +30,8 @@ jobs:
         with:
           submodules: 'recursive'
       
-      - name: fetch and inflate external dependencies
-        run: wget "https://www.nordicsemi.com/-/media/Software-and-other-downloads/SDKs/nRF5/Binaries/nRF5SDK153059ac345.zip" && unzip nRF5SDK153059ac345.zip && rm nRF5SDK153059ac345.zip
+      - name: link sdk
+        run: ln -s /tools/nRF5_SDK_15.3.0_59ac345 /work/nRF5_SDK_15.3.0_59ac345
 
       - name: create new buildnum.h
         run: fish --command="echo '#define BUILDNUMBER \"Build '(date +\"%Y%m%d_%H%M%S\")'\"' && echo '#define BUILDNUMBER \"Build '(date +\"%Y%m%d_%H%M%S\")'\"' > src/buildnum.h"

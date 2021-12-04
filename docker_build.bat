@@ -1,1 +1,1 @@
-docker run -v %cd%:/work sysexect/ruuvi-build-env:latest fish --command="echo '#define BUILDNUMBER \"Build '(date +\"%Y%m%d_%H%M%S\")'\"' > src/buildnum.h && cd src && make -j (nproc --all) ruuvitag_b"
+docker run -v %cd%:/work sysexect/ruuvi-build-env:latest fish --command="ln -s /tools/nRF5_SDK_15.3.0_59ac345 /work/nRF5_SDK_15.3.0_59ac345 && echo '#define BUILDNUMBER \"Build '(date +\"%Y%m%d_%H%M%S\")'\"' > src/buildnum.h && cd src && make -j (nproc --all) ruuvitag_b"

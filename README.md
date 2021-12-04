@@ -1,4 +1,4 @@
-![build and test](https://github.com/bchwtz-fhswf/ruuvi.firmware.c/workflows/CI/badge.svg?branch=master)
+![build](https://github.com/bchwtz-fhswf/ruuvi.firmware.c/workflows/CI/badge.svg?branch=master)
 # ruuvi.firmware.c by FH-SWF
 ## Submodules
 You can just run `make pull`.  

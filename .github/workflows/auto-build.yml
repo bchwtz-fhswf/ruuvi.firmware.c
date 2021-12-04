@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v2
 
       # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: make pull && make build
-        working-directory: ${{env.working-directory}}
+      - name: build sourcecode
+        run: cd /github/workspace && make pull && make build
+        # working-directory: ${{env.working-directory}}
 

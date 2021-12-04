@@ -9,12 +9,12 @@ Run `git submodule update --init --recursive`. This will search for and install 
 ### Linux
 Install the docker package for your distribution and add your user to the "docker"-group. That's it - you're all set!  
 
-### Windows + MacOS
+### Windows and MacOS
 You have to install Docker Desktop for your OS. If you are running Windows, please make shure WSL-2 is enabled. It will improve speed tremendously. If you are running MacOS, please make shure to provide a lot of RAM and CPU to your VM, so the Docker-build will be able to use your system's resources properly.  
 
 ## Building the firmware
 Building the firmware is just basically one command. Your artifacts will be placed in src/targets/ruuvitag_b/arm_gcc/
-### Linux and MacOS
+### Linux, Git-Bash for Windows and MacOS (recommended)
 `bash ./docker_build.sh`  
 ### Windows
 `.\docker_build.bat`  

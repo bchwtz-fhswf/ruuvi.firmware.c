@@ -38,7 +38,6 @@ jobs:
 
       - name: build sourcecode
         run: make -j $(nproc --all) build
-        working-directory: ${{env.working-directory}}
 
       - name: archive artifacts
         uses: actions/upload-artifact@v2

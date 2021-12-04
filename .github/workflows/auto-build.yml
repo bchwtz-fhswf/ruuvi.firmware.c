@@ -36,13 +36,13 @@ jobs:
       - name: create new buildnum.h
         run: fish --command="echo '#define BUILDNUMBER \"Build '(date +\"%Y%m%d_%H%M%S\")'\"' && echo '#define BUILDNUMBER \"Build '(date +\"%Y%m%d_%H%M%S\")'\"' > src/buildnum.h"
 
-        # - name: build sourcecode
-      #   run: make -j (nproc --all) build
-        # working-directory: ${{env.working-directory}}
+      - name: build sourcecode
+        run: make -j $(nproc --all) build
+        working-directory: ${{env.working-directory}}
 
-      # - name: archive artifacts
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: build-artifacts
-      #     path: src/targets/ruuvitag_b/armgcc
+      - name: archive artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-artifacts
+          path: src/targets/ruuvitag_b/armgcc
 

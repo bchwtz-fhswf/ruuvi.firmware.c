@@ -34,7 +34,7 @@ jobs:
         run: wget "https://www.nordicsemi.com/-/media/Software-and-other-downloads/SDKs/nRF5/Binaries/nRF5SDK153059ac345.zip" && unzip nRF5SDK153059ac345.zip && rm nRF5SDK153059ac345.zip
 
       - name: create new buildnum.h
-        run: echo '#define BUILDNUMBER "Build '(date +"%Y%m%d_%H%M%S")'"' && echo '#define BUILDNUMBER "Build '(date +"%Y%m%d_%H%M%S")'"' > src/buildnum.h
+        run: fish --command="echo '#define BUILDNUMBER \"Build '(date +\"%Y%m%d_%H%M%S\")'\"' && echo '#define BUILDNUMBER \"Build '(date +\"%Y%m%d_%H%M%S\")'\"' > src/buildnum.h"
 
         # - name: build sourcecode
       #   run: make -j (nproc --all) build

@@ -31,7 +31,7 @@ jobs:
           submodules: 'recursive'
       
       - name: link sdk
-        run: ln -s /tools/nRF5_SDK_15.3.0_59ac345 /work/nRF5_SDK_15.3.0_59ac345
+        run: ln -s /tools/nRF5_SDK_15.3.0_59ac345 /__w/ruuvi.firmware.c/ruuvi.firmware.c/nRF5_SDK_15.3.0_59ac345
 
       - name: create new buildnum.h
         run: fish --command="echo '#define BUILDNUMBER \"Build '(date +\"%Y%m%d_%H%M%S\")'\"' && echo '#define BUILDNUMBER \"Build '(date +\"%Y%m%d_%H%M%S\")'\"' > src/buildnum.h"

@@ -272,3 +272,15 @@ astyle:
 	astyle --project=".astylerc" "src/main.c" "src/main.h" \
 	                  "src/app_*.c" "src/app_*.h" \
 	                  "src/run_integration_tests.c" "src/run_integration_tests.h" 
+
+pull:
+	git pull
+	git submodule sync --recursive
+	git submodule update --init --recursive
+
+build:
+	$(MAKE) -C src ruuvitag_b
+
+build-and-run:
+	$(MAKE) -C src ruuvitag_b
+	$(MAKE) -C src flash

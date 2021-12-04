@@ -1,9 +1,8 @@
-# ruuvi.firmware.c by FH-SWF
-
 ![build and test](https://github.com/bchwtz-fhswf/ruuvi.firmware.c/workflows/CI/badge.svg?branch=split-repos)
-
+# ruuvi.firmware.c by FH-SWF
 ## Submodules
-You can just run `make pull`. If you do not have make installed you will need to proceed with these steps:  
+You can just run `make pull`.  
+If you do not have make installed you will need to proceed with these steps:  
 Run `git submodule update --init --recursive`. This will search for and install the other git repositories referenced by this project. If any of the submodules has a changed remote, you'll need to run `git submodule sync --recursive` and again `git submodule update --init --recursive` to update the modules from new remotes. 
 # Using the build-toolchain inside docker (recommended way)
 ## Prerequisites

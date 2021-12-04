@@ -1,9 +1,4 @@
-
-# Prerequisites
-## SDK 15.3
-Skip this step if you are using the docker build scripts. Those will download the dependencies automatically.  
-Download [Nordic SDK15.3](https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/) and install it at the project root.
-If you're working on multiple nRF projects, you can (and should) use softlinking instead.
+# ruuvi.firmware.c by FH-SWF
 
 ## Submodules
 You can just run `make pull`. If you do not have make installed you will need to proceed with these steps:  

@@ -30,6 +30,6 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: build sourcecode
-        run: cd /github/workspace && make pull && make build
+        run: make pull && make build
         # working-directory: ${{env.working-directory}}
 

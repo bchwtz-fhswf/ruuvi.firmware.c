@@ -1,4 +1,3 @@
-# ruuvi.c.firmware - FH-Südwestfalen-Fork
 
 # Prerequisites
 ## SDK 15.3
@@ -41,9 +40,7 @@ You need the following tools:
 ### Building and running natively on Linux and MacOS
 * `make pull`
 * `make build-and-run`
-  
-The binaries may be found in src/targets/ruuvitag_b/armgcc as hex-files. If you have a devkit or a tag connected, the chips will be flashed automatically. All builds done with this toolchain are DFU-capable. Segger Studio archives have to be patched manually. For release builds use the docker toolchain instead.
-
+* [Nordic SDK 15.3](https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/)
 
 ## Using Segger Embedded Studio (SES)
 Segger Embedded Studio can be set up by installing [nRF Connect for Desktop](https://www.nordicsemi.com/?sc_itemid=%7BB935528E-8BFA-42D9-8BB5-83E2A5E1FF5C%7D) 

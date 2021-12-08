@@ -8,6 +8,7 @@ Vagrant.configure("2") do |config|
     config.disksize.size = '15GB'
 
     config.vm.provider :hyperv do |v|
+      v.maxmemory = 4096
       v.memory = 4096
       v.cpus = 4
       config.vm.synced_folder ".", "/vagrant", create: true, disabled: false
@@ -16,8 +17,8 @@ Vagrant.configure("2") do |config|
         v.memory = 4096
         v.cpus = 8
         v.qemu_use_session = false
-        v.memorybacking :access, :mode => "shared"
-        config.vm.synced_folder "./", "/vagrant", type: "virtiofs"
+#       v.memorybacking :access, :mode => "shared"
+#        config.vm.synced_folder "./", "/vagrant", type: "virtiofs"
     end  
   
     config.vm.provision :shell, privileged: true, inline: $install_common_tools

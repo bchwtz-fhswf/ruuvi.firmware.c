@@ -13,6 +13,8 @@
 
 #include "ruuvi_task_sensor.h"
 #include "ruuvi_interface_communication.h"
+#include "app_activity_recognition.h"
+
 
 /**
  * @brief Disable data logging for sensor
@@ -26,7 +28,7 @@ rd_status_t app_disable_sensor_logging (void);
  *
  * @return RD_SUCCESS on success, error code from stack otherwise.
  */
-rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db);
+rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db, const activity_recognition_cb p_callback);
 
 /**
  * @brief Send logged data from ringbuffer using GATT

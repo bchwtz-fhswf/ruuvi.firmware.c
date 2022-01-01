@@ -309,34 +309,6 @@
 #   define APP_COMMS_BIDIR_ENABLED ((APP_GATT_ENABLED) + (APP_NFC_ENABLED))
 #endif
 
-/** @brief Enable Flash tasks if there is storage space */
-#ifndef RT_FLASH_ENABLED
-#   define RT_FLASH_ENABLED (RB_FLASH_SPACE_AVAILABLE > RB_FLASH_SPACE_SMALL)
-#endif
-
-/** @brief Enable Ruuvi Flash interface. */
-#define RI_FLASH_ENABLED RT_FLASH_ENABLED
-
-// File constants can be any non-zero uint8.
-// Record constants can be any non-zero uint16
-// Two files and two records in same file can't have same ID.
-#define APP_FLASH_SENSOR_FILE (0xCEU)
-#define APP_FLASH_SENSOR_BME280_RECORD   (0x28U)
-#define APP_FLASH_SENSOR_DPS310_RECORD   (0x31U)
-#define APP_FLASH_SENSOR_ENVI_RECORD     (0x52U)
-#define APP_FLASH_SENSOR_LIS2DH12_RECORD (0x2DU)
-#define APP_FLASH_SENSOR_NTC_RECORD      (0xC1U)
-#define APP_FLASH_SENSOR_PHOTO_RECORD    (0xC2U)
-#define APP_FLASH_SENSOR_SHTCX_RECORD    (0xC3U)
-#define APP_FLASH_SENSOR_TMP117_RECORD   (0x17U)
-
-
-
-#define APP_FLASH_LOG_FILE                (0xF0U)
-#define APP_FLASH_LOG_CONFIG_RECORD       (0x01U)
-#define APP_FLASH_LOG_BOOT_COUNTER_RECORD (0xEFU)
-#define APP_FLASH_LOG_DATA_RECORD_PREFIX  (0xF0U) //!< Prefix, append with U8 number
-
 
 // ** Logging constants ** //
 #ifndef APP_LOG_INTERVAL_S
@@ -465,14 +437,6 @@
 #ifndef APP_SENSOR_LOGGING
 #   define APP_SENSOR_LOGGING (1U)
 #   define CRC16_ENABLED (1U)
-// Flash usage with acceleration logging
-#   define APP_FLASH_LOG_DATA_RECORDS_NUM   (2U)
-#   define RT_FLASH_RINGBUFFER_MAXSIZE (14U)
-#   define APP_FLASH_PAGES (APP_FLASH_LOG_DATA_RECORDS_NUM + RT_FLASH_RINGBUFFER_MAXSIZE + 2)  //!< swap page + settings.
-#else
-// Flash usage without acceleration logging
-#define APP_FLASH_PAGES (16U) //!< 64 kB flash storage if page size is 4 kB.
-#define APP_FLASH_LOG_DATA_RECORDS_NUM   (APP_FLASH_PAGES - 2U) //!< swap page + settings.
 #endif
 
 /*@}*/

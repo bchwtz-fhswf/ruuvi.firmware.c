@@ -96,8 +96,6 @@ void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
             .resolution = APP_SENSOR_BME280_RESOLUTION,   \
             .samplerate = APP_SENSOR_BME280_SAMPLERATE,   \
             .scale = APP_SENSOR_BME280_SCALE},            \
-    .nvm_file = APP_FLASH_SENSOR_FILE,                    \
-    .nvm_record = APP_FLASH_SENSOR_BME280_RECORD,         \
     .bus = BME_BUS,                                       \
     .handle = BME_HANDLE,                                 \
     .pwr_pin = RB_BME280_SENSOR_POWER_PIN,                \
@@ -120,8 +118,6 @@ void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
             .resolution = APP_SENSOR_DPS310_RESOLUTION,   \
             .samplerate = APP_SENSOR_DPS310_SAMPLERATE,   \
             .scale = APP_SENSOR_DPS310_SCALE},            \
-    .nvm_file = APP_FLASH_SENSOR_FILE,                    \
-    .nvm_record = APP_FLASH_SENSOR_DPS310_RECORD,         \
     .bus = RD_BUS_SPI,                                    \
     .handle = RB_SPI_SS_ENVIRONMENTAL_PIN,                \
     .pwr_pin = RB_DPS310_SENSOR_POWER_PIN,                \
@@ -144,8 +140,6 @@ void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
             .resolution = APP_SENSOR_LIS2DH12_RESOLUTION,   \
             .samplerate = APP_SENSOR_LIS2DH12_SAMPLERATE,   \
             .scale = APP_SENSOR_LIS2DH12_SCALE},            \
-    .nvm_file = APP_FLASH_SENSOR_FILE,                      \
-    .nvm_record = APP_FLASH_SENSOR_LIS2DH12_RECORD,         \
     .bus = RD_BUS_SPI,                                      \
     .handle = RB_SPI_SS_ACCELEROMETER_PIN,                  \
     .pwr_pin = RB_LIS2DH12_SENSOR_POWER_PIN,                \
@@ -161,8 +155,6 @@ void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
     .sensor = {0},                                          \
     .init = ri_lis2dw12_init,                               \
     .configuration = {0},                                   \
-    .nvm_file = APPLICATION_FLASH_SENSOR_FILE,              \
-    .nvm_record = APPLICATION_FLASH_SENSOR_LIS2DW12_RECORD, \
     .bus = RD_BUS_SPI,                                      \
     .handle = RB_SPI_SS_ACCELEROMETER_PIN,                  \
     .pwr_pin = RI_GPIO_ID_UNUSED,                           \
@@ -185,8 +177,6 @@ void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
             .resolution = APP_SENSOR_SHTCX_RESOLUTION,   \
             .samplerate = APP_SENSOR_SHTCX_SAMPLERATE,   \
             .scale = APP_SENSOR_SHTCX_SCALE},            \
-    .nvm_file = APP_FLASH_SENSOR_FILE,                   \
-    .nvm_record = APP_FLASH_SENSOR_SHTCX_RECORD,         \
     .bus = RD_BUS_I2C,                                   \
     .handle = RB_SHTCX_I2C_ADDRESS,                      \
     .pwr_pin = RB_SHTCX_SENSOR_POWER_PIN,                \
@@ -210,8 +200,6 @@ void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
             .samplerate = APP_SENSOR_TMP117_SAMPLERATE,   \
             .scale = APP_SENSOR_TMP117_SCALE              \
     },                                                    \
-    .nvm_file = APP_FLASH_SENSOR_FILE,                    \
-    .nvm_record = APP_FLASH_SENSOR_TMP117_RECORD,         \
     .bus = RD_BUS_I2C,                                    \
     .handle = RB_TMP117_I2C_ADDRESS,                      \
     .pwr_pin = RB_TMP117_SENSOR_POWER_PIN,                \
@@ -227,8 +215,6 @@ void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
     .sensor = {0},                               \
     .init = &ri_adc_photo_init,                  \
     .configuration = {0},                        \
-    .nvm_file = APP_FLASH_SENSOR_FILE,           \
-    .nvm_record = APP_FLASH_SENSOR_PHOTO_RECORD, \
     .bus = RD_BUS_NONE,                          \
     .handle = RB_PHOTO_ADC,                      \
     .pwr_pin = RB_PHOTO_PWR_PIN,                 \
@@ -244,8 +230,6 @@ void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
     .sensor = {0},                             \
     .init = &ri_adc_ntc_init,                  \
     .configuration = {0},                      \
-    .nvm_file = APP_FLASH_SENSOR_FILE,         \
-    .nvm_record = APP_FLASH_SENSOR_NTC_RECORD, \
     .bus = RD_BUS_NONE,                        \
     .handle = RB_NTC_ADC,                      \
     .pwr_pin = RB_NTC_PWR_PIN,                 \
@@ -269,8 +253,6 @@ void m_sensors_init (void); //!< Give Ceedling a handle to initialize structs.
             .samplerate = APP_SENSOR_NRF52_SAMPLERATE,   \
             .scale = APP_SENSOR_NRF52_SCALE              \
     },                                                   \
-    .nvm_file = APP_FLASH_SENSOR_FILE,                   \
-    .nvm_record = APP_FLASH_SENSOR_ENVI_RECORD,          \
     .bus = RD_BUS_NONE,                                  \
     .handle = RD_BUS_NONE,                               \
     .pwr_pin = RI_GPIO_ID_UNUSED,                        \

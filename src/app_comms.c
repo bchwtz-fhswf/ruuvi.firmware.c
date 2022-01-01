@@ -4,6 +4,7 @@
 #include "app_led.h"
 #include "app_sensor.h"
 #include "app_accelerometer_logging.h"
+#include "app_activity_recognition.h"
 #include "ruuvi_boards.h"
 #include "ruuvi_driver_sensor.h"
 #include "ruuvi_endpoints.h"
@@ -21,6 +22,7 @@
 #include "ruuvi_task_gatt.h"
 #include "ruuvi_task_nfc.h"
 #include "ruuvi_task_sensor.h"
+#include "ruuvi_task_flashdb.h"
 #include "crc16.h"
 #include <stdio.h>
 #include <string.h>
@@ -184,14 +186,10 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
           err_code |=app_acc_logging_statistic(msg.data+3);
           break;
 
-        case 0x0e:
-          // return boot count;
-          LOGD("return boot count\r\n");
-          uint32_t boot_count;
-          msg.data[1] = 0x0e;
-          err_code |= ri_power_read_boot_count( &boot_count );
-          msg.data_length = sizeof(uint32_t) + 3;
-          memcpy(msg.data+3, &boot_count, sizeof(uint32_t));
+        case 0xff:
+          // return flash statistic
+          LOGD("start factory reset\r\n");
+          rt_reset_macronix_flash();
           break;
 
         default:
@@ -264,17 +262,25 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
         case RE_STANDARD_VALUE_WRITE:
           // enable / disable logging of acceleration data
           switch(raw_message[3]) {
+            case 3:
+              LOGD("enable activity recognition\r\n");
+              err_code |= app_har_init(12);
+              if(err_code==RD_SUCCESS) {
+                err_code |= app_enable_sensor_logging(NULL, true, app_har_collect_data);
+              }
+              break;
             case 2:
               LOGD("enable streaming\r\n");
-              err_code |= app_enable_sensor_logging(reply_fp, false);
+              err_code |= app_enable_sensor_logging(reply_fp, false, NULL);
               break;
             case 1:
               LOGD("enable logging\r\n");
-              err_code |= app_enable_sensor_logging(NULL, true);
+              err_code |= app_enable_sensor_logging(NULL, true, NULL);
               break;
             case 0:
               LOGD("disable logging\r\n");
               err_code |= app_disable_sensor_logging();
+              err_code |= app_har_uninit();
               break;
             default:
               err_code |= RD_ERROR_INVALID_PARAM;

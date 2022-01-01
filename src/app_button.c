@@ -5,7 +5,6 @@
 #include "app_log.h"
 #include "ruuvi_boards.h"
 #include "ruuvi_driver_error.h"
-#include "ruuvi_interface_flash.h"
 #include "ruuvi_interface_power.h"
 #include "ruuvi_interface_gpio.h"
 #include "ruuvi_interface_gpio_interrupt.h"
@@ -49,14 +48,10 @@ static inline void LOG (const char * const msg)
     ri_log (RI_LOG_LEVEL_INFO, msg);
 }
 
-#ifndef CEEDLING
-static
-#endif
 void factory_reset (void * p_event_data, uint16_t event_size)
 {
     rt_reset_macronix_flash();
     app_heartbeat_stop();
-    app_log_purge_flash();
     // Execution stops here normally
     ri_power_enter_bootloader();
     // Reset on fail to enter BL

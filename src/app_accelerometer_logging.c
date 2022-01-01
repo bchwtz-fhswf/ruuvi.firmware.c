@@ -20,7 +20,6 @@
 #include "ruuvi_task_flash.h"
 #include "ruuvi_task_flash_ringbuffer.h"
 #include "ruuvi_task_gatt.h"
-#include "ruuvi_task_flashdb.h"
 #include "app_sensor.h"
 #include "app_comms.h"
 #include "crc16.h"
@@ -97,8 +96,8 @@ static bool ram_db;
 // Function for transfer of RAM DB is already scheduled
 volatile bool ram_db_transfer = false;
 
-/* KVDB object */
-static struct fdb_kvdb kvdb = { 0 };
+// Callback for activity recognition
+static activity_recognition_cb har_callback;
 
 
 static void pack8(const uint16_t sizeData, const uint8_t* const data, uint8_t* const packeddata) {
@@ -259,33 +258,55 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
         // retrieve Data from sensor
         err_code |= ri_lis2dh12_acceleration_raw_get( logged_data.data + SIZE_ELEMENT*ii );
 
-        // increment sample counter
-        logged_data.sample_counter++;
+        if(har_callback==NULL) {
 
-        if(logged_data.config->reserved0 == 0 || logged_data.sample_counter == logged_data.config->reserved0 ) {
-            // store value
-            memcpy(logged_data.data_to_store + SIZE_ELEMENT*logged_data.num_elements, logged_data.data + SIZE_ELEMENT*ii, SIZE_ELEMENT);
+            // increment sample counter
+            logged_data.sample_counter++;
 
-            logged_data.num_elements++;
-            logged_data.sample_counter = 0;
-        }
+            if(logged_data.config->reserved0 == 0 || logged_data.sample_counter == logged_data.config->reserved0 ) {
+                // store value
+                memcpy(logged_data.data_to_store + SIZE_ELEMENT*logged_data.num_elements, logged_data.data + SIZE_ELEMENT*ii, SIZE_ELEMENT);
 
-        if( ! (logged_data.num_elements<RI_LIS2DH12_FIFO_SIZE) ) {
+                logged_data.num_elements++;
+                logged_data.sample_counter = 0;
+            }
 
-            // pack the bits
-            uint8_t sizeOfPackedData = (RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT * logged_data.config->resolution)/16; // how many bytes
-            uint8_t packeddata[RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT];
+            if( ! (logged_data.num_elements<RI_LIS2DH12_FIFO_SIZE) ) {
 
-            // copy compacted sensor data
-            pack(logged_data.config->resolution, RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT, logged_data.data_to_store, packeddata);
+                // pack the bits
+                uint8_t sizeOfPackedData = (RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT * logged_data.config->resolution)/16; // how many bytes
+                uint8_t packeddata[RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT];
 
-            // Collect Data in Flash page
-            err_code |= rt_flash_ringbuffer_write(sizeOfPackedData, packeddata);
+                // copy compacted sensor data
+                pack(logged_data.config->resolution, RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT, logged_data.data_to_store, packeddata);
 
-            // reset counter
-            logged_data.num_elements = 0;
+                // Collect Data in Flash page
+                err_code |= rt_flash_ringbuffer_write(sizeOfPackedData, packeddata);
 
-            LOGD("FIFO storing sample\r\n");
+                // reset counter
+                logged_data.num_elements = 0;
+
+                LOGD("FIFO storing sample\r\n");
+            }
+        } else {
+
+            APP_ACTIVITY_RECOGNITION_PRECISION har_data[3];
+
+            #if APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
+              // Value should be in the range -127 to +127. So multiply it by scaling factor.
+              err_code |= rawToMg( (axis3bit16_t*) (logged_data.data + SIZE_ELEMENT*ii), har_data);
+              float value_scale = 127.0/(1000.0*logged_data.config->scale);
+              har_data[0] = har_data[0]*value_scale;
+              har_data[1] = har_data[1]*value_scale;
+              har_data[2] = har_data[2]*value_scale;
+            #else
+              // Sensor operates at 8 Bit resolution. So only MSB is relevant.
+              har_data[0] = (int8_t)logged_data.data[SIZE_ELEMENT*ii];
+              har_data[1] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 2];
+              har_data[2] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 4];
+            #endif
+
+            err_code |= har_callback(har_data, 1);
         }
     }
 
@@ -415,15 +436,13 @@ rd_status_t app_disable_sensor_logging(void) {
     // drop ringbuffer
     err_code = rt_flash_ringbuffer_drop();
 
-    struct fdb_blob blob;
     int acceleration_logging_enabled = 0;
-    fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
+    rt_flash_store("acceleration_logging_enabled", &acceleration_logging_enabled, sizeof(acceleration_logging_enabled));
 
     return err_code;
 }
 
-rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db) {
-    // bool high_power = false;
+rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db, const activity_recognition_cb p_callback) {
 
     // is it already active ?
     if(nologging_data_get!=NULL || ram_db) {
@@ -444,20 +463,11 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
     rd_status_t err_code = RD_SUCCESS;
 
     if(!use_ram_db) {
-        struct fdb_blob blob;
         int acceleration_logging_enabled = 1;
-        fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
+        rt_flash_store("acceleration_logging_enabled", &acceleration_logging_enabled, sizeof(acceleration_logging_enabled));
         
-        char *partition;
-        
-        if(rt_macronix_flash_exists()==RD_SUCCESS) {
-          partition="fdb_tsdb2";
-        } else {
-          partition="fdb_tsdb1";
-        }
-
         // initialize Ringbuffer with flash device
-        err_code |= rt_flash_ringbuffer_create(partition, fdb_timestamp_get, format_db);
+        err_code |= rt_flash_ringbuffer_create("accdata_tsdb", fdb_timestamp_get, format_db);
     } else {
         // initialize Ringbuffer with ram device
         err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get, false);
@@ -491,6 +501,7 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
       logged_data.num_elements = 0;
       logged_data.element_pos = 0xff;
       ram_db = use_ram_db;
+      har_callback = p_callback;
       LOGD("Successfully initialized FIFO logging\r\n");
     } else {
       LOGD("Error initializing FIFO logging\r\n");
@@ -621,51 +632,23 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
 
 rd_status_t app_acc_logging_init(void) {
 
-  uint8_t acceleration_logging_enabled = 0;
-  struct fdb_blob blob;
+  int acceleration_logging_enabled = 0;
 
-  /* default KV nodes */
-  struct fdb_default_kv_node default_kv_table[] = {
-        {"acceleration_logging_enabled", &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)}};
-          
-  struct fdb_default_kv default_kv;
+  rd_status_t result = rt_flash_load("acceleration_logging_enabled", &acceleration_logging_enabled, sizeof(acceleration_logging_enabled));
 
-  default_kv.kvs = default_kv_table;
-  default_kv.num = sizeof(default_kv_table) / sizeof(default_kv_table[0]);
+  if(result==RD_SUCCESS) {
 
-  char *partition; 
-  fal_flash_init();
-  if(rt_macronix_flash_exists()==RD_SUCCESS) {
-    partition="fdb_kvdb2";
-  } else {
-    partition="fdb_kvdb1";
-  }
-
-  /* Key-Value database initialization
-   *
-   *       &kvdb: database object
-   *       "env": database name
-   *   partition: The flash partition name base on FAL. Please make sure it's in FAL partition table.
-   * &default_kv: The default KV nodes. It will auto add to KVDB when first initialize successfully.
-   *        NULL: The user data if you need, now is empty.
-   */
-  fdb_err_t result = fdb_kvdb_init(&kvdb, "env", partition, &default_kv, NULL);
-  rt_macronix_high_performance_switch(false); //resetting high-power mode in case of factory reset
-  if(result==FDB_NO_ERR) {
-    
-    fdb_kv_get_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
-
-    if(blob.saved.len > 0 && acceleration_logging_enabled) {
+    if(acceleration_logging_enabled) {
       // activate logging
-      return app_enable_sensor_logging(NULL, false);
+      LOG("Activate acceleration logging after reboot\r\n");
+      return app_enable_sensor_logging(NULL, false, NULL);
 
     } else {
       // do not activate logging
       // but return RD_SUCCESS
-      return RD_SUCCESS;
     }
   }
-  return RD_ERROR_FATAL;
+  return RD_SUCCESS;
 }
 
 rd_status_t app_acc_logging_uninit(void) {

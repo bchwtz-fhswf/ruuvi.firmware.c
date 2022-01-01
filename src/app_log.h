@@ -23,48 +23,14 @@
 #include "ruuvi_boards.h"
 #include "ruuvi_driver_error.h"
 #include "ruuvi_driver_sensor.h"
-
-#define STORAGE_RECORD_HEADER_SIZE (96U) //!< bytes allocated for header.
-/** @brief bytes of compressed data.  */
-#define STORAGE_BLOCK_SIZE (RB_FLASH_PAGE_SIZE - STORAGE_RECORD_HEADER_SIZE)
+#include "ruuvi_interface_communication.h"
 
 typedef struct
 {
-    uint16_t interval_s;            //!< Interval to log at, in seconds.
-    /**
-     * True -> erase old elements automatically.
-     * False -> return RD_ERROR_NO_MEMORY when full.
-     */
-    bool overflow;
-    rd_sensor_data_fields_t fields; //!< Fields to log.
-} app_log_config_t;                 //!< Logging configuration.
-
-// TODO: Generalize to N elements.
-typedef struct
-{
-    uint32_t timestamp_s;
     float temperature_c;
     float humidity_rh;
     float pressure_pa;
 } app_log_element_t;
-
-typedef struct
-{
-    uint8_t page_idx; //!< Index of page being read.
-    uint16_t element_idx; //!< Index of element being read.
-    const uint64_t oldest_element_ms; //!< Age of oldest element to return in system time.
-} app_log_read_state_t; //!< Log read state.
-
-#define APP_LOG_MAX_SAMPLES (STORAGE_BLOCK_SIZE/sizeof(app_log_element_t))
-
-typedef struct
-{
-    uint32_t start_timestamp_s;           //!< Timestamp of first sample.
-    uint32_t end_timestamp_s;             //!< Timestamp of last sample.
-    size_t num_samples;                   //!< Number of samples in block.
-    app_log_config_t block_configuration; //!< Configuration of this data block.
-    app_log_element_t storage[APP_LOG_MAX_SAMPLES];  //!< Raw storage.
-} app_log_record_t; //!< Record for application sensor logs.
 
 /**
  * @brief Initialize logging.
@@ -94,41 +60,19 @@ rd_status_t app_log_init();
 rd_status_t app_log_process (const rd_sensor_data_t * const sample);
 
 /**
- * @brief Get data from log.
- *
- * Searches for first logged samples after given timestamp and returns them
- * without guarantees about sample order. Loop over this function to get all
- * logged data.
- *
- * @param[out] sample Sensor sample.
- * @param[in,out] p_read_state State of reads.
- *
- * @retval RD_SUCCESS if a sample was retrieved.
- * @retval RD_ERROR_NULL if either parameter is NULL.
- * @
- * @retval RD_ERROR_NOT_FOUND if no newer data than requested timestamp was found.
- *
- */
-rd_status_t app_log_read (rd_sensor_data_t * const sample,
-                          app_log_read_state_t * const p_read_state);
-
-/**
- * @brief Configure logging.
- *
- * Calling this function will flush current log buffer into flash, possibly leading
- * to NULL entries.
- */
-rd_status_t app_log_config_set (const app_log_config_t * const configuration);
-
-/**
- * @brief Read current logging configuration.
- */
-rd_status_t app_log_config_get (app_log_config_t * const configuration);
-
-/**
  * @brief Purge everything stored to flash.
  */
 void app_log_purge_flash (void);
+
+/**
+ * @brief Send data element.
+ *
+ * This function sends given data element to given reply function pointer.
+ *
+ * @note This function blocks until all data is send
+ */
+rd_status_t app_log_send_data (const ri_comm_xfer_fp_t reply_fp,
+        const int64_t start_time_ms, const int64_t current_time_ms);
 
 /** @} */
 #endif // APP_LOG_H

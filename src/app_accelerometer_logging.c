@@ -301,9 +301,9 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
               har_data[2] = har_data[2]*value_scale;
             #else
               // Sensor operates at 8 Bit resolution. So only MSB is relevant.
-              har_data[0] = (int8_t)logged_data.data[SIZE_ELEMENT*ii];
-              har_data[1] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 2];
-              har_data[2] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 4];
+              har_data[0] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 1];
+              har_data[1] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 3];
+              har_data[2] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 5];
             #endif
 
             err_code |= har_callback(har_data, 1);
@@ -612,7 +612,7 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
     // if there is a new configuration
     if(is_new_configuration) {
         // set new sensor configuration
-        err_code |= rd_sensor_configuration_set(&sensor->sensor, &sensor->configuration);
+        err_code |= rt_sensor_configure(sensor);
         // store configuration in flash
         err_code |= rt_sensor_store(sensor);
         if(app_acc_logging_state()==RD_SUCCESS) {
@@ -623,6 +623,8 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
         logged_data.num_elements = 0;
         logged_data.sample_counter = 0;
         logged_data.element_pos = 0xff;
+    } else {
+        LOGD("Configuration not changed\r\n");
     }
 
     logged_data.last_status = err_code;

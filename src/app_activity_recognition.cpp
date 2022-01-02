@@ -92,8 +92,8 @@ rd_status_t app_har_predict() {
   }
 
   // Read output (predicted y) of neural network
-  APP_ACTIVITY_RECOGNITION_PRECISION* model_output = interpreter->typed_output_tensor<APP_ACTIVITY_RECOGNITION_PRECISION>(0);
-  APP_ACTIVITY_RECOGNITION_PRECISION y_max = 0;
+  float* model_output = interpreter->typed_output_tensor<float>(0);
+  float y_max = 0;
   uint8_t argmax = 0;
 
   // find argmax
@@ -111,6 +111,8 @@ rd_status_t app_har_predict() {
 }
 
 rd_status_t app_har_init(uint8_t p_step_size) {
+
+  // See: https://www.tensorflow.org/lite/api_docs/cc/class/tflite/interpreter
 
   // Set up logging (modify tensorflow/lite/micro/debug_log.cc)
   error_reporter = new tflite::MicroErrorReporter();
@@ -200,6 +202,11 @@ rd_status_t app_har_init(uint8_t p_step_size) {
   model_input_size = model_input->dims->data[1];
   model_output_size = model_output->dims->data[1];
 
+  // Print number of inputs
+  LOGDf("Model has %d inputs\r\n", interpreter->inputs().size());
+
+  // Print Input Type, see c_api_types.h
+  LOGDf("Type of Input Tensor %d\r\n", model_input->type);
   // Print Input Shape
   LOGDf("Dimension of Input Tensor (");
   for(int i=0; i<model_input->dims->size; i++) {
@@ -207,6 +214,8 @@ rd_status_t app_har_init(uint8_t p_step_size) {
   }
   LOGD(")\r\n");
 
+  // Print Output Type, see c_api_types.h
+  LOGDf("Type of Output Tensor %d\r\n", model_output->type);
   // Print Output Shape
   LOGDf("Dimension of Output Tensor (");
   for(int i=0; i<model_output->dims->size; i++) {
@@ -272,7 +281,7 @@ rd_status_t app_har_collect_data(const APP_ACTIVITY_RECOGNITION_PRECISION* const
   int i=0;
   int block;
 
-  APP_ACTIVITY_RECOGNITION_PRECISION* input = interpreter->typed_input_tensor<APP_ACTIVITY_RECOGNITION_PRECISION>(0);
+  float* input = interpreter->typed_input_tensor<float>(0);
 
   while(i<samples) {
     if(samples-i>=model_input_size-current_size) {
@@ -283,7 +292,7 @@ rd_status_t app_har_collect_data(const APP_ACTIVITY_RECOGNITION_PRECISION* const
 
     int copy_start = current_size*3;
     for(int j=0; j<block*3; j++) {
-      input[j+copy_start] = (APP_ACTIVITY_RECOGNITION_PRECISION)bw_high_pass(highpass[j%3], accdata[j]);
+      input[j+copy_start] = bw_high_pass(highpass[j%3], accdata[j]);
     }
 
     current_size += block;

@@ -9,7 +9,7 @@
 #define APP_ACTIVITY_RECOGNITION_H
 
 #include "ruuvi_driver_error.h"
-#include "har_3xCNN2d_float.h"
+#include "har_3xCNN2d_quantized.h"
 
 #ifndef APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
 #define APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT 1

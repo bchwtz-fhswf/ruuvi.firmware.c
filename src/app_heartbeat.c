@@ -201,7 +201,7 @@ void schedule_heartbeat_isr (void * const p_context)
     ri_scheduler_event_put (NULL, 0U, &heartbeat);
 }
 
-rd_status_t app_heartbeat_init (void)
+rd_status_t app_heartbeat_init (uint32_t heartbeat_ms)
 {
     rd_status_t err_code = RD_SUCCESS;
 
@@ -216,14 +216,14 @@ rd_status_t app_heartbeat_init (void)
 
         if (RD_SUCCESS == err_code)
         {
-            err_code |= ri_timer_start (heart_timer, APP_HEARTBEAT_INTERVAL_MS, NULL);
+            err_code |= ri_timer_start (heart_timer, heartbeat_ms, NULL);
         }
     }
 
     return err_code;
 }
 
-rd_status_t app_heartbeat_start (void)
+rd_status_t app_heartbeat_start (uint32_t heartbeat_ms)
 {
     rd_status_t err_code = RD_SUCCESS;
 
@@ -234,7 +234,7 @@ rd_status_t app_heartbeat_start (void)
     else
     {
         heartbeat (NULL, 0);
-        err_code |= ri_timer_start (heart_timer, APP_HEARTBEAT_INTERVAL_MS, NULL);
+        err_code |= ri_timer_start (heart_timer, heartbeat_ms, NULL);
     }
 
     return err_code;

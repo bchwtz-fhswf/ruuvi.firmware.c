@@ -28,7 +28,7 @@
  * @retval RD_ERROR_INVALID_STATE if timers or scheduler is not initialized.
  * @retval RD_ERROR_RESOURCES if a timer cannot be allocated.
  */
-rd_status_t app_heartbeat_init (void);
+rd_status_t app_heartbeat_init (uint32_t heartbeat_ms);
 
 /**
  * @brief (Re)starts app heartbeats.
@@ -42,7 +42,7 @@ rd_status_t app_heartbeat_init (void);
  * @retval RD_SUCCESS on success
  * @retval RD_ERROR_INVALID_STATE if heartbeat is not initialized.
  */
-rd_status_t app_heartbeat_start (void);
+rd_status_t app_heartbeat_start (uint32_t heartbeat_ms);
 
 /**
  * @brief Stops app heartbeats.

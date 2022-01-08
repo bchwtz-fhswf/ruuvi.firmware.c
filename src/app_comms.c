@@ -211,6 +211,16 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
     return err_code;
 }
 
+static uint8_t get_heartbeat_from_raw_message (const uint8_t * const raw_message)
+{
+    // Parse heartbeat from raw_message asuming that heartbeat is decoded in 4 bytes
+    uint32_t heartbeat = (raw_message[RE_STANDARD_PAYLOAD_START_INDEX] << 24U) |
+                (raw_message[RE_STANDARD_PAYLOAD_START_INDEX + 1U] << 16U) |
+                (raw_message[RE_STANDARD_PAYLOAD_START_INDEX + 2U] << 8U) |
+                (raw_message[RE_STANDARD_PAYLOAD_START_INDEX + 3U]);
+    return heartbeat;
+}
+
 static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
                           const size_t data_len)
 {
@@ -356,6 +366,7 @@ static rd_status_t handle_rtc_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const 
 static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
                           size_t data_len)
 {
+    LOG("Message received!\r\n");
     rd_status_t err_code = RD_SUCCESS;
 
     if (NULL == p_data)
@@ -374,10 +385,18 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
         err_code |= ri_gatt_params_request (RI_GATT_TURBO, CONN_PARAM_UPDATE_DELAY_MS);
         // Parse message type.
         const uint8_t * const raw_message = (uint8_t *) p_data;
+        LOG(raw_message);
         uint8_t type = raw_message[RE_STANDARD_DESTINATION_INDEX];
 
         // Route message to proper handler.
-        switch (type)
+        if(type == RE_STANDARD_DESTINATION_HEARTBEAT)
+        {
+            uint32_t value = get_heartbeat_from_raw_message(raw_message);
+            err_code |= app_heartbeat_start(value);
+            LOG("--SET NEW HEARTBEAT---");
+            return;
+        }
+        /*switch (type)
         {
             case RE_ACC_XYZ:
 #if APP_SENSOR_LOGGING
@@ -407,14 +426,17 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
               err_code |= handle_rtc_comms_v2(reply_fp, raw_message, data_len);
               break;
 
+            case 0xfe: 
+              err_code |= app_heartbeat_start(get_heartbeat_from_raw_message(raw_message));
+              break;
             default:
                 break;
-        }
+        } */
 
         // Switch GATT to slower params.
-        err_code |= ri_gatt_params_request (RI_GATT_LOW_POWER, 0);
+        //err_code |= ri_gatt_params_request (RI_GATT_LOW_POWER, 0);
         // Resume heartbeat processing.
-        err_code |= app_heartbeat_start();
+        // err_code |= app_heartbeat_start(APP_HEARTBEAT_INTERVAL_MS);
     }
 
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);

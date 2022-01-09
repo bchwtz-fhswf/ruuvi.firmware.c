@@ -28,7 +28,7 @@
  * @retval RD_ERROR_INVALID_STATE if timers or scheduler is not initialized.
  * @retval RD_ERROR_RESOURCES if a timer cannot be allocated.
  */
-rd_status_t app_heartbeat_init (uint32_t heartbeat_ms);
+rd_status_t app_heartbeat_init ();
 
 /**
  * @brief (Re)starts app heartbeats.
@@ -64,6 +64,11 @@ rd_status_t app_heartbeat_stop (void);
  * @return True if current time is more than APP_HEARTBEAT_OVERDUE_INTERVAL_MS since last heartbeat.
  */
 bool app_heartbeat_overdue (void);
+
+/**
+ * @brief Returns the current heartbeat intervall.
+ */
+uint32_t get_current_heartbeat (void);
 
 
 #ifdef CEEDLING

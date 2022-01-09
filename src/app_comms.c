@@ -226,18 +226,36 @@ static rd_status_t handle_sys_config_comms (const ri_comm_xfer_fp_t reply_fp, co
     rd_status_t err_code = RD_SUCCESS;
     // Parse operation.
     uint8_t op = (uint8_t) raw_message[RE_STANDARD_OPERATION_INDEX];
+    
+    ri_comm_message_t msg;
+    msg.data_length = 8;
+    msg.repeat_count = 1;
+    msg.data[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_SYS_CONFIG;
+    msg.data[RE_STANDARD_SOURCE_INDEX     ] = RE_STANDARD_DESTINATION_SYS_CONFIG;
+    msg.data[RE_STANDARD_OPERATION_INDEX  ] = op;
+
+    uint32_t heartbeat_ms = get_current_heartbeat();
     switch(op) {
       case RE_SYS_CONFIG_WRITE_HEARTBEAT:
         err_code |= app_heartbeat_start(get_heartbeat_from_raw_message(raw_message));
-        LOG("--SET NEW HEARTBEAT---");
         break; 
       case RE_SYS_CONFIG_READ_HEARTBEAT: 
-        //TODO:implement me!
+        msg.data[4] = (heartbeat_ms >> 24U);
+        msg.data[5] = (heartbeat_ms >> 16U);
+        msg.data[6] = (heartbeat_ms >> 8U);
+        msg.data[7] = heartbeat_ms;
+        err_code |= app_heartbeat_start(heartbeat_ms);
         break;
       default: 
         break; 
 
     }
+
+    // send response
+    msg.data[3] = ruuvi_error_code_to_uint8(err_code);
+    
+    err_code |= app_comms_blocking_send(reply_fp, &msg);
+
     return err_code;
 }
 
@@ -451,9 +469,9 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
 
         // Switch GATT to slower params.
         err_code |= ri_gatt_params_request (RI_GATT_LOW_POWER, 0);
-        // Resume heartbeat processing.
+        // Resume heartbeat processing if needed.
         if(start_heartbeat) {
-          err_code |= app_heartbeat_start(APP_HEARTBEAT_INTERVAL_MS);
+            err_code |= app_heartbeat_start(get_current_heartbeat());
         }
     }
 

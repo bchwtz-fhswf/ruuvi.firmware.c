@@ -44,8 +44,8 @@ uint16_t m_measurement_count; //!< Increment on new samples.
 static uint64_t last_heartbeat_timestamp_ms;
 static uint32_t current_heartbeat_ms = APP_HEARTBEAT_INTERVAL_MS; //As inital value
 
-//static const uint16_t file_id = 12U;
-//static const uint16_t record_id = 12U;
+static const uint16_t file_id = 12U;
+static const uint16_t record_id = 12U;
 
 static inline void LOG (const char * const msg)
 {
@@ -194,7 +194,7 @@ void heartbeat (void * p_event, uint16_t event_size)
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
 
-/*
+
 static inline rd_status_t rt_heartbeat_store (uint32_t heartbeat_ms)
 {
     rd_status_t err_code = RD_SUCCESS;
@@ -205,13 +205,10 @@ static inline rd_status_t rt_heartbeat_store (uint32_t heartbeat_ms)
     }
     else
     {
+        current_heartbeat_ms = heartbeat_ms;
         err_code |= rt_flash_store (file_id, record_id,
-                                    & heartbeat_ms,
+                                    & (current_heartbeat_ms),
                                     sizeof (heartbeat_ms));
-        if(err_code == RD_SUCCESS) 
-        {
-          current_heartbeat_ms = heartbeat_ms;
-        }
     }
 
     return err_code;
@@ -231,11 +228,14 @@ static inline rd_status_t rt_heartbeat_load ()
         err_code |= rt_flash_load (file_id, record_id,
                                    & (current_heartbeat_ms),
                                    sizeof (current_heartbeat_ms));
+        if(err_code == RD_ERROR_NOT_FOUND)
+        {
+            current_heartbeat_ms = APP_HEARTBEAT_INTERVAL_MS;
+        }
     }
-
     return err_code;
 }
-*/
+
 
 /**
  * @brief When timer triggers, schedule reading sensors and sending data.
@@ -265,13 +265,13 @@ rd_status_t app_heartbeat_init ()
 
         if (RD_SUCCESS == err_code)
         {
-            /*
+            
             if(rt_heartbeat_load() == RD_SUCCESS) 
             {
                 err_code |= ri_timer_start (heart_timer, current_heartbeat_ms, NULL);
             }
-            */
-            err_code |= ri_timer_start (heart_timer, current_heartbeat_ms, NULL);
+            
+            //err_code |= ri_timer_start (heart_timer, current_heartbeat_ms, NULL);
         }
     }
 
@@ -289,7 +289,7 @@ rd_status_t app_heartbeat_start (uint32_t heartbeat_ms)
     else
     {
         heartbeat (NULL, 0);
-        current_heartbeat_ms = heartbeat_ms;
+        err_code |= rt_heartbeat_store(heartbeat_ms);
         err_code |= ri_timer_start (heart_timer, current_heartbeat_ms, NULL);
     }
 

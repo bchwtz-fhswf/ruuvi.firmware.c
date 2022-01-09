@@ -40,6 +40,7 @@ static
 uint16_t m_measurement_count; //!< Increment on new samples.
 
 static uint64_t last_heartbeat_timestamp_ms;
+static uint32_t current_heartbeat_ms;
 
 static inline void LOG (const char * const msg)
 {

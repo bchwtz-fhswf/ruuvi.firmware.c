@@ -42,7 +42,7 @@ rd_status_t app_heartbeat_init ();
  * @retval RD_SUCCESS on success
  * @retval RD_ERROR_INVALID_STATE if heartbeat is not initialized.
  */
-rd_status_t app_heartbeat_start (uint32_t heartbeat_ms);
+rd_status_t app_heartbeat_start (uint16_t heartbeat_ms);
 
 /**
  * @brief Stops app heartbeats.
@@ -68,7 +68,7 @@ bool app_heartbeat_overdue (void);
 /**
  * @brief Returns the current heartbeat intervall.
  */
-uint32_t get_current_heartbeat (void);
+uint16_t get_current_heartbeat (void);
 
 
 #ifdef CEEDLING

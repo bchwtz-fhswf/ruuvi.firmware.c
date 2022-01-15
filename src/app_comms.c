@@ -211,13 +211,11 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
     return err_code;
 }
 
-static uint32_t get_heartbeat_from_raw_message (const uint8_t * const raw_message)
+static uint16_t get_heartbeat_from_raw_message (const uint8_t * const raw_message)
 {
     // Parse heartbeat from raw_message asuming that heartbeat is decoded in 4 bytes
-    uint32_t heartbeat = (raw_message[RE_STANDARD_PAYLOAD_START_INDEX] << 24U) |
-                (raw_message[RE_STANDARD_PAYLOAD_START_INDEX + 1U] << 16U) |
-                (raw_message[RE_STANDARD_PAYLOAD_START_INDEX + 2U] << 8U) |
-                (raw_message[RE_STANDARD_PAYLOAD_START_INDEX + 3U]);
+    uint16_t heartbeat = (raw_message[RE_STANDARD_PAYLOAD_START_INDEX] << 8U) |
+                (raw_message[RE_STANDARD_PAYLOAD_START_INDEX + 1U]);
     return heartbeat;
 }
 
@@ -228,22 +226,20 @@ static rd_status_t handle_sys_config_comms (const ri_comm_xfer_fp_t reply_fp, co
     uint8_t op = (uint8_t) raw_message[RE_STANDARD_OPERATION_INDEX];
     
     ri_comm_message_t msg;
-    msg.data_length = 8;
+    msg.data_length = 6;
     msg.repeat_count = 1;
     msg.data[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_SYS_CONFIG;
     msg.data[RE_STANDARD_SOURCE_INDEX     ] = RE_STANDARD_DESTINATION_SYS_CONFIG;
     msg.data[RE_STANDARD_OPERATION_INDEX  ] = op;
 
-    uint32_t heartbeat_ms = get_current_heartbeat();
+    uint16_t heartbeat_ms = get_current_heartbeat();
     switch(op) {
       case RE_SYS_CONFIG_WRITE_HEARTBEAT:
         err_code |= app_heartbeat_start(get_heartbeat_from_raw_message(raw_message));
         break; 
       case RE_SYS_CONFIG_READ_HEARTBEAT: 
-        msg.data[4] = (heartbeat_ms >> 24U);
-        msg.data[5] = (heartbeat_ms >> 16U);
-        msg.data[6] = (heartbeat_ms >> 8U);
-        msg.data[7] = heartbeat_ms;
+        msg.data[4] = (heartbeat_ms >> 8U);
+        msg.data[5] = heartbeat_ms;
         err_code |= app_heartbeat_start(heartbeat_ms);
         break;
       default: 

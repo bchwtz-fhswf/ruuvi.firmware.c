@@ -47,6 +47,8 @@ static uint16_t current_heartbeat_ms = APP_HEARTBEAT_INTERVAL_MS; //As inital va
 static const uint16_t file_id = 24U;
 static const uint16_t record_id = 24U;
 
+static const uint16_t min_hearbeat = 100U; //minimum hearbeat in ms
+
 static inline void LOG (const char * const msg)
 {
     ri_log (RI_LOG_LEVEL_INFO, msg);
@@ -202,6 +204,10 @@ static inline rd_status_t rt_heartbeat_store (uint16_t heartbeat_ms)
     if (rt_flash_busy())
     {
         err_code |= RD_ERROR_BUSY;
+    }
+    else if (heartbeat_ms < min_hearbeat)
+    {
+        err_code |= RD_ERROR_INVALID_PARAM;
     }
     else
     {

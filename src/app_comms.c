@@ -213,7 +213,7 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
 
 static uint16_t get_heartbeat_from_raw_message (const uint8_t * const raw_message)
 {
-    // Parse heartbeat from raw_message asuming that heartbeat is decoded in 4 bytes
+    // Parse heartbeat from raw_message asuming that heartbeat is decoded in 2 bytes
     uint16_t heartbeat = (raw_message[RE_STANDARD_PAYLOAD_START_INDEX] << 8U) |
                 (raw_message[RE_STANDARD_PAYLOAD_START_INDEX + 1U]);
     return heartbeat;

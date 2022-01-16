@@ -357,6 +357,8 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
                           size_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
+    const uint8_t * const raw_message = (uint8_t *) p_data;
+
 
     if (NULL == p_data)
     {
@@ -365,6 +367,10 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
     else if (data_len < RE_STANDARD_MESSAGE_LENGTH)
     {
         err_code |= RD_ERROR_INVALID_PARAM;
+    }
+        else if (!command_is_authorized (raw_message[RE_STANDARD_OPERATION_INDEX]))
+    {
+        err_code |= reply_unauthorized (reply_fp, raw_message);
     }
     else
     {

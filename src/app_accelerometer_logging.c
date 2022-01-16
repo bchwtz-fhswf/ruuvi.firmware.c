@@ -90,14 +90,11 @@ static logged_data_t logged_data;
 // store original data_get function pointer
 static rd_sensor_data_fp nologging_data_get = NULL;
 
-// Use Database in RAM
-static bool ram_db;
+// Mode of acceleration logging
+static acceleration_logging_mode logging_mode;
 
 // Function for transfer of RAM DB is already scheduled
 volatile bool ram_db_transfer = false;
-
-// Callback for activity recognition
-static activity_recognition_cb har_callback;
 
 
 static void pack8(const uint16_t sizeData, const uint8_t* const data, uint8_t* const packeddata) {
@@ -226,7 +223,7 @@ static bool callback_send_data_block(fdb_tsl_t tsl, void *arg) {
         *crc = crc16_compute(msg.data+1, msg.data_length-1, crc);
     }
 
-    if(ram_db) {
+    if(logging_mode==acc_streaming) {
       fdb_tsl_set_status(db, tsl, FDB_TSL_DELETED);
     }
   }
@@ -258,7 +255,7 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
         // retrieve Data from sensor
         err_code |= ri_lis2dh12_acceleration_raw_get( logged_data.data + SIZE_ELEMENT*ii );
 
-        if(har_callback==NULL) {
+        if(logging_mode!=har_logging) {
 
             // increment sample counter
             logged_data.sample_counter++;
@@ -306,7 +303,10 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
               har_data[2] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 5];
             #endif
 
-            err_code |= har_callback(har_data, 1);
+            // adjust timestamp per sample
+            logged_data.timestamp += 1000L/logged_data.config->samplerate;
+
+            err_code |= app_har_collect_data(har_data, 1);
         }
     }
 
@@ -326,7 +326,7 @@ static void on_fifo_full (const ri_gpio_evt_t evt) {
 
     logged_data.timestamp = rd_sensor_timestamp_get();
 
-    if(!ram_db) {
+    if(logging_mode!=acc_streaming) {
         // Schedule Event to read FIFO and store data persistent
         err_code = ri_scheduler_event_put (&evt, sizeof (ri_gpio_evt_t), fifo_full_handler);
     } else {
@@ -408,7 +408,7 @@ rd_status_t lis2dh12_logged_data_get (rd_sensor_data_t * const data)
 rd_status_t app_disable_sensor_logging(void) {
 
     // is it curently active ?
-    if(nologging_data_get==NULL && !ram_db) {
+    if(logging_mode==no_logging) {
         return RD_ERROR_INVALID_STATE;
     }
 
@@ -431,21 +431,20 @@ rd_status_t app_disable_sensor_logging(void) {
     // save nologging data_get function in sensor context
     lis2dh12->sensor.data_get = nologging_data_get;
     nologging_data_get = NULL;
-    ram_db = false;
+    logging_mode = no_logging;
 
     // drop ringbuffer
     err_code = rt_flash_ringbuffer_drop();
 
-    int acceleration_logging_enabled = 0;
-    rt_flash_store("acceleration_logging_enabled", &acceleration_logging_enabled, sizeof(acceleration_logging_enabled));
+    rt_flash_store("acceleration_logging_enabled", &logging_mode, sizeof(logging_mode));
 
     return err_code;
 }
 
-rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db, const activity_recognition_cb p_callback) {
+rd_status_t app_enable_sensor_logging(const bool format_db, const acceleration_logging_mode p_mode) {
 
     // is it already active ?
-    if(nologging_data_get!=NULL || ram_db) {
+    if(logging_mode!=no_logging) {
         return RD_ERROR_INVALID_STATE;
     }
 
@@ -462,9 +461,8 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
 
     rd_status_t err_code = RD_SUCCESS;
 
-    if(!use_ram_db) {
-        int acceleration_logging_enabled = 1;
-        rt_flash_store("acceleration_logging_enabled", &acceleration_logging_enabled, sizeof(acceleration_logging_enabled));
+    if(p_mode!=acc_streaming) {
+        rt_flash_store("acceleration_logging_enabled", &p_mode, sizeof(p_mode));
         
         // initialize Ringbuffer with flash device
         err_code |= rt_flash_ringbuffer_create("accdata_tsdb", fdb_timestamp_get, format_db);
@@ -500,8 +498,7 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
       logged_data.sample_counter = 0;
       logged_data.num_elements = 0;
       logged_data.element_pos = 0xff;
-      ram_db = use_ram_db;
-      har_callback = p_callback;
+      logging_mode = p_mode;
       LOGD("Successfully initialized FIFO logging\r\n");
     } else {
       LOGD("Error initializing FIFO logging\r\n");
@@ -545,7 +542,7 @@ rd_status_t app_acc_logging_send_eof_v2(const ri_comm_xfer_fp_t reply_fp, const 
 rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp) {
 
     // when logging is not active return error
-    if(nologging_data_get==NULL) {
+    if(logging_mode==no_logging) {
         return RD_ERROR_INVALID_STATE;
     }
 
@@ -561,14 +558,9 @@ rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp) {
     return err_code;
 }
 
-rd_status_t app_acc_logging_state(void) {
+acceleration_logging_mode app_acc_logging_state(void) {
 
-    // when logging is not active return error
-    if(nologging_data_get!=NULL && !ram_db) {
-        return RD_SUCCESS;
-    } else {
-        return RD_ERROR_NOT_INITIALIZED;
-    }
+    return logging_mode;
 }
 
 rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor, 
@@ -615,7 +607,7 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
         err_code |= rt_sensor_configure(sensor);
         // store configuration in flash
         err_code |= rt_sensor_store(sensor);
-        if(app_acc_logging_state()==RD_SUCCESS) {
+        if(logging_mode!=no_logging) {
             // clear ringbuffer
             err_code = rt_flash_ringbuffer_clear();
         }
@@ -634,23 +626,28 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
 
 rd_status_t app_acc_logging_init(void) {
 
-  int acceleration_logging_enabled = 0;
-
-  rd_status_t result = rt_flash_load("acceleration_logging_enabled", &acceleration_logging_enabled, sizeof(acceleration_logging_enabled));
+  acceleration_logging_mode stored_mode;
+  rd_status_t result = rt_flash_load("acceleration_logging_enabled", &stored_mode, sizeof(stored_mode));
 
   if(result==RD_SUCCESS) {
 
-    if(acceleration_logging_enabled) {
-      // activate logging
-      LOG("Activate acceleration logging after reboot\r\n");
-      return app_enable_sensor_logging(NULL, false, NULL);
+    if(stored_mode!=no_logging) {
+      if(stored_mode==har_logging) {
+        LOG("Activate HAR logging after reboot\r\n");
+        result |= app_har_init();
+      }
+      if(result==RD_SUCCESS) {
+        // activate logging
+        LOG("Activate acceleration logging after reboot\r\n");
+        result |= app_enable_sensor_logging(false, stored_mode);
+      }
 
     } else {
-      // do not activate logging
-      // but return RD_SUCCESS
+      // do not activate logging but return RD_SUCCESS
+      return RD_SUCCESS;
     }
   }
-  return RD_SUCCESS;
+  return result & ~RD_ERROR_NOT_FOUND;
 }
 
 rd_status_t app_acc_logging_uninit(void) {
@@ -683,5 +680,5 @@ rd_status_t app_acc_logging_statistic (uint8_t* const statistik) {
 }
 
 #else
-rd_status_t app_acc_logging_state(void) { return RD_ERROR_NOT_ENABLED; }
+acceleration_logging_mode app_acc_logging_state(void) { return no_logging; }
 #endif

@@ -21,13 +21,10 @@
 #define APP_ACTIVITY_RECOGNITION_PRECISION int8_t
 #endif
 
-typedef rd_status_t (*activity_recognition_cb)(const APP_ACTIVITY_RECOGNITION_PRECISION *accvalues, const int samples);
-
 /**
  * Initialize activity recognition
- * p_step_size: Step size must be greater than zero and smaller or equal than half of samples the model takes to predict activity.
  */
-rd_status_t app_har_init(const uint8_t p_step_size);
+rd_status_t app_har_init(void);
 
 /**
  * Uninitialize activity recognition

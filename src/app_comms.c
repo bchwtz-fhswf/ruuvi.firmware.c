@@ -264,18 +264,18 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
           switch(raw_message[3]) {
             case 3:
               LOGD("enable activity recognition\r\n");
-              err_code |= app_har_init(12);
+              err_code |= app_har_init();
               if(err_code==RD_SUCCESS) {
-                err_code |= app_enable_sensor_logging(NULL, true, app_har_collect_data);
+                err_code |= app_enable_sensor_logging(true, har_logging);
               }
               break;
             case 2:
               LOGD("enable streaming\r\n");
-              err_code |= app_enable_sensor_logging(reply_fp, false, NULL);
+              err_code |= app_enable_sensor_logging(false, acc_streaming);
               break;
             case 1:
               LOGD("enable logging\r\n");
-              err_code |= app_enable_sensor_logging(NULL, true, NULL);
+              err_code |= app_enable_sensor_logging(true, raw_logging);
               break;
             case 0:
               LOGD("disable logging\r\n");
@@ -291,7 +291,8 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
         case RE_STANDARD_VALUE_READ:
           // query logging data
           LOGD("query state of logging data\r\n");
-          err_code |= app_acc_logging_state();
+          msg.data_length = 5;
+          msg.data[4] = (uint8_t) app_acc_logging_state();
           break;
 
         default:

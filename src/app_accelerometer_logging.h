@@ -15,6 +15,12 @@
 #include "ruuvi_interface_communication.h"
 #include "app_activity_recognition.h"
 
+typedef enum {
+  no_logging,
+  raw_logging,
+  acc_streaming,
+  har_logging
+} acceleration_logging_mode;
 
 /**
  * @brief Disable data logging for sensor
@@ -28,7 +34,7 @@ rd_status_t app_disable_sensor_logging (void);
  *
  * @return RD_SUCCESS on success, error code from stack otherwise.
  */
-rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_db, const activity_recognition_cb p_callback);
+rd_status_t app_enable_sensor_logging(const bool format_db, const acceleration_logging_mode p_mode);
 
 /**
  * @brief Send logged data from ringbuffer using GATT
@@ -70,10 +76,9 @@ rd_status_t app_acc_logging_uninit(void);
 /**
  * @brief Query state if logging is active
  *
- * @return RD_SUCCESS if logging is active
- * @return RD_ERROR_NOT_INITIALIZED if logging is not active
+ * @return State of logging
  */
-rd_status_t app_acc_logging_state(void);
+acceleration_logging_mode app_acc_logging_state(void);
 
 /*
  *  Return Accelerometer logging and flash statistic

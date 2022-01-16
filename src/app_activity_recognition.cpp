@@ -16,6 +16,7 @@ extern "C" {
 #include "app_accelerometer_logging.h"
 #include "ruuvi_interface_log.h"
 #include "ruuvi_driver_sensor.h"
+#include "ruuvi_task_flash_ringbuffer.h"
 
 // Highpass Filter
 #include "filter.h"
@@ -73,13 +74,11 @@ static __attribute__((aligned(16)))uint8_t tensor_arena[kTensorArenaSize];
 // Highpass
 static BWHighPass* highpass[] = { nullptr,nullptr,nullptr };
 
-static uint8_t step_size;
 static uint8_t current_size;
 static uint8_t model_input_size;
-static uint8_t model_output_size;
 
 
-rd_status_t app_har_predict() {
+rd_status_t app_har_predict(void) {
 
   LOGD("HAR: Start prediction\r\n");
 
@@ -92,33 +91,37 @@ rd_status_t app_har_predict() {
   }
 
   // Read output (predicted y) of neural network
+  uint8_t output_to_save[APP_ACTIVITY_RECOGNITION_CLASS_COUNT];
   float* model_output = interpreter->typed_output_tensor<float>(0);
   float y_max = 0;
   uint8_t argmax = 0;
 
   // find argmax
-  for(int i=0; i<model_output_size; i++) {
-    LOGDf("Activity %d is %f\r\n", i, model_output[i]*1.0);
+  for(int i=0; i<APP_ACTIVITY_RECOGNITION_CLASS_COUNT; i++) {
+    //LOGDf("Activity %d is %f\r\n", i, model_output[i]);
+    output_to_save[i] = (uint8_t)(model_output[i]*255);
     if(model_output[i]>y_max) {
       y_max = model_output[i];
       argmax = i;
     }
   }
 
-  LOGDf("Current activity is %d\r\n", argmax);
+  LOGDf("Current activity is %s\r\n", APP_ACTIVITY_RECOGNITION_CLASSES[argmax]);
+
+  // Save output
+  rt_flash_ringbuffer_write(APP_ACTIVITY_RECOGNITION_CLASS_COUNT, output_to_save);
 
   return RD_SUCCESS;
 }
 
-rd_status_t app_har_init(uint8_t p_step_size) {
+rd_status_t app_har_init(void) {
 
   // See: https://www.tensorflow.org/lite/api_docs/cc/class/tflite/interpreter
 
   // Set up logging (modify tensorflow/lite/micro/debug_log.cc)
   error_reporter = new tflite::MicroErrorReporter();
 
-  // Say something to test error reporter
-  error_reporter->Report("Initializing TensorFlow Lite");
+  LOGD("Initializing TensorFlow Lite");
 
   // Map the model into a usable data structure
   model = tflite::GetModel(APP_ACTIVITY_MODEL_NAME);
@@ -128,8 +131,8 @@ rd_status_t app_har_init(uint8_t p_step_size) {
     return RD_ERROR_INTERNAL;
   }
 
-  // Pull in only needed operations (should match NN layers). Template parameter
-  // <n> is number of ops to be added. Available ops:
+  // Pull in only needed operations (should match NN layers). Template parameter <n>
+  // is number of ops to be added. Available ops:
   // tensorflow/lite/micro/kernels/micro_ops.h
   TfLiteStatus tflite_status; 
 
@@ -200,7 +203,6 @@ rd_status_t app_har_init(uint8_t p_step_size) {
   TfLiteTensor* model_input = interpreter->input(0);
   TfLiteTensor* model_output = interpreter->output(0);
   model_input_size = model_input->dims->data[1];
-  model_output_size = model_output->dims->data[1];
 
   // Print number of inputs
   LOGDf("Model has %d inputs\r\n", interpreter->inputs().size());
@@ -223,12 +225,6 @@ rd_status_t app_har_init(uint8_t p_step_size) {
   }
   LOGD(")\r\n");
 
-  if(p_step_size<=0) {
-    LOGD("Step size must be greater than zero\r\n");
-    return RD_ERROR_INVALID_LENGTH;
-  }
-
-  step_size = p_step_size;
   current_size = 0;
 
   // Instantiate High Pass Filter
@@ -301,11 +297,11 @@ rd_status_t app_har_collect_data(const APP_ACTIVITY_RECOGNITION_PRECISION* const
     if(current_size==model_input_size) {
       err_code |= app_har_predict();
 
-      // Copy data by step_size
-      current_size = model_input_size-step_size;
-      int copy_end = 3*(model_input_size-step_size);
+      // Copy data by step size
+      current_size = model_input_size-APP_ACTIVITY_RECOGNITION_STEP_SIZE;
+      int copy_end = 3*(model_input_size-APP_ACTIVITY_RECOGNITION_STEP_SIZE);
       for(int j=0; j<copy_end; j++) {
-        input[j] = input[j+step_size*3];
+        input[j] = input[j+APP_ACTIVITY_RECOGNITION_STEP_SIZE*3];
       }
     }
   }

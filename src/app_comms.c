@@ -79,6 +79,7 @@ typedef struct
     unsigned int disable_config : 1;   //!< Disable configuration mode.
 } mode_changes_t;
 #endif
+static volatile bool m_tx_done; //!< Flag for data transfer done
 
 static uint8_t m_bleadv_repeat_count; //!< Number of times to repeat advertisement.
 
@@ -153,6 +154,30 @@ static uint8_t initial_adv_send_count (void)
 }
 
 #if APP_COMMS_BIDIR_ENABLED
+// Returns true if command is allowed.
+// If Configuration is not allowed, command type must be read.
+static bool command_is_authorized (const uint8_t op)
+{
+    return (RE_STANDARD_OP_READ_BIT & op) || m_config_enabled_on_curr_conn;
+}
+static rd_status_t reply_unauthorized (const ri_comm_xfer_fp_t reply_fp,
+                                       const uint8_t * const raw_message)
+{
+    ri_comm_message_t msg = {0};
+    msg.data_length = RE_STANDARD_MESSAGE_LENGTH;
+    msg.repeat_count = 1;
+    msg.data[RE_STANDARD_DESTINATION_INDEX] = raw_message[RE_STANDARD_SOURCE_INDEX];
+    msg.data[RE_STANDARD_SOURCE_INDEX] = raw_message[RE_STANDARD_DESTINATION_INDEX];
+    //msg.data[RE_STANDARD_OPERATION_INDEX] = RE_STANDARD_OP_UNAUTHORIZED;
+
+    for (uint8_t ii = RE_STANDARD_PAYLOAD_START_INDEX;
+            ii < RE_STANDARD_MESSAGE_LENGTH; ii++)
+    {
+        msg.data[ii] = 0xFFU;
+    }
+
+    return reply_fp (&msg);
+}
 
 #if APP_SENSOR_LOGGING
 static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
@@ -210,7 +235,25 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
 
     return err_code;
 }
+static rd_status_t wait_for_tx_done (const uint32_t timeout_ms)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    const uint64_t start = ri_rtc_millis();
+    const uint64_t timeout = start + timeout_ms;
 
+    while ( (!m_tx_done) && (timeout > ri_rtc_millis()))
+    {
+        ri_yield();
+    }
+
+    if (!m_tx_done)
+    {
+        err_code |= RD_ERROR_TIMEOUT;
+    }
+
+    m_tx_done = false;
+    return err_code;
+}
 static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
                           const size_t data_len)
 {

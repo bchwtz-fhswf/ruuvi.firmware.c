@@ -254,6 +254,58 @@ static rd_status_t wait_for_tx_done (const uint32_t timeout_ms)
     m_tx_done = false;
     return err_code;
 }
+static rd_status_t password_check (const ri_comm_xfer_fp_t reply_fp,
+                                   const uint8_t * const raw_message)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    uint64_t entered_password = 0U;
+    bool auth_ok = false;
+    // Use non-zero initial value so passwords won't match on error
+    uint64_t current_password = 0xDEADBEEF12345678U;
+    re_op_t op = (re_op_t) raw_message[RE_STANDARD_OPERATION_INDEX];
+
+    if (RE_STANDARD_VALUE_READ == op)
+    {
+        err_code |= ri_comm_id_get (&current_password);
+
+        // Convert data to U64
+        for (uint8_t ii = RE_STANDARD_PAYLOAD_START_INDEX;
+                ii < RE_STANDARD_MESSAGE_LENGTH; ii++)
+        {
+            uint8_t byte_offset = RE_STANDARD_MESSAGE_LENGTH - ii - 1U;
+            uint8_t bit_offset = byte_offset * 8U;
+            uint64_t password_part = raw_message[ii];
+            password_part = password_part << bit_offset;
+            entered_password += password_part;
+        }
+    }
+
+    m_tx_done = false;
+
+    if (entered_password == current_password)
+    {
+        err_code |= reply_authorized (reply_fp, raw_message);
+        auth_ok = true;
+    }
+    else
+    {
+        err_code |= reply_unauthorized (reply_fp, raw_message);
+        auth_ok = false;
+    }
+
+    err_code |= wait_for_tx_done (BLOCKING_COMM_TIMEOUT_MS);
+
+    if (auth_ok)
+    {
+        app_comms_configure_next_enable ();
+    }
+    else
+    {
+        app_comms_configure_next_disable ();
+    }
+
+    return  err_code;
+}
 static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
                           const size_t data_len)
 {
@@ -446,7 +498,8 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
             case RE_ENV_PRES:
                 err_code |= app_sensor_handle (reply_fp, raw_message, data_len);
                 break;
-
+            case RE_SEC_PASS:
+                err_code |= password_check (reply_fp, raw_message);
 #if APP_SENSOR_LOGGING
             case 0xfa:
               err_code |= handle_lis2dh12_comms(reply_fp, raw_message, data_len);

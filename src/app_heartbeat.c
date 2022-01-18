@@ -277,8 +277,6 @@ rd_status_t app_heartbeat_init ()
             {
                 err_code |= ri_timer_start (heart_timer, current_heartbeat_ms, NULL);
             }
-            
-            //err_code |= ri_timer_start (heart_timer, current_heartbeat_ms, NULL);
         }
     }
 

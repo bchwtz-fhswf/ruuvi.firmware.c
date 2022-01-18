@@ -400,7 +400,6 @@ static rd_status_t handle_rtc_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const 
 static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
                           size_t data_len)
 {
-    LOG("Message received!\r\n");
     rd_status_t err_code = RD_SUCCESS;
 
     if (NULL == p_data)
@@ -420,7 +419,6 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
         err_code |= ri_gatt_params_request (RI_GATT_TURBO, CONN_PARAM_UPDATE_DELAY_MS);
         // Parse message type.
         const uint8_t * const raw_message = (uint8_t *) p_data;
-        LOG(raw_message);
         uint8_t type = raw_message[RE_STANDARD_DESTINATION_INDEX];
 
         // Route message to proper handler.

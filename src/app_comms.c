@@ -168,7 +168,7 @@ static rd_status_t reply_unauthorized (const ri_comm_xfer_fp_t reply_fp,
     msg.repeat_count = 1;
     msg.data[RE_STANDARD_DESTINATION_INDEX] = raw_message[RE_STANDARD_SOURCE_INDEX];
     msg.data[RE_STANDARD_SOURCE_INDEX] = raw_message[RE_STANDARD_DESTINATION_INDEX];
-    //msg.data[RE_STANDARD_OPERATION_INDEX] = RE_STANDARD_OP_UNAUTHORIZED;
+    msg.data[RE_STANDARD_OPERATION_INDEX] = RE_STANDARD_OP_UNAUTHORIZED;
 
     for (uint8_t ii = RE_STANDARD_PAYLOAD_START_INDEX;
             ii < RE_STANDARD_MESSAGE_LENGTH; ii++)
@@ -475,7 +475,7 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
         err_code |= ri_gatt_params_request (RI_GATT_TURBO, CONN_PARAM_UPDATE_DELAY_MS);
         // Parse message type.
         const uint8_t * const raw_message = (uint8_t *) p_data;
-        uint8_t type = raw_message[RE_STANDARD_DESTINATION_INDEX];
+        re_type_t type = raw_message[RE_STANDARD_DESTINATION_INDEX];
 
         // Route message to proper handler.
         switch (type)
@@ -653,6 +653,16 @@ void on_gatt_data_isr (void * p_data, size_t data_len)
     err_code |= ri_scheduler_event_put (p_data, (uint16_t) data_len, &handle_gatt_data);
     RD_ERROR_CHECK (err_code, RD_SUCCESS);
 }
+/**
+ * @brief Callback when data is sent via GATT
+ *
+ * Schedule handling incoming message and replying back via given function pointer.
+ */
+void on_gatt_tx_done_isr (void * p_data, size_t data_len)
+{
+    m_tx_done = true;
+}
+
 
 static rd_status_t ble_name_string_create (char * const name_str, const size_t name_len)
 {
@@ -723,10 +733,17 @@ rd_status_t app_comms_configure_next_enable (void)
     err_code |= ri_timer_start (m_comm_timer, APP_CONFIG_ENABLED_TIME_MS, &m_mode_ops);
     return err_code;
 }
+rd_status_t app_comms_configure_next_disable (void)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    err_code |= enable_config_on_next_conn (false);
+    return err_code;
+}
 
 #ifndef CEEDLING
 static
 #endif
+
 void handle_config_disable (void * p_data, uint16_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
@@ -878,6 +895,8 @@ static rd_status_t gatt_init (const ri_comm_dis_init_t * const p_dis, const bool
     rt_gatt_set_on_connected_isr (&on_gatt_connected_isr);
     rt_gatt_set_on_disconn_isr (&on_gatt_disconnected_isr);
     rt_gatt_set_on_received_isr (&on_gatt_data_isr);
+        rt_gatt_set_on_sent_isr (&on_gatt_tx_done_isr);
+
     err_code |= rt_gatt_adv_enable();
 #endif
     return err_code;

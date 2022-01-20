@@ -98,7 +98,7 @@ encode_to_5 (uint8_t * const output,
     re_status_t enc_code = RE_SUCCESS;
     re_5_data_t ep_data = {0};
     ep_5_measurement_count++;
-    ep_5_measurement_count %= (RE_5_SEQCTR_MAX + 1);
+    //ep_5_measurement_count %= (RE_5_SEQCTR_MAX + 1);
     ep_data.accelerationx_g   = rd_sensor_data_parse (data, RD_SENSOR_ACC_X_FIELD);
     ep_data.accelerationy_g   = rd_sensor_data_parse (data, RD_SENSOR_ACC_Y_FIELD);
     ep_data.accelerationz_g   = rd_sensor_data_parse (data, RD_SENSOR_ACC_Z_FIELD);
@@ -106,8 +106,8 @@ encode_to_5 (uint8_t * const output,
     ep_data.pressure_pa       = rd_sensor_data_parse (data, RD_SENSOR_PRES_FIELD);
     ep_data.temperature_c     = rd_sensor_data_parse (data, RD_SENSOR_TEMP_FIELD);
     ep_data.measurement_count = ep_5_measurement_count;
-    uint8_t mvtctr = (uint8_t) (app_sensor_event_count_get() % (RE_5_MVTCTR_MAX + 1));
-    ep_data.movement_count    = mvtctr;
+    //uint8_t mvtctr = (uint8_t) (app_sensor_event_count_get() % (RE_5_MVTCTR_MAX + 1));
+    //ep_data.movement_count    = mvtctr;
     err_code |= ri_radio_address_get (&ep_data.address);
     err_code |= ri_adv_tx_power_get (&ep_data.tx_power);
     err_code |= rt_adc_vdd_get (&ep_data.battery_v);

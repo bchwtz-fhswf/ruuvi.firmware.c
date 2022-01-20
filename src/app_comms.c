@@ -179,6 +179,25 @@ static rd_status_t reply_unauthorized (const ri_comm_xfer_fp_t reply_fp,
     return reply_fp (&msg);
 }
 
+static rd_status_t reply_authorized (const ri_comm_xfer_fp_t reply_fp,
+                                     const uint8_t * const raw_message)
+{
+    ri_comm_message_t msg = {0};
+    msg.data_length = RE_STANDARD_MESSAGE_LENGTH;
+    msg.repeat_count = 1;
+    msg.data[RE_STANDARD_DESTINATION_INDEX] = raw_message[RE_STANDARD_SOURCE_INDEX];
+    msg.data[RE_STANDARD_SOURCE_INDEX] = raw_message[RE_STANDARD_DESTINATION_INDEX];
+    msg.data[RE_STANDARD_OPERATION_INDEX] = RE_STANDARD_VALUE_WRITE;
+
+    for (uint8_t ii = RE_STANDARD_PAYLOAD_START_INDEX;
+            ii < RE_STANDARD_MESSAGE_LENGTH; ii++)
+    {
+        msg.data[ii] = raw_message[ii];
+    }
+
+    return reply_fp (&msg);
+}
+
 #if APP_SENSOR_LOGGING
 static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
                           const size_t data_len)

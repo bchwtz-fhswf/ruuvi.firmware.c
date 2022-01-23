@@ -284,3 +284,5 @@ build:
 build-and-run:
 	$(MAKE) -C src ruuvitag_b
 	$(MAKE) -C src flash
+run:
+	$(MAKE) -C src flash

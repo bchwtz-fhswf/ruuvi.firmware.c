@@ -19,7 +19,7 @@ extern "C" {
 #include "ruuvi_task_flash_ringbuffer.h"
 
 // Highpass Filter
-#include "filter.h"
+#include "dsp/filtering_functions.h"
 }
 
 // Tensorflow Includes
@@ -72,7 +72,9 @@ constexpr int kTensorArenaSize = 18 * 1024;
 static __attribute__((aligned(16)))uint8_t tensor_arena[kTensorArenaSize];
 
 // Highpass
-static BWHighPass* highpass[] = { nullptr,nullptr,nullptr };
+static q31_t highpass_coefficients_q31[sizeof(highpass_coefficients)/sizeof(float)];
+static arm_biquad_casd_df1_inst_q31 highpass[3];
+static q31_t highpass_state[3][4*APP_ACTIVITY_RECOGNITION_HIGHPASS_ORDER];
 
 static uint8_t current_size;
 static uint8_t model_input_size;
@@ -228,12 +230,10 @@ rd_status_t app_har_init(void) {
   current_size = 0;
 
   // Instantiate High Pass Filter
-  highpass[0] = create_bw_high_pass_filter(APP_ACTIVITY_RECOGNITION_HIGHPASS_ORDER, 
-      APP_ACTIVITY_RECOGNITION_SAMPLING_FREQUENCY, APP_ACTIVITY_RECOGNITION_HIGHPASS_CUTOFF);
-  highpass[1] = create_bw_high_pass_filter(APP_ACTIVITY_RECOGNITION_HIGHPASS_ORDER, 
-      APP_ACTIVITY_RECOGNITION_SAMPLING_FREQUENCY, APP_ACTIVITY_RECOGNITION_HIGHPASS_CUTOFF);
-  highpass[2] = create_bw_high_pass_filter(APP_ACTIVITY_RECOGNITION_HIGHPASS_ORDER, 
-      APP_ACTIVITY_RECOGNITION_SAMPLING_FREQUENCY, APP_ACTIVITY_RECOGNITION_HIGHPASS_CUTOFF);
+  arm_float_to_q31(highpass_coefficients, highpass_coefficients_q31, sizeof(highpass_coefficients)/sizeof(float));
+  for(int i=0; i<3; i++) {
+    arm_biquad_cascade_df1_init_q31(&highpass[i], APP_ACTIVITY_RECOGNITION_HIGHPASS_ORDER, highpass_coefficients_q31, highpass_state[i], 2);
+  }
 
   // Setup Sensor
 
@@ -263,9 +263,6 @@ rd_status_t app_har_uninit(void) {
 
     interpreter = nullptr;
     error_reporter = nullptr;
-    free_bw_high_pass(highpass[0]);
-    free_bw_high_pass(highpass[1]);
-    free_bw_high_pass(highpass[2]);
   }
 
   return RD_SUCCESS;
@@ -288,7 +285,14 @@ rd_status_t app_har_collect_data(const APP_ACTIVITY_RECOGNITION_PRECISION* const
 
     int copy_start = current_size*3;
     for(int j=0; j<block*3; j++) {
-      input[j+copy_start] = bw_high_pass(highpass[j%3], accdata[j]);
+      // In order to avoid overflows completely the input signal must be scaled down by 2 bits and lie in the range [-0.25 +0.25).
+      // see: https://www.keil.com/pack/doc/CMSIS/DSP/html/group__BiquadCascadeDF1.html#ga4e7dad0ee6949005909fd4fcf1249b79
+      float accdata_output = accdata[j]/512.0f;
+      q31_t filter_input;
+      q31_t filter_output;
+      arm_float_to_q31(&accdata_output, &filter_input, 1);
+      arm_biquad_cascade_df1_q31(&highpass[j%3], &filter_input, &filter_output, 1);
+      arm_q31_to_float(&filter_output, &input[j+copy_start], 1);
     }
 
     current_size += block;

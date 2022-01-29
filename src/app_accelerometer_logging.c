@@ -194,7 +194,12 @@ static bool callback_send_data_block(fdb_tsl_t tsl, void *arg) {
     uint32_t pos = 0;
     ri_comm_message_t msg;
     msg.data_length = 1+sizeof(fdb_time_t);
-    msg.data[0] = RE_STANDARD_LOG_VALUE_READ;
+    if(logging_mode!=har_logging) {
+      msg.data[0] = RE_STANDARD_LOG_VALUE_READ;
+    } else {
+      // use proprietary header when sending HAR data
+      msg.data[0] = 0xfd;
+    }
     msg.repeat_count = 1;
 
     // send timestamp
@@ -255,58 +260,62 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
         // retrieve Data from sensor
         err_code |= ri_lis2dh12_acceleration_raw_get( logged_data.data + SIZE_ELEMENT*ii );
 
-        if(logging_mode!=har_logging) {
+        // increment sample counter
+        logged_data.sample_counter++;
 
-            // increment sample counter
-            logged_data.sample_counter++;
+        if(logged_data.config->reserved0 == 0 || logged_data.sample_counter == logged_data.config->reserved0 ) {
 
-            if(logged_data.config->reserved0 == 0 || logged_data.sample_counter == logged_data.config->reserved0 ) {
+            if(logging_mode!=har_logging) {
+
                 // store value
                 memcpy(logged_data.data_to_store + SIZE_ELEMENT*logged_data.num_elements, logged_data.data + SIZE_ELEMENT*ii, SIZE_ELEMENT);
 
                 logged_data.num_elements++;
-                logged_data.sample_counter = 0;
-            }
 
-            if( ! (logged_data.num_elements<RI_LIS2DH12_FIFO_SIZE) ) {
+            } else {
 
-                // pack the bits
-                uint8_t sizeOfPackedData = (RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT * logged_data.config->resolution)/16; // how many bytes
-                uint8_t packeddata[RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT];
+                APP_ACTIVITY_RECOGNITION_PRECISION har_data[3];
 
-                // copy compacted sensor data
-                pack(logged_data.config->resolution, RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT, logged_data.data_to_store, packeddata);
+                #if APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
+                  // Value should be in the range -127 to +127. So multiply it by scaling factor.
+                  err_code |= rawToMg( (axis3bit16_t*) (logged_data.data + SIZE_ELEMENT*ii), har_data);
+                  float value_scale = 127.0/(1000.0*logged_data.config->scale);
+                  har_data[0] = har_data[0]*value_scale;
+                  har_data[1] = har_data[1]*value_scale;
+                  har_data[2] = har_data[2]*value_scale;
+                #else
+                  // Sensor operates at 8 Bit resolution. So only MSB is relevant.
+                  har_data[0] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 1];
+                  har_data[1] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 3];
+                  har_data[2] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 5];
+                #endif
 
-                // Collect Data in Flash page
-                err_code |= rt_flash_ringbuffer_write(sizeOfPackedData, packeddata);
-
-                // reset counter
+                // adjust timestamp per sample
+                logged_data.timestamp += 1000L/logged_data.config->samplerate;
                 logged_data.num_elements = 0;
 
-                LOGD("FIFO storing sample\r\n");
+                err_code |= app_har_collect_data(har_data, 1);
             }
-        } else {
 
-            APP_ACTIVITY_RECOGNITION_PRECISION har_data[3];
+            logged_data.sample_counter = 0;
+        }
 
-            #if APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
-              // Value should be in the range -127 to +127. So multiply it by scaling factor.
-              err_code |= rawToMg( (axis3bit16_t*) (logged_data.data + SIZE_ELEMENT*ii), har_data);
-              float value_scale = 127.0/(1000.0*logged_data.config->scale);
-              har_data[0] = har_data[0]*value_scale;
-              har_data[1] = har_data[1]*value_scale;
-              har_data[2] = har_data[2]*value_scale;
-            #else
-              // Sensor operates at 8 Bit resolution. So only MSB is relevant.
-              har_data[0] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 1];
-              har_data[1] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 3];
-              har_data[2] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 5];
-            #endif
+        if( ! (logged_data.num_elements<RI_LIS2DH12_FIFO_SIZE) ) {
 
-            // adjust timestamp per sample
-            logged_data.timestamp += 1000L/logged_data.config->samplerate;
+            // pack the bits
+            uint8_t sizeOfPackedData = (RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT * logged_data.config->resolution)/16; // how many bytes
+            uint8_t packeddata[RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT];
 
-            err_code |= app_har_collect_data(har_data, 1);
+            // copy compacted sensor data
+            pack(logged_data.config->resolution, RI_LIS2DH12_FIFO_SIZE * SIZE_ELEMENT, logged_data.data_to_store, packeddata);
+
+            // Collect Data in Flash page
+            err_code |= rt_flash_ringbuffer_write(sizeOfPackedData, packeddata);
+
+            // reset counter
+            logged_data.num_elements = 0;
+
+            LOGD("FIFO storing sample\r\n");
         }
     }
 

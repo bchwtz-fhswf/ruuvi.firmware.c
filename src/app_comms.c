@@ -242,9 +242,10 @@ static rd_status_t handle_sys_config_comms (const ri_comm_xfer_fp_t reply_fp, co
         msg.data[5] = heartbeat_ms;
         err_code |= app_heartbeat_start(heartbeat_ms);
         break;
-      default: 
-        break; 
-
+      default:
+        LOGD("unknown operation\r\n");
+        err_code |= RD_ERROR_INVALID_PARAM;
+        break;
     }
 
     // send response

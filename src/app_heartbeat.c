@@ -137,12 +137,16 @@ void heartbeat (void * p_event, uint16_t event_size)
     rd_status_t err_code = RD_SUCCESS;
     bool heartbeat_ok = false;
     rd_sensor_data_t data = { 0 };
+    size_t buffer_len = RI_COMM_MESSAGE_MAX_LENGTH;
     data.fields = app_sensor_available_data();
     float data_values[rd_sensor_data_fieldcount (&data)];
     data.data = data_values;
     app_sensor_get (&data);
     // Sensor read takes a long while, indicate activity once data is read.
     app_led_activity_signal (true);
+    m_dataformat_state = app_dataformat_next (m_dataformats_enabled, m_dataformat_state);
+    app_dataformat_encode (msg.data, &buffer_len, &data, m_dataformat_state);
+    msg.data_length = (uint8_t) buffer_len;
     encode_to_5 (&data, &msg);
 
     float humidity_rh = rd_sensor_data_parse (&data, RD_SENSOR_HUMI_FIELD);
@@ -183,7 +187,9 @@ void heartbeat (void * p_event, uint16_t event_size)
     {
         heartbeat_ok = true;
     }
-
+    
+    // Restore original message length for NFC
+    msg.data_length = (uint8_t) buffer_len;
     err_code = rt_nfc_send (&msg);
 
     if (RD_SUCCESS == err_code)

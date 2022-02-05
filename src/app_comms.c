@@ -3,6 +3,7 @@
 #include "app_heartbeat.h"
 #include "app_led.h"
 #include "app_sensor.h"
+#include "app_testing.h"
 #include "app_accelerometer_logging.h"
 #include "ruuvi_boards.h"
 #include "ruuvi_driver_sensor.h"
@@ -62,14 +63,10 @@ static inline void LOGHEX (const uint8_t * const msg, const size_t len)
 #define CONN_PARAM_UPDATE_DELAY_MS (30U * 1000U) //!< Delay before switching to faster conn params in long ops.
 
 #if APP_COMMS_BIDIR_ENABLED
-#ifndef CEEDLING
-static
-#endif
-bool m_config_enabled_on_curr_conn; //!< This connection has config enabled.
-#ifndef CEEDLING
-static
-#endif
-bool m_config_enabled_on_next_conn; //!< Next connection has config enabled.
+TESTABLE_STATIC bool
+m_config_enabled_on_curr_conn; //!< This connection has config enabled.
+TESTABLE_STATIC bool
+m_config_enabled_on_next_conn; //!< Next connection has config enabled.
 #endif
 
 #ifndef CEEDLING
@@ -83,15 +80,8 @@ static volatile bool m_tx_done; //!< Flag for data transfer done
 
 static uint8_t m_bleadv_repeat_count; //!< Number of times to repeat advertisement.
 
-#ifndef CEEDLING
-static
-#endif
-ri_timer_id_t m_comm_timer;    //!< Timer for communication mode changes.
-
-#ifndef CEEDLING
-static
-#endif
-mode_changes_t m_mode_ops;     //!< Pending mode changes.
+TESTABLE_STATIC ri_timer_id_t m_comm_timer;    //!< Timer for communication mode changes.
+TESTABLE_STATIC mode_changes_t m_mode_ops;     //!< Pending mode changes.    //!< Pending mode changes.
 
 uint8_t app_comms_bleadv_send_count_get (void)
 {
@@ -154,12 +144,14 @@ static uint8_t initial_adv_send_count (void)
 }
 
 #if APP_COMMS_BIDIR_ENABLED
+
 // Returns true if command is allowed.
 // If Configuration is not allowed, command type must be read.
 static bool command_is_authorized (const uint8_t op)
 {
     return (RE_STANDARD_OP_READ_BIT & op) || m_config_enabled_on_curr_conn;
 }
+
 static rd_status_t reply_unauthorized (const ri_comm_xfer_fp_t reply_fp,
                                        const uint8_t * const raw_message)
 {
@@ -254,6 +246,7 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
 
     return err_code;
 }
+
 static rd_status_t wait_for_tx_done (const uint32_t timeout_ms)
 {
     rd_status_t err_code = RD_SUCCESS;
@@ -273,6 +266,7 @@ static rd_status_t wait_for_tx_done (const uint32_t timeout_ms)
     m_tx_done = false;
     return err_code;
 }
+
 static rd_status_t password_check (const ri_comm_xfer_fp_t reply_fp,
                                    const uint8_t * const raw_message)
 {
@@ -467,12 +461,11 @@ static rd_status_t handle_rtc_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const 
     return err_code;
 }
 
-static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
+TESTABLE_STATIC handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
                           size_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     const uint8_t * const raw_message = (uint8_t *) p_data;
-
 
     if (NULL == p_data)
     {
@@ -517,6 +510,7 @@ static void handle_comms (const ri_comm_xfer_fp_t reply_fp, void * p_data,
             case RE_ENV_PRES:
                 err_code |= app_sensor_handle (reply_fp, raw_message, data_len);
                 break;
+
             case RE_SEC_PASS:
                 err_code |= password_check (reply_fp, raw_message);
 #if APP_SENSOR_LOGGING
@@ -595,10 +589,7 @@ static void config_cleanup_on_disconnect (void)
 
 #if APP_GATT_ENABLED
 
-#ifndef CEEDLING
-static
-#endif
-void handle_gatt_data (void * p_data, uint16_t data_len)
+TESTABLE_STATIC void handle_gatt_data (void * p_data, uint16_t data_len)
 {
     handle_comms (&rt_gatt_send_asynchronous, p_data, data_len);
 }
@@ -606,10 +597,7 @@ void handle_gatt_data (void * p_data, uint16_t data_len)
 /**
  * @brief Disable advertising for GATT connection and setup current connection.
  */
-#ifndef CEEDLING
-static
-#endif
-void handle_gatt_connected (void * p_data, uint16_t data_len)
+TESTABLE_STATIC void handle_gatt_connected (void * p_data, uint16_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     // Disables advertising for GATT, does not kick current connetion out.
@@ -623,10 +611,7 @@ void handle_gatt_connected (void * p_data, uint16_t data_len)
 /**
  * @brief Callback when GATT is connected
  */
-#ifndef CEEDLING
-static
-#endif
-void on_gatt_connected_isr (void * p_data, size_t data_len)
+TESTABLE_STATIC void on_gatt_connected_isr (void * p_data, size_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     err_code |= ri_scheduler_event_put (p_data, (uint16_t) data_len,
@@ -636,10 +621,7 @@ void on_gatt_connected_isr (void * p_data, size_t data_len)
     RD_ERROR_CHECK (err_code, RD_SUCCESS);
 }
 
-#ifndef CEEDLING
-static
-#endif
-void handle_gatt_disconnected (void * p_data, uint16_t data_len)
+TESTABLE_STATIC void handle_gatt_disconnected (void * p_data, uint16_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     config_cleanup_on_disconnect();
@@ -647,10 +629,7 @@ void handle_gatt_disconnected (void * p_data, uint16_t data_len)
 }
 
 /** @brief Callback when GATT is disconnected" */
-#ifndef CEEDLING
-static
-#endif
-void on_gatt_disconnected_isr (void * p_data, size_t data_len)
+TESTABLE_STATIC void on_gatt_disconnected_isr (void * p_data, size_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     err_code |= ri_scheduler_event_put (p_data, (uint16_t) data_len,
@@ -663,10 +642,7 @@ void on_gatt_disconnected_isr (void * p_data, size_t data_len)
  *
  * Schedule handling incoming message and replying back via given function pointer.
  */
-#ifndef CEEDLING
-static
-#endif
-void on_gatt_data_isr (void * p_data, size_t data_len)
+TESTABLE_STATIC void on_gatt_data_isr (void * p_data, size_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     err_code |= ri_scheduler_event_put (p_data, (uint16_t) data_len, &handle_gatt_data);
@@ -677,7 +653,7 @@ void on_gatt_data_isr (void * p_data, size_t data_len)
  *
  * Schedule handling incoming message and replying back via given function pointer.
  */
-void on_gatt_tx_done_isr (void * p_data, size_t data_len)
+TESTABLE_STATIC void on_gatt_tx_done_isr (void * p_data, size_t data_len)
 {
     m_tx_done = true;
 }
@@ -696,10 +672,7 @@ static rd_status_t ble_name_string_create (char * const name_str, const size_t n
 
 #if APP_NFC_ENABLED
 
-#ifndef CEEDLING
-static
-#endif
-void handle_nfc_connected (void * p_data, uint16_t data_len)
+TESTABLE_STATIC void handle_nfc_connected (void * p_data, uint16_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     // Kick BLE connection to not allow it to configure tag
@@ -709,20 +682,14 @@ void handle_nfc_connected (void * p_data, uint16_t data_len)
     RD_ERROR_CHECK (err_code, RD_SUCCESS);
 }
 
-#ifndef CEEDLING
-static
-#endif
-void on_nfc_connected_isr (void * p_data, size_t data_len)
+TESTABLE_STATIC void on_nfc_connected_isr (void * p_data, size_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     err_code |= ri_scheduler_event_put (p_data, (uint16_t) data_len, &handle_nfc_connected);
     RD_ERROR_CHECK (err_code, RD_SUCCESS);
 }
 
-#ifndef CEEDLING
-static
-#endif
-void handle_nfc_disconnected (void * p_data, uint16_t data_len)
+TESTABLE_STATIC void handle_nfc_disconnected (void * p_data, uint16_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     config_cleanup_on_disconnect();
@@ -731,15 +698,18 @@ void handle_nfc_disconnected (void * p_data, uint16_t data_len)
 }
 
 /** @brief Callback when NFC is disconnected" */
-#ifndef CEEDLING
-static
-#endif
-void on_nfc_disconnected_isr (void * p_data, size_t data_len)
+TESTABLE_STATIC void on_nfc_disconnected_isr (void * p_data, size_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
     err_code |= ri_scheduler_event_put (p_data, (uint16_t) data_len,
                                         &handle_nfc_disconnected);
     RD_ERROR_CHECK (err_code, RD_SUCCESS);
+}
+
+/** @brief Callback when NFC has sent data" */
+TESTABLE_STATIC void on_nfc_tx_done_isr (void * p_data, size_t data_len)
+{
+    m_tx_done = true;
 }
 #endif
 
@@ -752,6 +722,7 @@ rd_status_t app_comms_configure_next_enable (void)
     err_code |= ri_timer_start (m_comm_timer, APP_CONFIG_ENABLED_TIME_MS, &m_mode_ops);
     return err_code;
 }
+
 rd_status_t app_comms_configure_next_disable (void)
 {
     rd_status_t err_code = RD_SUCCESS;
@@ -759,11 +730,7 @@ rd_status_t app_comms_configure_next_disable (void)
     return err_code;
 }
 
-#ifndef CEEDLING
-static
-#endif
-
-void handle_config_disable (void * p_data, uint16_t data_len)
+TESTABLE_STATIC void handle_config_disable (void * p_data, uint16_t data_len)
 {
     rd_status_t err_code = RD_SUCCESS;
 
@@ -842,14 +809,12 @@ static rd_status_t nfc_init (ri_comm_dis_init_t * const p_dis)
     err_code |= rt_nfc_init (p_dis);
     rt_nfc_set_on_connected_isr (&on_nfc_connected_isr);
     rt_nfc_set_on_disconn_isr (&on_nfc_disconnected_isr);
+    rt_nfc_set_on_sent_isr (&on_nfc_tx_done_isr);
 #endif
     return err_code;
 }
 
-#ifndef CEEDLING
-static
-#endif
-void comm_mode_change_isr (void * const p_context)
+TESTABLE_STATIC void comm_mode_change_isr (void * const p_context)
 {
     mode_changes_t * const p_change = (mode_changes_t *) p_context;
 

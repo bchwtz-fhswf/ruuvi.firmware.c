@@ -24,6 +24,7 @@
 #include "app_comms.h"
 #include "crc16.h"
 #include "flashdb.h"
+#include "ruuvi_task_flashdb.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -457,6 +458,10 @@ rd_status_t app_enable_sensor_logging(const bool format_db, const acceleration_l
         return RD_ERROR_INVALID_STATE;
     }
 
+    if(p_mode==no_logging) {
+        return RD_ERROR_INVALID_PARAM;
+    }
+
     // find LIS2DH12
     rt_sensor_ctx_t *lis2dh12 = app_sensor_find("LIS2DH12");
 
@@ -470,14 +475,14 @@ rd_status_t app_enable_sensor_logging(const bool format_db, const acceleration_l
 
     rd_status_t err_code = RD_SUCCESS;
 
-    if(p_mode!=acc_streaming) {
+    if(p_mode==acc_streaming || rt_macronix_flash_exists()==RD_ERROR_NOT_FOUND) {
+        // initialize Ringbuffer with ram device
+        err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get, false);
+    } else {
         rt_flash_store("acceleration_logging_enabled", &p_mode, sizeof(p_mode));
         
         // initialize Ringbuffer with flash device
         err_code |= rt_flash_ringbuffer_create("accdata_tsdb", fdb_timestamp_get, format_db);
-    } else {
-        // initialize Ringbuffer with ram device
-        err_code |= rt_flash_ringbuffer_create("ram0", fdb_timestamp_get, false);
     }
 
     if(err_code==RD_SUCCESS) {
@@ -578,57 +583,63 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
     rd_status_t err_code = RD_SUCCESS;
     bool is_new_configuration = false;
 
-    // check the parameters if they should be changed and 
-    // if they are different from actual values
-    if(new_config->samplerate!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.samplerate) {
-      is_new_configuration = true;
-      sensor->configuration.samplerate = new_config->samplerate;
-    }
-    if(new_config->resolution!=RD_SENSOR_CFG_NO_CHANGE && new_config->resolution!=sensor->configuration.resolution) {
-      is_new_configuration = true;
-      sensor->configuration.resolution = new_config->resolution;
-    }
-    if(new_config->scale!=RD_SENSOR_CFG_NO_CHANGE && new_config->scale!=sensor->configuration.scale) {
-      is_new_configuration = true;
-      sensor->configuration.scale = new_config->scale;
-    }
-    if(new_config->dsp_function!=RD_SENSOR_CFG_NO_CHANGE && new_config->dsp_function!=sensor->configuration.dsp_function) {
-      is_new_configuration = true;
-      sensor->configuration.dsp_function = new_config->dsp_function;
-    }
-    if(new_config->dsp_parameter!=RD_SENSOR_CFG_NO_CHANGE && new_config->dsp_parameter!=sensor->configuration.dsp_parameter) {
-      is_new_configuration = true;
-      sensor->configuration.dsp_parameter = new_config->dsp_parameter;
-    }
-    if(new_config->mode!=RD_SENSOR_CFG_NO_CHANGE && new_config->mode!=sensor->configuration.mode) {
-      is_new_configuration = true;
-      sensor->configuration.mode = new_config->mode;
-    }
-    if(new_config->reserved0!=RD_SENSOR_CFG_NO_CHANGE && new_config->reserved0!=sensor->configuration.reserved0) {
-      // frequency divider
-      is_new_configuration = true;
-      sensor->configuration.reserved0 = new_config->reserved0;
-    }
+    if(logging_mode!=har_logging) {
+      // check the parameters if they should be changed and 
+      // if they are different from actual values
+      if(new_config->samplerate!=RD_SENSOR_CFG_NO_CHANGE && new_config->samplerate!=sensor->configuration.samplerate) {
+        is_new_configuration = true;
+        sensor->configuration.samplerate = new_config->samplerate;
+      }
+      if(new_config->resolution!=RD_SENSOR_CFG_NO_CHANGE && new_config->resolution!=sensor->configuration.resolution) {
+        is_new_configuration = true;
+        sensor->configuration.resolution = new_config->resolution;
+      }
+      if(new_config->scale!=RD_SENSOR_CFG_NO_CHANGE && new_config->scale!=sensor->configuration.scale) {
+        is_new_configuration = true;
+        sensor->configuration.scale = new_config->scale;
+      }
+      if(new_config->dsp_function!=RD_SENSOR_CFG_NO_CHANGE && new_config->dsp_function!=sensor->configuration.dsp_function) {
+        is_new_configuration = true;
+        sensor->configuration.dsp_function = new_config->dsp_function;
+      }
+      if(new_config->dsp_parameter!=RD_SENSOR_CFG_NO_CHANGE && new_config->dsp_parameter!=sensor->configuration.dsp_parameter) {
+        is_new_configuration = true;
+        sensor->configuration.dsp_parameter = new_config->dsp_parameter;
+      }
+      if(new_config->mode!=RD_SENSOR_CFG_NO_CHANGE && new_config->mode!=sensor->configuration.mode) {
+        is_new_configuration = true;
+        sensor->configuration.mode = new_config->mode;
+      }
+      if(new_config->reserved0!=RD_SENSOR_CFG_NO_CHANGE && new_config->reserved0!=sensor->configuration.reserved0) {
+        // frequency divider
+        is_new_configuration = true;
+        sensor->configuration.reserved0 = new_config->reserved0;
+      }
 
-    // if there is a new configuration
-    if(is_new_configuration) {
-        // set new sensor configuration
-        err_code |= rt_sensor_configure(sensor);
-        // store configuration in flash
-        err_code |= rt_sensor_store(sensor);
-        if(logging_mode!=no_logging) {
-            // clear ringbuffer
-            err_code = rt_flash_ringbuffer_clear();
-        }
-        // clear logged but not saved data
-        logged_data.num_elements = 0;
-        logged_data.sample_counter = 0;
-        logged_data.element_pos = 0xff;
+      // if there is a new configuration
+      if(is_new_configuration) {
+          // set new sensor configuration
+          err_code |= rt_sensor_configure(sensor);
+          // store configuration in flash
+          err_code |= rt_sensor_store(sensor);
+          if(logging_mode!=no_logging) {
+              // clear ringbuffer
+              err_code = rt_flash_ringbuffer_clear();
+          }
+          // clear logged but not saved data
+          logged_data.num_elements = 0;
+          logged_data.sample_counter = 0;
+          logged_data.element_pos = 0xff;
+      } else {
+          LOGD("Configuration not changed\r\n");
+      }
+
+      logged_data.last_status = err_code;
+
     } else {
-        LOGD("Configuration not changed\r\n");
+      LOG("Configuration cannot be changed if activity recognition is active.\r\n");
+      err_code = RD_ERROR_INVALID_STATE;
     }
-
-    logged_data.last_status = err_code;
 
     return err_code;
 }

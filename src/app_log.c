@@ -98,13 +98,16 @@ rd_status_t app_log_init (void)
 {
     rd_status_t err_code = RD_SUCCESS;
 
-    rt_macronix_high_performance_switch(true);
-    fdb_err_t result = fdb_tsdb_init(&tsdb, "environmental_data", "envdata_tsdb", app_log_timestamp_get, sizeof(app_log_element_t), NULL);
-    rt_macronix_high_performance_switch(false);
+    if(rt_macronix_flash_exists()==RD_SUCCESS) {
+        rt_macronix_high_performance_switch(true);
+        fdb_err_t result = fdb_tsdb_init(&tsdb, "environmental_data", "envdata_tsdb", app_log_timestamp_get, sizeof(app_log_element_t), NULL);
+        rt_macronix_high_performance_switch(false);
 
-    err_code |= rt_flashdb_to_ruuvi_error(result);
+        err_code |= rt_flashdb_to_ruuvi_error(result);
 
-    err_code |= app_log_read_boot_count();
+        err_code |= app_log_read_boot_count();
+    }
+
     return err_code;
 }
 
@@ -112,37 +115,39 @@ rd_status_t app_log_process (const rd_sensor_data_t * const sample)
 {
     rd_status_t err_code = RD_SUCCESS;
 
-    uint64_t next_sample_ms = m_last_sample_ms + (5 * 1000U); // save environmental data every 5 seconds
-    LOGD ("LOG: Sample received\r\n");
+    if(rt_macronix_flash_exists()==RD_SUCCESS) {
+        uint64_t next_sample_ms = m_last_sample_ms + (5 * 1000U); // save environmental data every 5 seconds
+        LOGD ("LOG: Sample received\r\n");
 
-    // Always store first sample.
-    if (0 == m_last_sample_ms)
-    {
-        next_sample_ms = 0;
-    }
-
-    //Check if new sample should be processed
-    if (next_sample_ms <= sample->timestamp_ms)
-    {
-        LOGD ("LOG: Storing sample\r\n");
-        app_log_element_t element =
+        // Always store first sample.
+        if (0 == m_last_sample_ms)
         {
-            .temperature_c = rd_sensor_data_parse (sample, RD_SENSOR_TEMP_FIELD),
-            .humidity_rh = rd_sensor_data_parse (sample, RD_SENSOR_HUMI_FIELD),
-            .pressure_pa = rd_sensor_data_parse (sample, RD_SENSOR_PRES_FIELD),
-        };
+            next_sample_ms = 0;
+        }
 
-        fdb_err_t result;
-        struct fdb_blob blob;
+        //Check if new sample should be processed
+        if (next_sample_ms <= sample->timestamp_ms)
+        {
+            LOGD ("LOG: Storing sample\r\n");
+            app_log_element_t element =
+            {
+                .temperature_c = rd_sensor_data_parse (sample, RD_SENSOR_TEMP_FIELD),
+                .humidity_rh = rd_sensor_data_parse (sample, RD_SENSOR_HUMI_FIELD),
+                .pressure_pa = rd_sensor_data_parse (sample, RD_SENSOR_PRES_FIELD),
+            };
+
+            fdb_err_t result;
+            struct fdb_blob blob;
   
-        result = fdb_tsl_append(&tsdb, fdb_blob_make(&blob, &element, sizeof(element)));
+            result = fdb_tsl_append(&tsdb, fdb_blob_make(&blob, &element, sizeof(element)));
 
-        m_last_sample_ms = sample->timestamp_ms;
-        err_code |= rt_flashdb_to_ruuvi_error(result);
-    }
-    else
-    {
-        // No action needed.
+            m_last_sample_ms = sample->timestamp_ms;
+            err_code |= rt_flashdb_to_ruuvi_error(result);
+        }
+        else
+        {
+            // No action needed.
+        }
     }
 
     return err_code;
@@ -150,7 +155,9 @@ rd_status_t app_log_process (const rd_sensor_data_t * const sample)
 
 void app_log_purge_flash (void)
 {
+  if(rt_macronix_flash_exists()==RD_SUCCESS) {
     fdb_tsl_clean(&tsdb);
+  }
 }
 
 
@@ -271,10 +278,12 @@ rd_status_t app_log_send_data (const ri_comm_xfer_fp_t reply_fp,
 {
     rd_status_t err_code = RD_SUCCESS;
 
-    void *args[3] = { &tsdb, reply_fp, &err_code };
-    fdb_tsl_iter_by_time(&tsdb, start_time_ms, current_time_ms, app_log_send_fields, args );
+    if(rt_macronix_flash_exists()==RD_SUCCESS) {
+        void *args[3] = { &tsdb, reply_fp, &err_code };
+        fdb_tsl_iter_by_time(&tsdb, start_time_ms, current_time_ms, app_log_send_fields, args );
 
-    err_code |= app_log_send_eof (reply_fp);
+        err_code |= app_log_send_eof (reply_fp);
+    }
 
     return err_code;
 }

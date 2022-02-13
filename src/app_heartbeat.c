@@ -37,7 +37,13 @@
 #define APP_DF_5_ENABLED 1
 #define APP_DF_8_ENABLED 0
 #define APP_DF_FA_ENABLED 0
+
+static ri_timer_id_t heart_timer; //!< Timer for updating data.
+
+static uint64_t last_heartbeat_timestamp_ms;
+
 static app_dataformat_t m_dataformat_state; //!< State of heartbeat.
+
 static app_dataformats_t m_dataformats_enabled =
 {
     .DF_3  = APP_DF_3_ENABLED,
@@ -46,14 +52,13 @@ static app_dataformats_t m_dataformats_enabled =
     .DF_FA = APP_DF_FA_ENABLED
 }; //!< Flags of enabled formats
 
-static ri_timer_id_t heart_timer; //!< Timer for updating data.
+
 
 #ifndef CEEDLING
 static
 #endif
 uint16_t m_measurement_count; //!< Increment on new samples.
 
-static uint64_t last_heartbeat_timestamp_ms;
 
 static inline void LOG (const char * const msg)
 {

@@ -97,9 +97,6 @@ static bool ram_db;
 // Function for transfer of RAM DB is already scheduled
 volatile bool ram_db_transfer = false;
 
-/* KVDB object */
-static struct fdb_kvdb kvdb = {0};
-
 static void pack8(const uint16_t sizeData, const uint8_t *const data, uint8_t *const packeddata)
 {
   for (int i = 0; i < sizeData / 2; i++)
@@ -456,7 +453,7 @@ rd_status_t app_disable_sensor_logging(void)
 
   struct fdb_blob blob;
   int acceleration_logging_enabled = 0;
-  fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
+  fdb_kv_set_blob(get_kvdb_conn(), "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
 
   return err_code;
 }
@@ -492,7 +489,7 @@ rd_status_t app_enable_sensor_logging(const bool use_ram_db, const bool format_d
   {
     struct fdb_blob blob;
     int acceleration_logging_enabled = 1;
-    fdb_kv_set_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
+    fdb_kv_set_blob(get_kvdb_conn(), "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
 
     char *partition;
 
@@ -676,7 +673,7 @@ rd_status_t app_acc_logging_configuration_set(rt_sensor_ctx_t *const sensor,
     // store configuration in flash
     err_code |= rt_sensor_store(sensor);
     // TODO: insert code to save in fdb
-    rt_sensor_store_fdb(&kvdb, sensor);
+    rt_sensor_store_fdb(get_kvdb_conn(), sensor);
     if (app_acc_logging_state() == RD_SUCCESS)
     {
       // clear ringbuffer
@@ -727,12 +724,12 @@ rd_status_t app_acc_logging_init(void)
    * &default_kv: The default KV nodes. It will auto add to KVDB when first initialize successfully.
    *        NULL: The user data if you need, now is empty.
    */
-  fdb_err_t result = fdb_kvdb_init(&kvdb, "env", partition, &default_kv, NULL);
+  fdb_err_t result = fdb_kvdb_init(get_kvdb_conn(), "env", partition, &default_kv, NULL);
   rt_macronix_high_performance_switch(false); //resetting high-power mode in case of factory reset
   if (result == FDB_NO_ERR)
   {
 
-    fdb_kv_get_blob(&kvdb, "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
+    fdb_kv_get_blob(get_kvdb_conn(), "acceleration_logging_enabled", fdb_blob_make(&blob, &acceleration_logging_enabled, sizeof(acceleration_logging_enabled)));
 
     if (blob.saved.len > 0 && acceleration_logging_enabled)
     {

@@ -286,3 +286,6 @@ build-and-run:
 	$(MAKE) -C src flash
 run:
 	$(MAKE) -C src flash
+
+debug:
+	$(MAKE) -C src debug

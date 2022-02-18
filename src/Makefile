@@ -17,6 +17,10 @@ sync:
 	git submodule sync --recursive
 	git submodule update --init --recursive
 
+debug:
+	@echo build FW ${VERSION}
+	$(MAKE) -C targets/ruuvitag_b/armgcc clean
+	$(MAKE) -C targets/ruuvitag_b/armgcc DEBUG=-DNDEBUG FW_VERSION=-DAPP_FW_VERSION=${VERSION}
 
 ruuvitag_b:
 	@echo build FW ${VERSION}

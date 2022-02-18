@@ -40,3 +40,4 @@ nrfutil pkg generate --application _build/nrf52832_xxaa.hex --application-versio
 mv packet.hex ${BINNAME}\_full.hex
 mv _build/nrf52832_xxaa.map ${BINNAME}\_app.map
 mv _build/nrf52832_xxaa.hex ${BINNAME}\_app.hex
+cp ruuvitag_b\_armgcc\_ruuvifw\_default\_${VERSION}\_full.hex program_full.hex

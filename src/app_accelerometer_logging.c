@@ -278,7 +278,7 @@ static void fifo_full_handler(void *p_event_data, uint16_t event_size)
     // increment sample counter
     logged_data.sample_counter++;
 
-    if (logged_data.config->reserved0 == 0 || logged_data.sample_counter == logged_data.config->reserved0)
+    if (logged_data.config->divider == 0 || logged_data.sample_counter == logged_data.config->divider)
     {
       // store value
       memcpy(logged_data.data_to_store + SIZE_ELEMENT * logged_data.num_elements, logged_data.data + SIZE_ELEMENT * ii, SIZE_ELEMENT);
@@ -658,11 +658,11 @@ rd_status_t app_acc_logging_configuration_set(rt_sensor_ctx_t *const sensor,
     is_new_configuration = true;
     sensor->configuration.mode = new_config->mode;
   }
-  if (new_config->reserved0 != RD_SENSOR_CFG_NO_CHANGE && new_config->reserved0 != sensor->configuration.reserved0)
+  if (new_config->divider != RD_SENSOR_CFG_NO_CHANGE && new_config->divider != sensor->configuration.divider)
   {
     // frequency divider
     is_new_configuration = true;
-    sensor->configuration.reserved0 = new_config->reserved0;
+    sensor->configuration.divider = new_config->divider;
   }
 
   // if there is a new configuration
@@ -673,7 +673,7 @@ rd_status_t app_acc_logging_configuration_set(rt_sensor_ctx_t *const sensor,
     // store configuration in flash
     err_code |= rt_sensor_store(sensor);
     // TODO: insert code to save in fdb
-    rt_sensor_store_fdb(get_kvdb_conn(), sensor);
+    // rt_sensor_store_fdb(get_kvdb_conn(), sensor);
     if (app_acc_logging_state() == RD_SUCCESS)
     {
       // clear ringbuffer
@@ -785,49 +785,3 @@ rd_status_t app_acc_logging_statistic(uint8_t *const statistik)
 rd_status_t app_acc_logging_state(void) { return RD_ERROR_NOT_ENABLED; }
 #endif
 
-void rt_sensor_store_fdb(fdb_kvdb_t *kvdb, rt_sensor_ctx_t *sensor)
-{
-  struct fdb_blob blob;
-  int boot_count = 0;
-
-  { /* GET the KV value */
-    /* get the "boot_count" KV value */
-    fdb_kv_get_blob(kvdb, "boot_count", fdb_blob_make(&blob, &boot_count, sizeof(boot_count)));
-    /* the blob.saved.len is more than 0 when get the value successful */
-    if (blob.saved.len > 0)
-    {
-      // FDB_INFO("get the 'boot_count' value is %d\n", boot_count);
-    }
-    else
-    {
-      // FDB_INFO("get the 'boot_count' failed\n");
-    }
-  }
-
-  { /* CHANGE the KV value */
-    /* increase the boot count */
-    boot_count++;
-    /* change the "boot_count" KV's value */
-    fdb_kv_set_blob(kvdb, "boot_count", fdb_blob_make(&blob, &boot_count, sizeof(boot_count)));
-  }
-}
-
-rt_sensor_ctx_t * rt_get_sensor_fdb(fdb_kvdb_t *kvdb)
-{
-
-  struct fdb_blob blob;
-  int boot_count = 0;
-  rt_sensor_ctx_t * sensor;
-
-  fdb_kv_get_blob(kvdb, "boot_count", fdb_blob_make(&blob, &boot_count, sizeof(boot_count)));
-  /* the blob.saved.len is more than 0 when get the value successful */
-  if (blob.saved.len > 0)
-  {
-    return sensor;
-    // FDB_INFO("get the 'boot_count' value is %d\n", boot_count);
-  }
-  else
-  {
-    // FDB_INFO("get the 'boot_count' failed\n");
-  }
-}

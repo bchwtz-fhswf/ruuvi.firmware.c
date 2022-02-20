@@ -9,17 +9,6 @@
 #define APP_ACTIVITY_RECOGNITION_H
 
 #include "ruuvi_driver_error.h"
-#include "har_3xCNN2d_quantized.h"
-
-#ifndef APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
-#define APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT 1
-#endif
-
-#if APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
-#define APP_ACTIVITY_RECOGNITION_PRECISION float
-#else
-#define APP_ACTIVITY_RECOGNITION_PRECISION int8_t
-#endif
 
 /**
  * Initialize activity recognition
@@ -34,8 +23,7 @@ rd_status_t app_har_uninit(void);
 /**
  * Collect and predict acceleration data
  * accdata: Acceleration data
- * samples: Number of xyz tuples in accdata
  */
-rd_status_t app_har_collect_data(const APP_ACTIVITY_RECOGNITION_PRECISION* const accdata, const int samples);
+rd_status_t app_har_collect_data(float* const accdata);
 
 #endif

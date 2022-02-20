@@ -275,27 +275,15 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
 
             } else {
 
-                APP_ACTIVITY_RECOGNITION_PRECISION har_data[3];
+                float har_data[3];
 
-                #if APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
-                  // Value should be in the range -127 to +127. So multiply it by scaling factor.
-                  err_code |= rawToMg( (axis3bit16_t*) (logged_data.data + SIZE_ELEMENT*ii), har_data);
-                  float value_scale = 127.0/(1000.0*logged_data.config->scale);
-                  har_data[0] = har_data[0]*value_scale;
-                  har_data[1] = har_data[1]*value_scale;
-                  har_data[2] = har_data[2]*value_scale;
-                #else
-                  // Sensor operates at 8 Bit resolution. So only MSB is relevant.
-                  har_data[0] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 1];
-                  har_data[1] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 3];
-                  har_data[2] = (int8_t)logged_data.data[SIZE_ELEMENT*ii + 5];
-                #endif
+                rawToMg ((axis3bit16_t*)(logged_data.data+SIZE_ELEMENT*ii), har_data);
 
                 // adjust timestamp per sample
                 logged_data.timestamp += 1000L/logged_data.config->samplerate;
                 logged_data.num_elements = 0;
 
-                err_code |= app_har_collect_data(har_data, 1);
+                err_code |= app_har_collect_data(har_data) & ~RD_STATUS_MORE_AVAILABLE;
             }
 
             logged_data.sample_counter = 0;

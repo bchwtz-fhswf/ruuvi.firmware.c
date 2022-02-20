@@ -46,6 +46,15 @@
             "servertype": "jlink",
             "device": "nrf52",
             "preLaunchTask": "make"
+        },
+        {
+            "name": "JLink Attach",
+            "type": "cortex-debug",
+            "request": "attach",
+            "executable": "${workspaceRoot}/src/targets/ruuvitag_b/armgcc/_build/nrf52832_xxaa.out",
+            "cwd": "${workspaceRoot}",
+            "servertype": "jlink",
+            "device": "nrf52"
         }
     ]
 }

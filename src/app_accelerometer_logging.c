@@ -634,6 +634,10 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
 
 rd_status_t app_acc_logging_init(void) {
 
+#if RUUVI_RUN_TESTS
+  app_har_selftest();
+#endif
+
   acceleration_logging_mode stored_mode;
   rd_status_t result = rt_flash_load("acceleration_logging_enabled", &stored_mode, sizeof(stored_mode));
 

@@ -7,6 +7,7 @@
 
 #include "app_config.h"
 #include "app_comms.h"
+#include "app_dataformats.h"
 #include "app_heartbeat.h"
 #include "app_led.h"
 #include "app_log.h"
@@ -32,15 +33,35 @@
 
 
 #define U8_MASK (0xFFU)
+#define U8_MASK (0xFFU)
+#define APP_DF_3_ENABLED 0
+#define APP_DF_5_ENABLED 1
+#define APP_DF_8_ENABLED 0
+#define APP_DF_FA_ENABLED 0
 
 
 static ri_timer_id_t heart_timer; //!< Timer for updating data.
+
+static uint64_t last_heartbeat_timestamp_ms;
+
+static app_dataformat_t m_dataformat_state; //!< State of heartbeat.
+
+static app_dataformats_t m_dataformats_enabled =
+{
+    .DF_3  = APP_DF_3_ENABLED,
+    .DF_5  = APP_DF_5_ENABLED,
+    .DF_8  = APP_DF_8_ENABLED,
+    .DF_FA = APP_DF_FA_ENABLED
+}; //!< Flags of enabled formats
+
+
 
 #ifndef CEEDLING
 static
 #endif
 uint16_t m_measurement_count; //!< Increment on new samples.
 
+<<<<<<< HEAD
 static uint64_t last_heartbeat_timestamp_ms;
 static uint16_t current_heartbeat_ms = APP_HEARTBEAT_INTERVAL_MS; //As inital value
 
@@ -48,6 +69,8 @@ static const uint16_t file_id = 24U;
 static const uint16_t record_id = 24U;
 
 static const uint16_t min_hearbeat = 100U; //minimum hearbeat in ms
+=======
+>>>>>>> merge_3.31.1
 
 static inline void LOG (const char * const msg)
 {
@@ -131,12 +154,16 @@ void heartbeat (void * p_event, uint16_t event_size)
     rd_status_t err_code = RD_SUCCESS;
     bool heartbeat_ok = false;
     rd_sensor_data_t data = { 0 };
+    size_t buffer_len = RI_COMM_MESSAGE_MAX_LENGTH;
     data.fields = app_sensor_available_data();
     float data_values[rd_sensor_data_fieldcount (&data)];
     data.data = data_values;
     app_sensor_get (&data);
     // Sensor read takes a long while, indicate activity once data is read.
     app_led_activity_signal (true);
+    m_dataformat_state = app_dataformat_next (m_dataformats_enabled, m_dataformat_state);
+    // app_dataformat_encode (msg.data, &buffer_len, &data, m_dataformat_state); can't be called or else program crashes.
+    msg.data_length = (uint8_t) buffer_len;
     encode_to_5 (&data, &msg);
 
     float humidity_rh = rd_sensor_data_parse (&data, RD_SENSOR_HUMI_FIELD);
@@ -178,6 +205,8 @@ void heartbeat (void * p_event, uint16_t event_size)
         heartbeat_ok = true;
     }
 
+    // Restore original message length for NFC
+    msg.data_length = (uint8_t) buffer_len;
     err_code = rt_nfc_send (&msg);
 
     if (RD_SUCCESS == err_code)
@@ -190,9 +219,10 @@ void heartbeat (void * p_event, uint16_t event_size)
         ri_watchdog_feed();
         last_heartbeat_timestamp_ms = ri_rtc_millis();
     }
-
-    err_code = app_log_process (&data);
+    
+    // Turn LED off before starting lengthy flash operations
     app_led_activity_signal (false);
+    err_code = app_log_process (&data);
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
 

@@ -226,7 +226,8 @@ RUUVI_PRJ_SOURCES= \
   $(PROJ_DIR)/app_log.c \
   $(PROJ_DIR)/app_power.c \
   $(PROJ_DIR)/app_sensor.c \
-  $(PROJ_DIR)/app_accelerometer_logging.c
+  $(PROJ_DIR)/app_accelerometer_logging.c \
+  $(PROJ_DIR)/app_dataformats.c 
 
 COMMON_SOURCES= \
   $(RUUVI_LIB_SOURCES) \

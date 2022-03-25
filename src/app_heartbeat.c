@@ -7,6 +7,7 @@
 
 #include "app_config.h"
 #include "app_comms.h"
+#include "app_dataformats.h"
 #include "app_heartbeat.h"
 #include "app_led.h"
 #include "app_log.h"
@@ -24,6 +25,7 @@
 #include "ruuvi_task_advertisement.h"
 #include "ruuvi_task_gatt.h"
 #include "ruuvi_task_nfc.h"
+#include "ruuvi_task_flash.h"
 
 
 #include <stdio.h>
@@ -31,8 +33,28 @@
 
 
 #define U8_MASK (0xFFU)
+#define U8_MASK (0xFFU)
+#define APP_DF_3_ENABLED 0
+#define APP_DF_5_ENABLED 1
+#define APP_DF_8_ENABLED 0
+#define APP_DF_FA_ENABLED 0
+
 
 static ri_timer_id_t heart_timer; //!< Timer for updating data.
+
+static uint64_t last_heartbeat_timestamp_ms;
+
+static app_dataformat_t m_dataformat_state; //!< State of heartbeat.
+
+static app_dataformats_t m_dataformats_enabled =
+{
+    .DF_3  = APP_DF_3_ENABLED,
+    .DF_5  = APP_DF_5_ENABLED,
+    .DF_8  = APP_DF_8_ENABLED,
+    .DF_FA = APP_DF_FA_ENABLED
+}; //!< Flags of enabled formats
+
+
 
 #ifndef CEEDLING
 static
@@ -40,6 +62,12 @@ static
 uint16_t m_measurement_count; //!< Increment on new samples.
 
 static uint64_t last_heartbeat_timestamp_ms;
+static uint16_t current_heartbeat_ms = APP_HEARTBEAT_INTERVAL_MS; //As inital value
+
+static const uint16_t file_id = 24U;
+static const uint16_t record_id = 24U;
+
+static const uint16_t min_hearbeat = 100U; //minimum hearbeat in ms
 
 static inline void LOG (const char * const msg)
 {
@@ -123,12 +151,16 @@ void heartbeat (void * p_event, uint16_t event_size)
     rd_status_t err_code = RD_SUCCESS;
     bool heartbeat_ok = false;
     rd_sensor_data_t data = { 0 };
+    size_t buffer_len = RI_COMM_MESSAGE_MAX_LENGTH;
     data.fields = app_sensor_available_data();
     float data_values[rd_sensor_data_fieldcount (&data)];
     data.data = data_values;
     app_sensor_get (&data);
     // Sensor read takes a long while, indicate activity once data is read.
     app_led_activity_signal (true);
+    m_dataformat_state = app_dataformat_next (m_dataformats_enabled, m_dataformat_state);
+    // app_dataformat_encode (msg.data, &buffer_len, &data, m_dataformat_state); can't be called or else program crashes.
+    msg.data_length = (uint8_t) buffer_len;
     encode_to_5 (&data, &msg);
 
     float humidity_rh = rd_sensor_data_parse (&data, RD_SENSOR_HUMI_FIELD);
@@ -170,6 +202,8 @@ void heartbeat (void * p_event, uint16_t event_size)
         heartbeat_ok = true;
     }
 
+    // Restore original message length for NFC
+    msg.data_length = (uint8_t) buffer_len;
     err_code = rt_nfc_send (&msg);
 
     if (RD_SUCCESS == err_code)
@@ -182,11 +216,60 @@ void heartbeat (void * p_event, uint16_t event_size)
         ri_watchdog_feed();
         last_heartbeat_timestamp_ms = ri_rtc_millis();
     }
-
-    err_code = app_log_process (&data);
+    
+    // Turn LED off before starting lengthy flash operations
     app_led_activity_signal (false);
+    err_code = app_log_process (&data);
     RD_ERROR_CHECK (err_code, ~RD_ERROR_FATAL);
 }
+
+
+static inline rd_status_t rt_heartbeat_store (uint16_t heartbeat_ms)
+{
+    rd_status_t err_code = RD_SUCCESS;
+    
+    if (rt_flash_busy())
+    {
+        err_code |= RD_ERROR_BUSY;
+    }
+    else if (heartbeat_ms < min_hearbeat)
+    {
+        err_code |= RD_ERROR_INVALID_PARAM;
+    }
+    else
+    {
+        current_heartbeat_ms = heartbeat_ms;
+        err_code |= rt_flash_store (file_id, record_id,
+                                    & (current_heartbeat_ms),
+                                    sizeof (uint32_t));
+    }
+
+    return err_code;
+}
+
+
+static inline rd_status_t rt_heartbeat_load ()
+{
+    rd_status_t err_code = RD_SUCCESS;
+
+    if (rt_flash_busy())
+    {
+        err_code |= RD_ERROR_BUSY;
+    }
+    else
+    {
+        err_code |= rt_flash_load (file_id, record_id,
+                                   & (current_heartbeat_ms),
+                                   sizeof (uint32_t));
+        if(err_code == RD_ERROR_NOT_FOUND)
+        {
+            current_heartbeat_ms = APP_HEARTBEAT_INTERVAL_MS;
+            err_code = RD_SUCCESS;
+        }
+    }
+    return err_code;
+}
+
 
 /**
  * @brief When timer triggers, schedule reading sensors and sending data.
@@ -201,7 +284,7 @@ void schedule_heartbeat_isr (void * const p_context)
     ri_scheduler_event_put (NULL, 0U, &heartbeat);
 }
 
-rd_status_t app_heartbeat_init (void)
+rd_status_t app_heartbeat_init ()
 {
     rd_status_t err_code = RD_SUCCESS;
 
@@ -216,14 +299,18 @@ rd_status_t app_heartbeat_init (void)
 
         if (RD_SUCCESS == err_code)
         {
-            err_code |= ri_timer_start (heart_timer, APP_HEARTBEAT_INTERVAL_MS, NULL);
+            
+            if(rt_heartbeat_load() == RD_SUCCESS) 
+            {
+                err_code |= ri_timer_start (heart_timer, current_heartbeat_ms, NULL);
+            }
         }
     }
 
     return err_code;
 }
 
-rd_status_t app_heartbeat_start (void)
+rd_status_t app_heartbeat_start (uint16_t heartbeat_ms)
 {
     rd_status_t err_code = RD_SUCCESS;
 
@@ -234,7 +321,8 @@ rd_status_t app_heartbeat_start (void)
     else
     {
         heartbeat (NULL, 0);
-        err_code |= ri_timer_start (heart_timer, APP_HEARTBEAT_INTERVAL_MS, NULL);
+        err_code |= rt_heartbeat_store(heartbeat_ms);
+        err_code |= ri_timer_start (heart_timer, current_heartbeat_ms, NULL);
     }
 
     return err_code;
@@ -261,6 +349,12 @@ bool app_heartbeat_overdue (void)
     return ri_rtc_millis() > (last_heartbeat_timestamp_ms +
                               APP_HEARTBEAT_OVERDUE_INTERVAL_MS);
 }
+
+uint16_t get_current_heartbeat(void)
+{
+    return current_heartbeat_ms;
+}
+
 
 #ifdef CEEDLING
 // Give CEEDLING a handle to state of module.

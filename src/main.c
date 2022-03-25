@@ -86,7 +86,7 @@ void setup (void)
     err_code |= app_comms_init (APP_LOCKED_AT_BOOT);
     err_code |= app_sensor_vdd_sample();
     err_code |= app_heartbeat_init();
-    err_code |= app_heartbeat_start();
+    err_code |= app_heartbeat_start(get_current_heartbeat());
 
 #if APP_SENSOR_LOGGING
     err_code |= app_acc_logging_init();

@@ -61,7 +61,6 @@ static
 #endif
 uint16_t m_measurement_count; //!< Increment on new samples.
 
-<<<<<<< HEAD
 static uint64_t last_heartbeat_timestamp_ms;
 static uint16_t current_heartbeat_ms = APP_HEARTBEAT_INTERVAL_MS; //As inital value
 
@@ -69,8 +68,6 @@ static const uint16_t file_id = 24U;
 static const uint16_t record_id = 24U;
 
 static const uint16_t min_hearbeat = 100U; //minimum hearbeat in ms
-=======
->>>>>>> merge_3.31.1
 
 static inline void LOG (const char * const msg)
 {

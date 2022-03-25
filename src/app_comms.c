@@ -247,7 +247,6 @@ static rd_status_t handle_lis2dh12_comms (const ri_comm_xfer_fp_t reply_fp, cons
     return err_code;
 }
 
-<<<<<<< HEAD
 static uint16_t get_heartbeat_from_raw_message (const uint8_t * const raw_message)
 {
     // Parse heartbeat from raw_message asuming that heartbeat is decoded in 2 bytes
@@ -293,7 +292,6 @@ static rd_status_t handle_sys_config_comms (const ri_comm_xfer_fp_t reply_fp, co
     return err_code;
 }
 
-=======
 static rd_status_t wait_for_tx_done (const uint32_t timeout_ms)
 {
     rd_status_t err_code = RD_SUCCESS;
@@ -366,7 +364,6 @@ static rd_status_t password_check (const ri_comm_xfer_fp_t reply_fp,
 
     return  err_code;
 }
->>>>>>> merge_3.31.1
 static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, const uint8_t * const raw_message,
                           const size_t data_len)
 {

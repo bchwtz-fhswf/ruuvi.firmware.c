@@ -408,11 +408,15 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
           break;
 
         case RE_STANDARD_SENSOR_CONFIGURATION_READ:
-          // read sensor configuration
-          LOGD("read sensor configuration\r\n");
-          msg.data_length += sizeof(rd_sensor_configuration_t);
-          memcpy(msg.data+4, &lis2dh12->configuration, sizeof(rd_sensor_configuration_t));
-          break;
+            // read sensor configuration
+            LOGD("read sensor configurations\r\n");
+            for(int i = 0; i < sizeof(&lis2dh12->historical_configurations); i++) {
+                msg.data_length += sizeof(rd_sensor_configuration_t);
+                memcpy(msg.data+4, &lis2dh12->configuration, sizeof(msg.data_length));
+            }
+            // memcpy(msg.data+4, &lis2dh12->configuration, sizeof(&lis2dh12->historical_configurations));
+            // msg.data_length += sizeof(rd_sensor_configuration_t);
+            break;
 
         case RE_STANDARD_VALUE_WRITE:
           // enable / disable logging of acceleration data

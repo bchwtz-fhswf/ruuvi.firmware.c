@@ -12,7 +12,27 @@
         "ruuvi_task_flash_ringbuffer.h": "c",
         "ruuvi_interface_communication.h": "c",
         "typeindex": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "array": "c",
+        "hash_map": "c",
+        "deque": "c",
+        "forward_list": "c",
+        "list": "c",
+        "string": "c",
+        "unordered_map": "c",
+        "unordered_set": "c",
+        "vector": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "__bit_reference": "c",
+        "__hash_table": "c",
+        "__split_buffer": "c",
+        "__tree": "c",
+        "bitset": "c",
+        "filesystem": "c",
+        "map": "c",
+        "set": "c",
+        "mixinvector": "c"
     },
     "cmake.configureOnOpen": false
 }

@@ -410,12 +410,12 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
         case RE_STANDARD_SENSOR_CONFIGURATION_READ:
             // read sensor configuration
             LOGD("read sensor configurations\r\n");
-            for(int i = 0; i < sizeof(&lis2dh12->historical_configurations); i++) {
-                msg.data_length += sizeof(rd_sensor_configuration_t);
-                memcpy(msg.data+4, &lis2dh12->historical_configurations[i], sizeof(msg.data_length));
-            }
-            // memcpy(msg.data+4, &lis2dh12->configuration, sizeof(&lis2dh12->historical_configurations));
-            // msg.data_length += sizeof(rd_sensor_configuration_t);
+            // for(int i = 0; i < sizeof(&lis2dh12->historical_configurations); i++) {
+            //     msg.data_length += sizeof(rd_sensor_configuration_t);
+            //     memcpy(msg.data+4, &lis2dh12->historical_configurations[i], sizeof(msg.data_length));
+            // }
+            msg.data_length += sizeof(rd_sensor_configuration_t);
+            memcpy(msg.data+4, &lis2dh12->configuration, sizeof(&lis2dh12->configuration));
             break;
 
         case RE_STANDARD_VALUE_WRITE:

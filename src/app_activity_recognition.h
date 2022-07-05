@@ -24,10 +24,10 @@ rd_status_t app_har_uninit(void);
  * Collect and predict acceleration data
  * accdata: Acceleration data
  */
-rd_status_t app_har_collect_data(float* const accdata);
+rd_status_t app_har_collect_data(const float* const accdata);
 
 /**
- *
+ * Perform Selftest
  */
 rd_status_t app_har_selftest(void);
 

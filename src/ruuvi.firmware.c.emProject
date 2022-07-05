@@ -272,7 +272,7 @@
   <configuration
     Name="Release"
     c_preprocessor_definitions="NDEBUG"
-    gcc_optimization_level="Optimize For Size" />
+    gcc_optimization_level="Level 2 balanced" />
   <configuration
     Name="Longlife"
     c_preprocessor_definitions="APPLICATION_MODE_LONGLIFE; NDEBUG"

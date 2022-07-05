@@ -17,3 +17,6 @@
 #endif
 #include "application_mode_default.h"
 #endif
+
+#define RI_LOG_ENABLED 1
+#define APP_LOG_LEVEL RI_LOG_LEVEL_DEBUG

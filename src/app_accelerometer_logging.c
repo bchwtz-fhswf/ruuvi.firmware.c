@@ -278,6 +278,9 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
                 float har_data[3];
 
                 rawToMg ((axis3bit16_t*)(logged_data.data+SIZE_ELEMENT*ii), har_data);
+                har_data[0] = har_data[0]/1000.0f;
+                har_data[1] = har_data[1]/1000.0f;
+                har_data[2] = har_data[2]/1000.0f;
 
                 // adjust timestamp per sample
                 logged_data.timestamp += 1000L/logged_data.config->samplerate;

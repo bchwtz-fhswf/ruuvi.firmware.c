@@ -109,3 +109,4 @@ rt-thread-prife
 fal
 .vscode
 .vagrant
+/bootloader

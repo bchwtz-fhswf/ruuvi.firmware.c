@@ -45,7 +45,21 @@
             "cwd": "${workspaceRoot}",
             "servertype": "jlink",
             "device": "nrf52",
-            "preLaunchTask": "make"
+            "preLaunchTask": "make",
+            "serverArgs": [
+                "-gui"
+            ],
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "label": "",
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            }
         },
         {
             "name": "JLink Attach",

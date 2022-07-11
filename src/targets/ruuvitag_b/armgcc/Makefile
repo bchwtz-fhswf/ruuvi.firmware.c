@@ -70,6 +70,7 @@ CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing -fstack-usage
 CFLAGS += -fno-builtin -fshort-enums 
 CFLAGS += -DRT_SENSOR_ENABLED
+CFLAGS += -DAPP_COMMS_BIDIR_ENABLED=1
 
 # C++ flags common to all targets
 CXXFLAGS += $(OPT)

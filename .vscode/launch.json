@@ -54,7 +54,7 @@
                 "address": "auto",
                 "decoders": [
                     {
-                        "label": "",
+                        "label": "console",
                         "port": 0,
                         "type": "console"
                     }

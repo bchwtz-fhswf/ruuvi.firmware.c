@@ -149,7 +149,8 @@ static uint8_t initial_adv_send_count (void)
 // If Configuration is not allowed, command type must be read.
 static bool command_is_authorized (const uint8_t op)
 {
-    return (RE_STANDARD_OP_READ_BIT & op) || m_config_enabled_on_curr_conn;
+    return true;
+    // return (RE_STANDARD_OP_READ_BIT & op) || m_config_enabled_on_curr_conn;
 }
 
 static rd_status_t reply_unauthorized (const ri_comm_xfer_fp_t reply_fp,
@@ -167,7 +168,7 @@ static rd_status_t reply_unauthorized (const ri_comm_xfer_fp_t reply_fp,
     {
         msg.data[ii] = 0xFFU;
     }
-    LOGD("unauthorized request!");
+    LOGD("unauthorized request!\n");
     return reply_fp (&msg);
 }
 

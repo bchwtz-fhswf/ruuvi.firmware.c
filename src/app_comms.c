@@ -384,6 +384,7 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
     msg.data[RE_STANDARD_DESTINATION_INDEX] = RE_STANDARD_DESTINATION_ACCELERATION;
     msg.data[RE_STANDARD_SOURCE_INDEX     ] = RE_STANDARD_DESTINATION_ACCELERATION;
     msg.data[RE_STANDARD_OPERATION_INDEX  ] = op;
+    int8_t h_len;
 
     if(lis2dh12!=NULL) {
 
@@ -417,6 +418,12 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
              //}
             msg.data_length += sizeof(rd_sensor_configuration_t);
             memcpy(msg.data+4, &lis2dh12->configuration, sizeof(&lis2dh12->configuration));
+            break;
+
+        case RE_STANDARD_SENSOR_CONFIGURATION_GETNUM:
+            h_len = sizeof &lis2dh12->historical_configurations / sizeof &lis2dh12->historical_configurations[0];
+            msg.data_length += sizeof(int8_t);
+            memcpy(msg.data+4, h_len, sizeof(int8_t));
             break;
 
         case RE_STANDARD_VALUE_WRITE:

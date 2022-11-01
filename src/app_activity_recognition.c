@@ -18,7 +18,7 @@
 #include "nnom.h"
 
 #define INCLUDE_MODEL
-#include "model_24_nnom.h"
+#include "model_46_nnom.h"
 
 // Ruuvi Includes
 #include "app_sensor.h"
@@ -31,6 +31,10 @@
 #include "dsp/filtering_functions.h"
 #include "dsp/basic_math_functions.h"
 #include "dsp/statistics_functions.h"
+
+#ifdef APP_ACTIVITY_RECOGNITION_FFT_SIZE
+#include "dsp/transform_functions.h"
+#endif
 
 #if RI_LOG_ENABLED
 #include <stdio.h>
@@ -64,7 +68,7 @@ static inline void LOGDf (const char * const msg, ...)
 #endif
 
 // Store acceleration data
-static float accdatastore[APP_ACTIVITY_RECOGNITION_INPUT_SIZE];
+static q31_t accdatastore[APP_ACTIVITY_RECOGNITION_INPUT_SIZE];
 
 // highpass
 static q31_t highpass_coefficients_q31[5*APP_ACTIVITY_RECOGNITION_HIGHPASS_STAGES];
@@ -73,8 +77,8 @@ static q31_t highpass_state[3][4*APP_ACTIVITY_RECOGNITION_HIGHPASS_STAGES];
 
 // Model
 static nnom_model_t *model = NULL;
-static uint8_t current_size;
-static uint8_t tensor_arena[4*1024];
+static uint16_t current_size;
+static uint8_t tensor_arena[8*1024];
 
 
 static rd_status_t nnom_to_ruuvi_error(nnom_status_t nnom_err) {
@@ -113,7 +117,7 @@ static rd_status_t model_init(void) {
     return err_code;
   }
 
-  current_size = APP_ACTIVITY_RECOGNITION_STEP_SIZE;
+  current_size = APP_ACTIVITY_RECOGNITION_INPUT_SIZE/3 - APP_ACTIVITY_RECOGNITION_STEP_SIZE;
 
   // Instantiate high pass Filter
   arm_float_to_q31(highpass_coefficients, highpass_coefficients_q31, 5*APP_ACTIVITY_RECOGNITION_HIGHPASS_STAGES);
@@ -128,7 +132,9 @@ static void prepare_data(const float* const accdata) {
 
   for(int j=0; j<3; j++) {
     // copy old value to front
-    nnom_input_data[j+(current_size-APP_ACTIVITY_RECOGNITION_STEP_SIZE)*3] =  nnom_input_data[j+current_size*3];
+    if(current_size-APP_ACTIVITY_RECOGNITION_INPUT_SIZE>=0) {
+      accdatastore[j+(current_size-APP_ACTIVITY_RECOGNITION_STEP_SIZE)*3] =  accdatastore[j+current_size*3];
+    }
 
     // In order to avoid overflows completely the input signal must be scaled down by 2 bits and lie in the range [-0.25 +0.25).
     // see: https://www.keil.com/pack/doc/CMSIS/DSP/html/group__BiquadCascadeDF1.html#ga4e7dad0ee6949005909fd4fcf1249b79
@@ -139,10 +145,8 @@ static void prepare_data(const float* const accdata) {
       accdata_output = -0.25f;
     }
     q31_t filter_input;
-    q31_t filter_output;
     arm_float_to_q31(&accdata_output, &filter_input, 1);
-    arm_biquad_cascade_df1_q31(&highpass[j], &filter_input, &filter_output, 1);
-    arm_q31_to_q7(&filter_output, &nnom_input_data[j+current_size*3], 1);
+    arm_biquad_cascade_df1_q31(&highpass[j], &filter_input, &accdatastore[j+current_size*3], 1);
   }
 
   current_size += 1;
@@ -151,6 +155,56 @@ static void prepare_data(const float* const accdata) {
 rd_status_t app_har_predict(uint8_t *argmax, uint8_t output_to_save[]) {
 
   rd_status_t err_code = RD_SUCCESS;
+
+#ifndef APP_ACTIVITY_RECOGNITION_FFT
+  // Read data from temp memory
+  arm_q31_to_q7(accdatastore, nnom_input_data, APP_ACTIVITY_RECOGNITION_INPUT_SIZE);
+#else
+  q31_t clip_max_q31;
+  q31_t clip_min_q31;
+  float clip_max_f32 = 16;
+  float clip_min_f32 = -16;
+  arm_float_to_q31(&clip_max_f32, &clip_max_q31, 1);
+  arm_float_to_q31(&clip_min_f32, &clip_min_q31, 1);
+
+  q31_t fftSrc[APP_ACTIVITY_RECOGNITION_FFT_SIZE];
+  q31_t fftDstQ31[APP_ACTIVITY_RECOGNITION_FFT_SIZE*2];
+  q7_t fftDstQ7[64*2];
+
+  arm_rfft_instance_q31 fft;
+  if(arm_rfft_init_q31(&fft, APP_ACTIVITY_RECOGNITION_FFT_SIZE, 0, 0)!=ARM_MATH_SUCCESS) {
+    LOGD("FFT init failed\r\n");
+    return RD_ERROR_INVALID_LENGTH;
+  }
+
+  for(int j=0; j<3; j++) {
+    for(int k=0; k<APP_ACTIVITY_RECOGNITION_FFT_SIZE; k++) {
+      fftSrc[k] = accdatastore[k*3+j];
+    }
+    
+    // FFT ausführen
+    arm_rfft_q31(&fft, fftSrc, fftDstQ31);
+
+    // auf 32 clippen
+    arm_clip_q31(fftDstQ31, fftDstQ31, clip_min_q31, clip_max_q31, APP_ACTIVITY_RECOGNITION_FFT_SIZE*2);
+
+    // upscaling
+    arm_shift_q31(fftDstQ31, 6, fftDstQ31, APP_ACTIVITY_RECOGNITION_FFT_SIZE*2);
+
+    // in Q7 umwandeln
+    arm_q31_to_q7(fftDstQ31, fftDstQ7, 64*2);
+
+    // nur die ersten 64 Koeffizienten verwenden
+    for(int k=0; k<64; k++) {
+      #if APP_ACTIVITY_RECOGNITION_FFT_SKIP_IMAG
+      nnom_input_data[k*3+j] = fftDstQ7[k*2]; // real
+      #else
+      nnom_input_data[k*6+j] = fftDstQ7[k*2]; // real
+      nnom_input_data[k*6+j+1] = fftDstQ7[k*2+1]; // imag
+      #endif
+    }
+  }
+#endif
 
   // Run inference
   err_code |= nnom_to_ruuvi_error(model_run(model));
@@ -169,7 +223,7 @@ rd_status_t app_har_predict(uint8_t *argmax, uint8_t output_to_save[]) {
     }
   }
 
-  current_size = APP_ACTIVITY_RECOGNITION_STEP_SIZE;
+  current_size -= APP_ACTIVITY_RECOGNITION_STEP_SIZE;
 
   return err_code;
 }
@@ -255,7 +309,7 @@ rd_status_t app_har_collect_data(const float* const accdata) {
 }
 #endif
 
-#if ENABLE_HAR & 1 //RUUVI_RUN_TESTS
+#if !defined(APP_ACTIVITY_RECOGNITION_FFT_SIZE) & ENABLE_HAR & 1 //RUUVI_RUN_TESTS
 #include "app_activity_recognition_testdata.h"
 rd_status_t app_har_selftest(void) {
 

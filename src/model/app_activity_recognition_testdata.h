@@ -8,7 +8,7 @@
 #ifndef APP_ACTIVITY_RECOGNITION_TESTDATA_H
 #define APP_ACTIVITY_RECOGNITION_TESTDATA_H
 
-#include "model_24_nnom.h"
+#include "model_46_nnom.h"
 
 #if APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
 #define SCALING_FACTOR (1.0f)

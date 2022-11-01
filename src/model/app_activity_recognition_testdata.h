@@ -8,27 +8,7 @@
 #ifndef APP_ACTIVITY_RECOGNITION_TESTDATA_H
 #define APP_ACTIVITY_RECOGNITION_TESTDATA_H
 
-#include "model_24_nnom.h"
-
-#if APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
-#define SCALING_FACTOR (1.0f)
-#else
-// Do not use rawToMg because its result depends on the current sensor setup.
-// Scale down
-// In order to avoid overflows completely the input signal must be scaled down by 2 bits and lie in the range [-0.25 +0.25).
-// see: https://www.keil.com/pack/doc/CMSIS/DSP/html/group__BiquadCascadeDF1.html#ga4e7dad0ee6949005909fd4fcf1249b79
-#if APP_ACTIVITY_RECOGNITION_SENSOR_SCALE==2
-#define SCALING_FACTOR (256.0f/(16.0f*1000.0f))
-#elif APP_ACTIVITY_RECOGNITION_SENSOR_SCALE==4
 #define SCALING_FACTOR (256.0f/(32.0f*1000.0f))
-#elif APP_ACTIVITY_RECOGNITION_SENSOR_SCALE==8
-#define SCALING_FACTOR (256.0f/(64.0f*1000.0f))
-#elif APP_ACTIVITY_RECOGNITION_SENSOR_SCALE==16
-#define SCALING_FACTOR (256.0f/(192.0f*1000.0f))
-#else
-#error "Sensor scale is not defined or known"
-#endif
-#endif
 
 static const int8_t har_y_test[] = {-1, -1, 5, 5, 5, 1, 1, 1, 4, 4, 4, 0, 0, 0, 5, 5, 5, 5, 3, 3, 3, 4, 4, 4, 2, 2, 2, 5, 5, 5, 4, 4, 4, 1, 1, 1};
 

@@ -100,7 +100,7 @@ rd_status_t app_har_predict(uint8_t *argmax, uint8_t output_to_save[]) {
   TfLiteStatus tflite_status = interpreter->Invoke();
   if (tflite_status != kTfLiteOk)
   {
-    LOGD("Invoke failed");
+    LOGD("Invoke failed\r\n");
     return RD_ERROR_INTERNAL;
   }
 

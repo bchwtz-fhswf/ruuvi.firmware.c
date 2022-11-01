@@ -8,7 +8,7 @@
 #ifndef APP_ACTIVITY_RECOGNITION_TESTDATA_H
 #define APP_ACTIVITY_RECOGNITION_TESTDATA_H
 
-#include "model_22_tensorflow.h"
+#include "model_67_tensorflow.h"
 
 #if APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
 #define SCALING_FACTOR (1.0f)

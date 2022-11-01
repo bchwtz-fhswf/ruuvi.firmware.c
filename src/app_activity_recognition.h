@@ -9,7 +9,7 @@
 #define APP_ACTIVITY_RECOGNITION_H
 
 #include "ruuvi_driver_error.h"
-#include "model_22_tensorflow.h"
+#include "model_67_tensorflow.h"
 
 #ifndef APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT
 #define APP_ACTIVITY_RECOGNITION_PRECISION_FLOAT 1

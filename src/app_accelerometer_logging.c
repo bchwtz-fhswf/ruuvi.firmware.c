@@ -263,6 +263,7 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
         logged_data.sample_counter++;
 
         if(logged_data.config->reserved0 == 0 || logged_data.sample_counter == logged_data.config->reserved0 ) {
+        //if(logged_data.config->thresholdset == 0 || logged_data.sample_counter == logged_data.config->thresholdset ) {        
             // store value
             memcpy(logged_data.data_to_store + SIZE_ELEMENT*logged_data.num_elements, logged_data.data + SIZE_ELEMENT*ii, SIZE_ELEMENT);
 
@@ -560,6 +561,7 @@ rd_status_t app_acc_logging_state(void) {
     }
 }
 
+
 rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor, 
                           const rd_sensor_configuration_t* const new_config) {
 
@@ -592,10 +594,17 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
       is_new_configuration = true;
       sensor->configuration.mode = new_config->mode;
     }
+    
     if(new_config->reserved0!=RD_SENSOR_CFG_NO_CHANGE && new_config->reserved0!=sensor->configuration.reserved0) {
       // frequency divider
       is_new_configuration = true;
       sensor->configuration.reserved0 = new_config->reserved0;
+    }
+    if(new_config->reserved1!=RD_SENSOR_CFG_NO_CHANGE && new_config->reserved1!=sensor->configuration.reserved1) {
+      // frequency divider
+      is_new_configuration = true;
+      sensor->configuration.reserved1 = new_config->reserved1;
+      //&motion_threshold = new_config->thresholdset;
     }
 
     // if there is a new configuration

@@ -47,6 +47,18 @@ rd_status_t app_acc_logging_send_logged_data(const ri_comm_xfer_fp_t reply_fp);
 rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor, 
                           const rd_sensor_configuration_t* const new_config);
 
+
+/**
+ * @brief Handle Threshold Change
+ * Check every configuration parameter if it should be changed 
+ * and if its value is different than actual value. 
+ * If a change is detected it clears the ringbuffer, updates the
+ * configuration and stores the configuration in flash.
+ *
+ * @return Error code from stack
+ */
+rd_status_t app_acc_logging_threshold_set (rt_sensor_ctx_t* const sensor, 
+                          const rd_sensor_threshold_t* const new_threshold);
 /**
  * @brief Initialize acceleration logging during boot.
  * When logging was not active before reboot this function 

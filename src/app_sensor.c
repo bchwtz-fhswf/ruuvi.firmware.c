@@ -480,7 +480,7 @@ uint32_t app_sensor_event_count_get (void)
     return m_event_counter;
 }
 
-rd_status_t app_sensor_acc_thr_set (float * const threshold_g)
+rd_status_t app_sensor_acc_thr_set (float * const threshold_g, uint8_t * const mode)
 {
     rd_status_t err_code = RD_SUCCESS;
     const rd_sensor_data_fields_t acceleration =

@@ -34,5 +34,6 @@
         "set": "c",
         "mixinvector": "c"
     },
-    "cmake.configureOnOpen": false
+    "cmake.configureOnOpen": false,
+    "C_Cpp.dimInactiveRegions": false
 }

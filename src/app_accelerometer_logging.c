@@ -81,6 +81,8 @@ typedef struct logged_data_t
     rd_status_t last_status;
     /** @brief pointer to sensor configuration */
     rd_sensor_configuration_t* config;
+    /** @brief pointer to sensor threshold */
+    rd_sensor_threshold_t* threshold;
     /** @brief sample counter */
     uint8_t sample_counter;
 } logged_data_t;
@@ -262,8 +264,8 @@ static void fifo_full_handler (void * p_event_data, uint16_t event_size) {
         // increment sample counter
         logged_data.sample_counter++;
 
-        if(logged_data.config->reserved0 == 0 || logged_data.sample_counter == logged_data.config->reserved0 ) {
-        //if(logged_data.config->thresholdset == 0 || logged_data.sample_counter == logged_data.config->thresholdset ) {        
+
+        if(logged_data.config->divider == 0 || logged_data.sample_counter == logged_data.config->divider ) {
             // store value
             memcpy(logged_data.data_to_store + SIZE_ELEMENT*logged_data.num_elements, logged_data.data + SIZE_ELEMENT*ii, SIZE_ELEMENT);
 
@@ -594,19 +596,25 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
       is_new_configuration = true;
       sensor->configuration.mode = new_config->mode;
     }
-    
-    if(new_config->reserved0!=RD_SENSOR_CFG_NO_CHANGE && new_config->reserved0!=sensor->configuration.reserved0) {
+    if(new_config->divider!=RD_SENSOR_CFG_NO_CHANGE && new_config->divider!=sensor->configuration.divider) {
       // frequency divider
       is_new_configuration = true;
-      sensor->configuration.reserved0 = new_config->reserved0;
+      sensor->configuration.divider = new_config->divider;
     }
-    if(new_config->reserved1!=RD_SENSOR_CFG_NO_CHANGE && new_config->reserved1!=sensor->configuration.reserved1) {
+    if(new_config->reserved!=RD_SENSOR_CFG_NO_CHANGE && new_config->reserved!=sensor->configuration.reserved) {
       // frequency divider
       is_new_configuration = true;
-      sensor->configuration.reserved1 = new_config->reserved1;
+      sensor->configuration.reserved = new_config->reserved;
       //&motion_threshold = new_config->thresholdset;
     }
 
+    if(new_config->created_at!=RD_SENSOR_CFG_NO_CHANGE && new_config->created_at!=sensor->configuration.created_at) {
+      // Threshold cfg
+      // Hier kommt Funktiuon  
+      is_new_configuration = true;
+      sensor->configuration.created_at = new_config->created_at;
+    }
+    
     // if there is a new configuration
     if(is_new_configuration) {
         // set new sensor configuration
@@ -627,6 +635,63 @@ rd_status_t app_acc_logging_configuration_set (rt_sensor_ctx_t* const sensor,
 
     return err_code;
 }
+
+rd_status_t app_acc_logging_threshold_set (rt_sensor_ctx_t* const sensor, 
+                          const rd_sensor_threshold_t* const new_threshold) {
+
+    rd_status_t err_code = RD_SUCCESS;
+    bool is_new_thresholdconfig = false;
+
+    // check the parameters if they should be changed and 
+    // if they are different from actual values
+    if(new_threshold->threshold!=RD_SENSOR_CFG_NO_CHANGE && new_threshold->threshold!=sensor->threshold.threshold) {
+      is_new_thresholdconfig = true;
+      sensor->threshold.threshold= new_threshold-> threshold;
+    }
+
+    if(new_threshold->mode!=RD_SENSOR_CFG_NO_CHANGE && new_threshold-> mode!= sensor ->threshold. mode) {
+      is_new_thresholdconfig = true;
+      sensor->threshold.mode = new_threshold-> mode;
+    }
+
+    if(new_threshold-> reserved !=RD_SENSOR_CFG_NO_CHANGE && new_threshold-> reserved!=sensor->threshold.reserved) {
+      is_new_thresholdconfig = true;
+      sensor->threshold.reserved = new_threshold-> reserved;
+    }
+
+    
+    // For Testing
+    is_new_thresholdconfig = true;
+ // if there is a new threshold
+    if(is_new_thresholdconfig) {
+        // set new sensor threshold in the registers. Needs to be testet in another project. 
+        // It is possible to get some Register structs from the sensor (example rd_configuration_fp)
+        //err_code |= rd_sensor_threshold_set(&sensor->sensor, &sensor->threshold);
+        
+        // store configuration in flash doesnt work at the moment
+        // It seems like a pointer problem. 
+        // Maybe the problem is because we are using the workaround
+        // Has to be tested/checked with a gateway which is sending the data. 
+        //err_code |= rt_sensor_store(sensor);
+
+	float motion_threshold2 = new_threshold->threshold;
+	uint8_t mode = new_threshold->mode;
+	app_sensor_acc_thr_set (&motion_threshold2, &mode); 
+		
+        if(app_acc_logging_state()==RD_SUCCESS) {
+            // clear ringbuffer
+            err_code = rt_flash_ringbuffer_clear();
+        }
+        // clear logged but not saved data
+        logged_data.num_elements = 0;
+        logged_data.sample_counter = 0;
+        logged_data.element_pos = 0xff;
+    }
+
+    logged_data.last_status = err_code;
+
+    return err_code;
+ }
 
 rd_status_t app_acc_logging_init(void) {
 

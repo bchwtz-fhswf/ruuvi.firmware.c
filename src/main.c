@@ -82,7 +82,7 @@ void setup (void)
     err_code |= app_sensor_init();
     err_code |= app_log_init();
     // Allow fail on boards which do not have accelerometer.
-    (void) app_sensor_acc_thr_set (&motion_threshold);
+    //(void) app_sensor_acc_thr_set (&motion_threshold, 0);
     err_code |= app_comms_init (APP_LOCKED_AT_BOOT);
     err_code |= app_sensor_vdd_sample();
     err_code |= app_heartbeat_init();
@@ -102,6 +102,7 @@ void setup (void)
 
     rd_error_cb_set (&app_on_error);
     RD_ERROR_CHECK (err_code, RD_SUCCESS);
+
 }
 
 #ifdef  CEEDLING
@@ -113,8 +114,13 @@ int main (void)
 #   if RUUVI_RUN_TESTS
     integration_tests_run();
 #   endif
-    setup();
-
+    setup(); 
+    rd_sensor_threshold_t threshold;
+    threshold.mode = RD_SENSOR_CFG_DEFAULT;
+    threshold.reserved = RD_SENSOR_CFG_DEFAULT;
+    threshold.threshold = 0.045f;
+    rt_sensor_ctx_t sensor;
+    app_acc_logging_threshold_set(&sensor, &threshold);
     do
     {
         ri_scheduler_execute();

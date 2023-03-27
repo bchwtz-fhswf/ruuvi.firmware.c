@@ -412,7 +412,7 @@ uint32_t app_sensor_event_count_get (void);
  *
  *
  */
-rd_status_t app_sensor_acc_thr_set (float * threshold_g);
+rd_status_t app_sensor_acc_thr_set (float * const threshold_g, uint8_t * const mode);
 
 /**
  * @brief Handle data coming in to the application.

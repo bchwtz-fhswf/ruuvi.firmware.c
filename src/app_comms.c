@@ -407,11 +407,28 @@ static rd_status_t handle_lis2dh12_comms_v2 (const ri_comm_xfer_fp_t reply_fp, c
           err_code |= app_acc_logging_configuration_set(lis2dh12, &newConfiguration);
           break;
 
+
         case RE_STANDARD_SENSOR_CONFIGURATION_READ:
           // read sensor configuration
           LOGD("read sensor configuration\r\n");
           msg.data_length += sizeof(rd_sensor_configuration_t);
           memcpy(msg.data+4, &lis2dh12->configuration, sizeof(rd_sensor_configuration_t));
+          break;
+
+          case RE_STANDARD_SENSOR_THRESHOLD_WRITE:
+          // set sensor configuration
+          LOGD("set sensor threshold\r\n");
+          rd_sensor_threshold_t newThreshold;
+          memcpy(&newConfiguration, raw_message+3, sizeof(rd_sensor_threshold_t));
+          // set new sensor configuration
+          err_code |= app_acc_logging_threshold_set(lis2dh12, &newThreshold);
+          break;
+
+        case RE_STANDARD_SENSOR_THRESHOLD_READ:
+          // read sensor configuration
+          LOGD("read sensor thresholdn\r\n");
+          msg.data_length += sizeof(rd_sensor_threshold_t);
+          memcpy(msg.data+4, &lis2dh12->configuration, sizeof(rd_sensor_threshold_t));
           break;
 
         case RE_STANDARD_VALUE_WRITE:
